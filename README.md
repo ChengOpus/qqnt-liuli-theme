@@ -57,9 +57,9 @@
 
 ## 安装
 
-### 方式一：SnowLora 安装器
+### 方式一：琉璃套件版安装器
 
-[SnowLora 安装器](https://github.com/SnowLuma/SnowLora/releases/latest) **自带琉璃主题**，装好 SnowLora 后 QQ 设置里就有「琉璃」。仓库公开前只有 SnowLuma 成员能下载。
+在本仓库 [v1.3.5+snowlora.2](https://github.com/LilycleHeart/qqnt-liuli-theme/releases/tag/v1.3.5%2Bsnowlora.2) 下载 `SnowLora-Liuli-Installer-2.0.0.exe`，一次装好加载器 SnowLora 和琉璃主题，装完 QQ 设置里就有「琉璃」。只要加载器的，用 [SnowLora 仓库的纯本体版](https://github.com/SnowLuma/SnowLora/releases/latest)（仓库公开前只有 SnowLuma 成员能下载），再按方式二装主题。
 
 ### 方式二：从本地安装
 
