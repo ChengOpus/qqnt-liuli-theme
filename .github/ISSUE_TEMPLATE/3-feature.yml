@@ -1,0 +1,27 @@
+name: 功能请求
+description: 想要新的效果、支持某个 QQ 版本，或者改进现有表现
+title: "[建议] "
+labels: ["功能请求"]
+body:
+  - type: textarea
+    id: want
+    attributes:
+      label: 想要什么
+      placeholder: 例如：希望独立聊天窗的背景也能跟着主题一起变模糊。
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 使用场景
+      description: 说说你平时怎么用，为什么需要它。
+      placeholder: 例如：我经常开两个号的独立聊天窗，现在只有主窗口有毛玻璃效果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 参考
+      description: 可以参考的截图，或者其他软件是怎么做的。直接把图片拖进来。

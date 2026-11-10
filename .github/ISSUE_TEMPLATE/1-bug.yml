@@ -1,0 +1,134 @@
+name: 界面或功能问题
+description: 界面错位、元素消失、功能不生效等问题
+title: "[问题] "
+labels: ["界面问题"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先在 Issues 里搜索一下，避免重复。
+
+        诊断包只包含日志和插件列表，看不到画面。请务必写清现象并附上截图或录屏，否则很难定位。
+
+        目前只在 QQ 9.9.36 上测试过，9.9.37 还没有适配。
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过，没有相同的 issue
+          required: true
+        - label: 我会附上截图或录屏
+          required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: 使用的版本
+      description: SnowLora 版在 main 分支，用 SnowLora 安装器 2.x 安装；LiteLoader 版在 liteloader 分支，用旧的一键安装器 1.x 安装。
+      options:
+        - SnowLora 版
+        - LiteLoader 版
+        - 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: qq_version
+    attributes:
+      label: QQ 版本
+      description: QQ 主菜单 →「关于 QQ」，例如 9.9.36-53644。
+      placeholder: 9.9.36-53644
+    validations:
+      required: true
+
+  - type: input
+    id: liuli_version
+    attributes:
+      label: 琉璃版本
+      description: SnowLora 版在 QQ 设置 →「SnowLora」页的插件列表里看；LiteLoader 版在 LiteLoader 设置的插件列表里看。
+
+  - type: dropdown
+    id: window
+    attributes:
+      label: 出问题的窗口
+      description: 可以多选。
+      multiple: true
+      options:
+        - 主窗口
+        - 独立聊天窗
+        - 迷你窗
+        - QQ 设置窗
+        - 语音或视频通话
+        - 图片或视频查看器
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      placeholder: 例如：独立聊天窗里发送按钮消失，输入框贴到了窗口底部。
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望是什么样
+      placeholder: 例如：发送按钮应该正常显示在输入框右侧。
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 怎么出现的
+      description: 按顺序写清楚每一步，能稳定复现最好。
+      placeholder: |
+        1. 打开独立聊天窗
+        2. 把窗口拖窄一点
+        3. 发送按钮消失
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 出现频率
+      options:
+        - 每次都会
+        - 偶尔出现
+        - 只出现过一次
+    validations:
+      required: true
+
+  - type: dropdown
+    id: without_liuli
+    attributes:
+      label: 关掉琉璃、重启 QQ 后问题还在吗
+      description: SnowLora 版在「QQ 设置 → SnowLora」里关掉琉璃主题；LiteLoader 版在 LiteLoader 设置里禁用琉璃。重启 QQ 后再看，问题还在就不是主题造成的。
+      options:
+        - 还在
+        - 消失了
+        - 没试过
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或录屏
+      description: 直接把图片或视频拖进这个框里。
+    validations:
+      required: true
+
+  - type: textarea
+    id: diag
+    attributes:
+      label: 诊断包（补充）
+      description: |
+        诊断包只是补充，不能替代现象描述。
+        安装或启动问题：安装器欢迎页 →「导出诊断」。
+        界面问题：QQ 设置 → 琉璃 →「诊断」。
+        导出后把文件拖进这个框里。

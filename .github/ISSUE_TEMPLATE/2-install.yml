@@ -1,0 +1,88 @@
+name: 安装或启动问题
+description: 安装器报错、安装后 QQ 打不开、装完没有主题、卸载还原
+title: "[安装] "
+labels: ["安装问题"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        安装类问题诊断包很有用，但还是要写清楚卡在哪一步、看到什么报错，只给诊断包没法判断。
+
+        安装器没有代码签名，可能被安全软件拦截或删除文件。如果装到一半失败，可以先看安全软件的拦截记录。
+
+        SnowLora 版是外部注入，不修改 QQ 本体文件；旧 LiteLoader 一键安装器（1.x）会改动 QQ 文件。
+
+  - type: dropdown
+    id: installer
+    attributes:
+      label: 用的哪个安装器
+      options:
+        - SnowLora-Liuli-Installer（琉璃套件版 2.x）
+        - SnowLora-Installer（纯本体版 2.x）
+        - 旧 LiteLoader 一键安装器（1.x）
+        - 手动安装
+    validations:
+      required: true
+
+  - type: input
+    id: installer_version
+    attributes:
+      label: 安装器版本
+      description: 安装器左下角可以看到。
+
+  - type: input
+    id: qq_version
+    attributes:
+      label: QQ 版本
+      description: QQ 主菜单 →「关于 QQ」，例如 9.9.36-53644。9.9.37 暂未适配。
+      placeholder: 9.9.36-53644
+    validations:
+      required: true
+
+  - type: input
+    id: qq_path
+    attributes:
+      label: QQ 安装位置
+      description: 例如 C:\Program Files\Tencent\QQNT。
+      placeholder: C:\Program Files\Tencent\QQNT
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 卡在哪一步
+      options:
+        - 环境检测
+        - 安装过程中
+        - 安装完成后 QQ 打不开
+        - QQ 能打开但没有主题
+        - 卸载或还原
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: 报错内容
+      description: 把报错原文复制进来，或者贴截图。
+      placeholder: 直接粘贴报错文字。
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或录屏
+      description: 直接把图片或视频拖进这个框里。
+
+  - type: input
+    id: antivirus
+    attributes:
+      label: 用了什么安全软件
+      placeholder: 例如 360、火绒、Windows Defender
+
+  - type: textarea
+    id: diag
+    attributes:
+      label: 诊断包
+      description: 强烈建议附上。在安装器欢迎页点「导出诊断」生成，再把文件拖进这个框里。
