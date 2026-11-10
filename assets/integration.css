@@ -1,0 +1,103 @@
+#liuli-settings-entry {
+  display: inline-flex !important;
+  position: relative !important;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ll-on-glass);
+  font: 12px system-ui;
+  cursor: pointer;
+  pointer-events: inherit !important;
+  -webkit-app-region: no-drag;
+}
+#liuli-settings-entry:hover {
+  background: rgba(var(--ll-brand-rgb), 0.15);
+}
+#liuli-settings-entry:focus-visible {
+  outline: 2px solid var(--ll-brand);
+  outline-offset: -2px;
+}
+#liuli-settings-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--ll-stroke-3);
+  border-radius: 20px;
+  background: var(--ll-surface-low);
+  color: var(--ll-on-glass);
+  box-shadow: var(--ll-shadow-float);
+  scrollbar-width: thin;
+  -webkit-app-region: no-drag;
+}
+#liuli-settings-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(5px);
+}
+.liuli-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 14px 22px;
+  background: var(--ll-surface-low);
+  border-bottom: 1px solid var(--ll-stroke-3);
+}
+.liuli-dialog-header h1 {
+  margin: 0;
+  font: 600 19px system-ui;
+}
+.liuli-dialog-header button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  color: inherit;
+  background: transparent;
+  font-size: 25px;
+  cursor: pointer;
+}
+.liuli-dialog-header button:hover {
+  background: rgba(var(--ll-brand-rgb), 0.15);
+}
+#liuli-settings-dialog #liuli-embedded {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 24px 28px;
+}
+#liuli-settings-dialog .liuli-panel__head,
+#liuli-settings-dialog .liuli-panel__sub {
+  display: none;
+}
+#liuli-settings-dialog .liuli-tabs {
+  position: static;
+  display: flex;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+#liuli-settings-dialog .liuli-tabpage[hidden] {
+  display: none !important;
+}
+#liuli-settings-dialog .liuli-seg__item {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  #liuli-settings-dialog #liuli-embedded {
+    padding: 12px;
+  }
+  .liuli-dialog-header {
+    padding: 10px 12px;
+  }
+}

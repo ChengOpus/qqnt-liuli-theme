@@ -3,16 +3,22 @@
  * ============================================================ */
 
 /* ── 左侧边栏：设置页里隐藏的按钮 ── */
-body [data-liuli-hide="1"] {
+body [data-liuli-hide='1'] {
   display: none !important;
 }
 
 /* ── 输入框按钮：放进输入框的从「更多」宫格里拿掉，其余的都留在宫格里 ──
  * 选择器叠 :not(#ll) 是为了压过 layout.css 里早先「表情固定拿掉」的规则。 */
-body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll):not(#ll) .bar-icon.liuli-pinned {
+body
+  .chat-input-area
+  > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll):not(#ll)
+  .bar-icon.liuli-pinned {
   display: none !important;
 }
-body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll):not(#ll) .bar-icon.liuli-in-menu:not([style*="display: none"]) {
+body
+  .chat-input-area
+  > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll):not(#ll)
+  .bar-icon.liuli-in-menu:not([style*='display: none']) {
   display: flex !important;
 }
 
@@ -31,11 +37,13 @@ body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll)
   margin: 0 !important;
   background: rgba(var(--ll-on-glass-rgb), 0.1) !important;
   color: var(--ll-on-glass-2) !important;
-  transition: background-color 140ms ease, color 140ms ease !important;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease !important;
   pointer-events: auto !important;
 }
 #liuli-bar-pins .liuli-bar-btn:hover,
-#liuli-bar-pins .liuli-bar-btn[data-open="1"] {
+#liuli-bar-pins .liuli-bar-btn[data-open='1'] {
   background: rgba(var(--ll-brand-rgb), 0.22) !important;
   color: var(--ll-brand) !important;
 }
@@ -44,7 +52,7 @@ body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll)
   height: 16px !important;
   display: block !important;
 }
-#liuli-bar-pins .liuli-bar-btn svg [fill]:not([fill="none"]) {
+#liuli-bar-pins .liuli-bar-btn svg [fill]:not([fill='none']) {
   fill: currentColor !important;
 }
 
@@ -69,14 +77,24 @@ body[data-liuli-menu-compact] .q-context-menu.aio-right-click-menu > .q-context-
   align-items: center !important;
   flex: 0 0 auto !important;
 }
-body[data-liuli-menu-compact] .q-context-menu.aio-right-click-menu > .q-context-menu-item > .q-context-menu-item__icon {
+body[data-liuli-menu-compact]
+  .q-context-menu.aio-right-click-menu
+  > .q-context-menu-item
+  > .q-context-menu-item__icon {
   margin: 0 !important;
 }
-body[data-liuli-menu-compact] .q-context-menu.aio-right-click-menu > .q-context-menu-item > .q-context-menu-item__icon .q-icon {
+body[data-liuli-menu-compact]
+  .q-context-menu.aio-right-click-menu
+  > .q-context-menu-item
+  > .q-context-menu-item__icon
+  .q-icon {
   width: 18px !important;
   height: 18px !important;
 }
-body[data-liuli-menu-compact] .q-context-menu.aio-right-click-menu > .q-context-menu-item > :not(.q-context-menu-item__icon) {
+body[data-liuli-menu-compact]
+  .q-context-menu.aio-right-click-menu
+  > .q-context-menu-item
+  > :not(.q-context-menu-item__icon) {
   display: none !important;
 }
 body[data-liuli-menu-compact] .q-context-menu.aio-right-click-menu > .q-context-menu-separator,
@@ -140,7 +158,7 @@ body .q-context-menu.aio-right-click-menu.liuli-menu-sorted > .q-context-menu-se
 }
 .liuli-lo-divider::before,
 .liuli-lo-divider::after {
-  content: "";
+  content: '';
   flex: 1;
   height: 1px;
   background: rgba(var(--ll-brand-rgb), 0.5);
@@ -176,29 +194,41 @@ body .q-context-menu.aio-right-click-menu.liuli-menu-sorted > .q-context-menu-se
  * 两个 :not(#ll)（ID 级特异性）+ !important，才能压过 layout.css 里
  * body[data-liuli-scope="main"][data-liuli-r-nav] … 那几条 !important。
  * ════════════════════════════════════════════════════════════ */
-body[data-liuli-nav-pin][data-liuli-scope="main"] .global-container .container-content > .container-sidebar:not(#ll):not(#ll) {
-  position: relative !important;      /* 覆盖 layout.css:267 的 position: fixed */
+body[data-liuli-nav-pin][data-liuli-scope='main']
+  .global-container
+  .container-content
+  > .container-sidebar:not(#ll):not(#ll) {
+  position: relative !important; /* 覆盖 layout.css:267 的 position: fixed */
   left: auto !important;
   right: auto !important;
   top: auto !important;
   bottom: auto !important;
-  height: auto !important;            /* flex 行里靠 align-items: stretch 撑满 */
+  height: auto !important; /* flex 行里靠 align-items: stretch 撑满 */
   margin: 0 !important;
-  transform: none !important;         /* 覆盖 layout.css:537 的 translateX(-100% …) */
+  transform: none !important; /* 覆盖 layout.css:537 的 translateX(-100% …) */
   transition: none !important;
-  z-index: auto !important;           /* 覆盖 layout.css:273 的 z-index: 3000 */
-  flex: 0 0 auto !important;          /* 占自己的一列，不再被右侧内容压缩 */
+  z-index: auto !important; /* 覆盖 layout.css:273 的 z-index: 3000 */
+  flex: 0 0 auto !important; /* 占自己的一列，不再被右侧内容压缩 */
   box-shadow: var(--ll-card-shadow) !important;
   /* 覆盖 layout.css:549 / 325 悬停加浓到 0.92：固定后不跟鼠标变材质 */
   --ll-material-opacity: inherit !important;
 }
 /* 左边缘那条 14px 宽的感应区（layout.css:284）在固定模式没有意义，还会伸出卡片外 */
-body[data-liuli-nav-pin][data-liuli-scope="main"] .global-container .container-content > .container-sidebar:not(#ll):not(#ll)::before {
+body[data-liuli-nav-pin][data-liuli-scope='main']
+  .global-container
+  .container-content
+  > .container-sidebar:not(#ll):not(#ll)::before {
   content: none !important;
 }
 /* 悬停 / 聚焦不再滑出、不再加投影、不再换模糊（layout.css:279-283、323-328、543-554） */
-body[data-liuli-nav-pin][data-liuli-scope="main"] .global-container .container-content > .container-sidebar:not(#ll):not(#ll):hover,
-body[data-liuli-nav-pin][data-liuli-scope="main"] .global-container .container-content > .container-sidebar:not(#ll):not(#ll):has(:focus-visible) {
+body[data-liuli-nav-pin][data-liuli-scope='main']
+  .global-container
+  .container-content
+  > .container-sidebar:not(#ll):not(#ll):hover,
+body[data-liuli-nav-pin][data-liuli-scope='main']
+  .global-container
+  .container-content
+  > .container-sidebar:not(#ll):not(#ll):has(:focus-visible) {
   transform: none !important;
   box-shadow: var(--ll-card-shadow) !important;
   --ll-material-opacity: inherit !important;
@@ -208,7 +238,9 @@ body[data-liuli-nav-pin][data-liuli-scope="main"] .global-container .container-c
 
 /* 会话列表跟着右移：layout.css:315 把 margin-left 压成 0（导航原本浮在它上面），
  * 固定后要退回「导航卡 + 8px + 会话列表卡」的排版，宽度同步让出这 8px。 */
-body[data-liuli-nav-pin][data-liuli-scope="main"] .two-col-layout__aside > .recent-contact:not(#ll) {
+body[data-liuli-nav-pin][data-liuli-scope='main']
+  .two-col-layout__aside
+  > .recent-contact:not(#ll) {
   margin-left: var(--ll-dock-gap) !important;
   width: calc(100% - var(--ll-dock-gap)) !important;
 }

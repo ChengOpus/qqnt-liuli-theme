@@ -80,9 +80,9 @@
 }
 
 /* ── 3. 时间：气泡内部右下角 ── */
-.msg-content-container [class*="msg-time"],
-.msg-content-container [class*="message-time"],
-.msg-content-container [class*="timestamp"],
+.msg-content-container [class*='msg-time'],
+.msg-content-container [class*='message-time'],
+.msg-content-container [class*='timestamp'],
 .msg-content-container .msg-time {
   display: inline-block !important;
   margin: 2px 0 0 auto !important;
@@ -99,7 +99,7 @@
 /* ── 4. 气泡内文字 ── */
 .msg-content-container .text-element,
 .msg-content-container .message-content,
-.msg-content-container > [class*="text"] {
+.msg-content-container > [class*='text'] {
   font-size: 14px !important;
   line-height: 1.45 !important;
 }
@@ -111,7 +111,7 @@
  * 内层打 "0"。这里只给最外层画线，其余层全部归零。 */
 
 /* 内层：清空一切装饰 */
-.msg-content-container [data-liuli-quote-root="0"] {
+.msg-content-container [data-liuli-quote-root='0'] {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -121,7 +121,7 @@
 }
 
 /* 最外层：一条左边线 + 淡底 */
-.msg-content-container [data-liuli-quote-root="1"] {
+.msg-content-container [data-liuli-quote-root='1'] {
   border: none !important;
   border-left: 3px solid rgba(var(--ll-brand-rgb), 0.72) !important;
   border-radius: 0 6px 6px 0 !important;
@@ -135,8 +135,8 @@
 }
 
 /* 引用块里的名字 */
-.msg-content-container [data-liuli-quote-root="1"] [class*="name"],
-.msg-content-container [data-liuli-quote-root="1"] [class*="nick"] {
+.msg-content-container [data-liuli-quote-root='1'] [class*='name'],
+.msg-content-container [data-liuli-quote-root='1'] [class*='nick'] {
   display: block !important;
   margin: 0 0 1px 0 !important;
   padding: 0 !important;
@@ -149,8 +149,8 @@
 }
 
 /* 引用块里的摘要 */
-.msg-content-container [data-liuli-quote-root="1"] [class*="content"],
-.msg-content-container [data-liuli-quote-root="1"] [class*="summary"] {
+.msg-content-container [data-liuli-quote-root='1'] [class*='content'],
+.msg-content-container [data-liuli-quote-root='1'] [class*='summary'] {
   display: block !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -163,24 +163,36 @@
 }
 
 /* 引用块里不要头像 */
-.msg-content-container [data-liuli-quote-root="1"] [class*="avatar"] {
+.msg-content-container [data-liuli-quote-root='1'] [class*='avatar'] {
   display: none !important;
 }
 
 /* 自己的气泡是浅底：引用块的线、底、名字、摘要都改用气泡文字色（浅字压浅底看不清） */
-.msg-content-container.container--self [data-liuli-quote-root="1"] {
+.msg-content-container.container--self [data-liuli-quote-root='1'] {
   opacity: 1 !important;
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
-  border-left-color: color-mix(in srgb, var(--ll-bubble-self-fg, var(--ll-on-glass)) 55%, transparent) !important;
-  background: color-mix(in srgb, var(--ll-bubble-self-fg, var(--ll-on-glass)) 8%, transparent) !important;
+  border-left-color: color-mix(
+    in srgb,
+    var(--ll-bubble-self-fg, var(--ll-on-glass)) 55%,
+    transparent
+  ) !important;
+  background: color-mix(
+    in srgb,
+    var(--ll-bubble-self-fg, var(--ll-on-glass)) 8%,
+    transparent
+  ) !important;
 }
-.msg-content-container.container--self [data-liuli-quote-root="1"] * {
-  color: color-mix(in srgb, var(--ll-bubble-self-fg, var(--ll-on-glass)) 72%, transparent) !important;
+.msg-content-container.container--self [data-liuli-quote-root='1'] * {
+  color: color-mix(
+    in srgb,
+    var(--ll-bubble-self-fg, var(--ll-on-glass)) 72%,
+    transparent
+  ) !important;
 }
-.msg-content-container.container--self [data-liuli-quote-root="1"] [class*="name"],
-.msg-content-container.container--self [data-liuli-quote-root="1"] [class*="nick"],
-.msg-content-container.container--self [data-liuli-quote-root="1"] [class*="name"] *,
-.msg-content-container.container--self [data-liuli-quote-root="1"] [class*="nick"] * {
+.msg-content-container.container--self [data-liuli-quote-root='1'] [class*='name'],
+.msg-content-container.container--self [data-liuli-quote-root='1'] [class*='nick'],
+.msg-content-container.container--self [data-liuli-quote-root='1'] [class*='name'] *,
+.msg-content-container.container--self [data-liuli-quote-root='1'] [class*='nick'] * {
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
   font-weight: 600 !important;
 }
@@ -196,8 +208,8 @@
  * ════════════════════════════════════════════════════════════ */
 
 /* 名字：只在组内第一条和单条消息上出现 */
-.message-container[data-liuli-g="mid"] .user-name,
-.message-container[data-liuli-g="last"] .user-name {
+.message-container[data-liuli-g='mid'] .user-name,
+.message-container[data-liuli-g='last'] .user-name {
   display: none !important;
 }
 
@@ -205,30 +217,30 @@
  * ⚠️ 不能用 visibility: hidden —— 它会保留 32px 的占位，
  * 而且实测 .avatar-span 的宽度会被拉成 657~770px（跟随容器），
  * 导致整行布局错乱。display: none 才能真正让出空间。 */
-.message-container[data-liuli-g="first"] > [class*="avatar"],
-.message-container[data-liuli-g="mid"] > [class*="avatar"] {
+.message-container[data-liuli-g='first'] > [class*='avatar'],
+.message-container[data-liuli-g='mid'] > [class*='avatar'] {
   display: none !important;
 }
 
 /* 头像宽度不再强制 —— grid 列宽由 QQ 的 grid-template-columns 决定，\n * 单独改子元素宽度会让列宽计算错乱（实测列被撑到 765px）。 */
 
 /* 中间/末条没有头像时，气泡要顶到与头像同列，不能左右跳 */
-.message-container[data-liuli-g="mid"],
-.message-container[data-liuli-g="last"] {
+.message-container[data-liuli-g='mid'],
+.message-container[data-liuli-g='last'] {
   grid-template-columns: var(--liuli-avatar-col, 0) 1fr !important;
 }
 
 /* 组内消息贴紧一点，组间拉开 */
-.message-container[data-liuli-g="mid"],
-.message-container[data-liuli-g="last"] {
+.message-container[data-liuli-g='mid'],
+.message-container[data-liuli-g='last'] {
   margin-top: -2px !important;
 }
 
-.message-container[data-liuli-g="first"] {
+.message-container[data-liuli-g='first'] {
   margin-top: 8px !important;
 }
 
-.message-container[data-liuli-g="single"] {
+.message-container[data-liuli-g='single'] {
   margin-top: 8px !important;
 }
 
@@ -256,7 +268,6 @@
   border-radius: 14px !important;
 }
 
-
 /* ── 11. 头像位置：普通布局（sticky 已移除） ──
  * sticky 在静止状态会让头像贴住行底，
  * 气泡一高就与头像拉开距离（截图里那个孤零零的绿色头像就是它）。
@@ -264,7 +275,7 @@
  * 头像与气泡都底部对齐，组内只在最后一条显示。
  */
 .message-container > .avatar-span,
-.message-container > [class*="avatar"] {
+.message-container > [class*='avatar'] {
   position: static !important;
   align-self: end !important;
 }
@@ -294,8 +305,8 @@
 }
 
 /* 头像单独且没有被隐藏时，保证它在行内可见 */
-.message-container[data-liuli-g="last"] > [class*="avatar"],
-.message-container[data-liuli-g="single"] > [class*="avatar"] {
+.message-container[data-liuli-g='last'] > [class*='avatar'],
+.message-container[data-liuli-g='single'] > [class*='avatar'] {
   display: flex !important;
   align-self: end !important;
   position: static !important;
@@ -333,9 +344,6 @@
  */
 
 /* 12.4 已回滚：给气泡设 max-width 会把正常消息挤成两行窄条。 */
-
-
-
 
 /* ════════════════════════════════════════════════════════════
  * 13. 气泡内排版（曾经存在，被某次替换误删，重新加回）
@@ -397,14 +405,13 @@
 }
 
 /* 头像也要跟着对齐 */
-.message-container--others > [class*="avatar"] {
+.message-container--others > [class*='avatar'] {
   justify-self: start !important;
 }
 
-.message-container--self > [class*="avatar"] {
+.message-container--self > [class*='avatar'] {
   justify-self: end !important;
 }
-
 
 /* ════════════════════════════════════════════════════════════
  * 16. 左右方向修复（改用气泡类名判定）
@@ -435,11 +442,11 @@
 }
 
 /* 头像跟随气泡方向 */
-.message-container:has(.msg-content-container.container--others) > [class*="avatar"] {
+.message-container:has(.msg-content-container.container--others) > [class*='avatar'] {
   justify-self: start !important;
 }
 
-.message-container:has(.msg-content-container.container--self) > [class*="avatar"] {
+.message-container:has(.msg-content-container.container--self) > [class*='avatar'] {
   justify-self: end !important;
 }
 
@@ -450,13 +457,13 @@
  *   "0px 765px 0px 125px 0px 0px"（气泡落在第 4 列 → 靠右）
  * 这是 QQ 自己算出来的右对齐布局，justify-items / justify-self 都改不动。
  * 只能直接重写列定义：让气泡列紧跟头像列。
- * ════════════════════════════════════════════════════════════ */
+ * 2026-11-10：气泡对侧要留出「头像 32 + 缝 14」= 46px，和 QQ 原生列定义里\n * calc(var(--avatar_size_2) + 8px) 那一列同一个作用。以前这一列写成 0，\n * 长链接 / 卡片消息在窄窗口里会一直铺到对侧头像底下。\n * ════════════════════════════════════════════════════════════ */
 .message-container:has(.msg-content-container.container--others) {
-  grid-template-columns: 0px 32px 8px minmax(0, 1fr) 0px 0px !important;
+  grid-template-columns: 0px 32px 8px minmax(0, 1fr) 46px 0px !important;
 }
 
 .message-container:has(.msg-content-container.container--self) {
-  grid-template-columns: 0px minmax(0, 1fr) 8px auto 32px 0px !important;
+  grid-template-columns: 0px minmax(46px, 1fr) 8px auto 32px 0px !important;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -495,7 +502,10 @@
 
 /* 自己：默认同明暗方案的 primaryContainer（color-roles.js 决定用哪个角色） */
 .message-container .msg-content-container.container--self {
-  background: var(--ll-bubble-self, color-mix(in srgb, rgb(var(--ll-brand-rgb)) 34%, rgb(var(--ll-acrylic)))) !important;
+  background: var(
+    --ll-bubble-self,
+    color-mix(in srgb, rgb(var(--ll-brand-rgb)) 34%, rgb(var(--ll-acrylic)))
+  ) !important;
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
 }
 
@@ -505,7 +515,7 @@
 }
 .message-container .msg-content-container.container--others .text-element .text-link,
 .message-container .msg-content-container.container--others .text-element .text--link,
-.message-container .msg-content-container.container--others .text-element [class*="text-link"] {
+.message-container .msg-content-container.container--others .text-element [class*='text-link'] {
   color: var(--ll-bubble-other-link, var(--ll-link, var(--ll-brand))) !important;
 }
 /* 自己的气泡是浅底（DSH 同款），文字用 onPrimaryContainer */
@@ -521,31 +531,31 @@
 }
 
 /* ── 圆角：对方 ── */
-.message-container[data-liuli-g="first"] .msg-content-container.container--others {
+.message-container[data-liuli-g='first'] .msg-content-container.container--others {
   border-radius: 16px 16px 16px 6px !important;
 }
-.message-container[data-liuli-g="mid"] .msg-content-container.container--others {
+.message-container[data-liuli-g='mid'] .msg-content-container.container--others {
   border-radius: 6px 16px 16px 6px !important;
 }
-.message-container[data-liuli-g="last"] .msg-content-container.container--others {
+.message-container[data-liuli-g='last'] .msg-content-container.container--others {
   border-radius: 6px 16px 16px 0 !important;
 }
-.message-container[data-liuli-g="single"] .msg-content-container.container--others,
+.message-container[data-liuli-g='single'] .msg-content-container.container--others,
 .message-container:not([data-liuli-g]) .msg-content-container.container--others {
   border-radius: 16px 16px 16px 0 !important;
 }
 
 /* ── 圆角：自己 ── */
-.message-container[data-liuli-g="first"] .msg-content-container.container--self {
+.message-container[data-liuli-g='first'] .msg-content-container.container--self {
   border-radius: 16px 16px 6px 16px !important;
 }
-.message-container[data-liuli-g="mid"] .msg-content-container.container--self {
+.message-container[data-liuli-g='mid'] .msg-content-container.container--self {
   border-radius: 16px 6px 6px 16px !important;
 }
-.message-container[data-liuli-g="last"] .msg-content-container.container--self {
+.message-container[data-liuli-g='last'] .msg-content-container.container--self {
   border-radius: 16px 6px 0 16px !important;
 }
-.message-container[data-liuli-g="single"] .msg-content-container.container--self,
+.message-container[data-liuli-g='single'] .msg-content-container.container--self,
 .message-container:not([data-liuli-g]) .msg-content-container.container--self {
   border-radius: 16px 16px 0 16px !important;
 }
@@ -557,11 +567,15 @@
   content: none !important;
 }
 
-.message-container[data-liuli-g="last"] .msg-content-container.container--others:not(.mix-message__container--pic)::before,
-.message-container[data-liuli-g="single"] .msg-content-container.container--others:not(.mix-message__container--pic)::before,
-.message-container[data-liuli-g="last"] .msg-content-container.container--self:not(.mix-message__container--pic)::before,
-.message-container[data-liuli-g="single"] .msg-content-container.container--self:not(.mix-message__container--pic)::before {
-  content: "" !important;
+.message-container[data-liuli-g='last']
+  .msg-content-container.container--others:not(.mix-message__container--pic)::before,
+.message-container[data-liuli-g='single']
+  .msg-content-container.container--others:not(.mix-message__container--pic)::before,
+.message-container[data-liuli-g='last']
+  .msg-content-container.container--self:not(.mix-message__container--pic)::before,
+.message-container[data-liuli-g='single']
+  .msg-content-container.container--self:not(.mix-message__container--pic)::before {
+  content: '' !important;
   display: block !important;
   position: absolute !important;
   bottom: 0 !important;
@@ -572,8 +586,10 @@
   height: 17px !important;
   background: inherit !important;
   pointer-events: none !important;
-  -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 17'%3E%3Cpath d='M10 0v17H0c4.5-.5 8-3.5 9-9V0z'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100% !important;
-  mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 17'%3E%3Cpath d='M10 0v17H0c4.5-.5 8-3.5 9-9V0z'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100% !important;
+  -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 17'%3E%3Cpath d='M10 0v17H0c4.5-.5 8-3.5 9-9V0z'/%3E%3C/svg%3E")
+    no-repeat 0 0 / 100% 100% !important;
+  mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 17'%3E%3Cpath d='M10 0v17H0c4.5-.5 8-3.5 9-9V0z'/%3E%3C/svg%3E")
+    no-repeat 0 0 / 100% 100% !important;
 }
 
 .message-container .msg-content-container.container--others::before {
@@ -586,7 +602,8 @@
   width: 9px !important;
   -webkit-mask-size: 10px 100% !important;
   mask-size: 10px 100% !important;
-}[data-liuli-other-solid] .message-container .msg-content-container.container--others::before {
+}
+[data-liuli-other-solid] .message-container .msg-content-container.container--others::before {
   width: 10px !important;
   -webkit-mask-size: 100% 100% !important;
   mask-size: 100% 100% !important;
@@ -607,19 +624,19 @@
   padding-bottom: 2px !important;
   min-height: 0 !important;
 }
-.message-container[data-liuli-g="first"],
-.message-container[data-liuli-g="single"] {
+.message-container[data-liuli-g='first'],
+.message-container[data-liuli-g='single'] {
   margin-top: 8px !important;
 }
-.message-container[data-liuli-g="mid"],
-.message-container[data-liuli-g="last"] {
+.message-container[data-liuli-g='mid'],
+.message-container[data-liuli-g='last'] {
   margin-top: 0 !important;
 }
 
 /* ── 头像：由 renderer 的 stickAvatars() 用 transform 推到视口内 ──
  * 必须压在上一行之上（它会被推进前几行的头像列）。 */
-.message-container[data-liuli-g="last"] > .avatar-span,
-.message-container[data-liuli-g="single"] > .avatar-span {
+.message-container[data-liuli-g='last'] > .avatar-span,
+.message-container[data-liuli-g='single'] > .avatar-span {
   position: relative !important;
   z-index: 3 !important;
   will-change: transform;
@@ -641,8 +658,8 @@
 .message-container .msg-content-container.mix-message__container--pic.container--self {
   background: var(--ll-bubble-self, rgba(var(--ll-acrylic), 0.86)) !important;
 }
-.message-container[data-liuli-g="last"] .msg-content-container.mix-message__container--pic,
-.message-container[data-liuli-g="single"] .msg-content-container.mix-message__container--pic {
+.message-container[data-liuli-g='last'] .msg-content-container.mix-message__container--pic,
+.message-container[data-liuli-g='single'] .msg-content-container.mix-message__container--pic {
   border-radius: 16px !important;
 }
 .message-container .msg-content-container.mix-message__container--pic .pic-element,
@@ -673,7 +690,6 @@
   overflow: hidden !important;
 }
 
-
 /* ════════════════════════════════════════════════════════════
  * 20. 没有 .msg-content-container 的行（转发聊天记录等卡片）
  * ------------------------------------------------------------
@@ -683,9 +699,10 @@
  * 改为：不是自己的行一律按「对方」靠左排。
  * ════════════════════════════════════════════════════════════ */
 .message-container:not(.message-container--self):not(:has(.container--self)) {
-  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 0px 0px !important;
+  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 46px 0px !important;
 }
-.message-container:not(.message-container--self):not(:has(.container--self)) > .message-content__wrapper {
+.message-container:not(.message-container--self):not(:has(.container--self))
+  > .message-content__wrapper {
   justify-self: start !important;
 }
 
@@ -715,10 +732,10 @@
  * TG 的做法是尾巴落在缝里、离头像还有几像素，这里缝统一 14px。
  * ════════════════════════════════════════════════════════════ */
 body .message-container:has(.msg-content-container.container--others):not(#ll) {
-  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 0px 0px !important;
+  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 46px 0px !important;
 }
 body .message-container:has(.msg-content-container.container--self):not(#ll) {
-  grid-template-columns: 0px minmax(0, 1fr) 8px auto 14px 32px !important;
+  grid-template-columns: 0px minmax(46px, 1fr) 8px auto 14px 32px !important;
 }
 
 /* ── 气泡里的 QQ 文字 token（2026-11-01）──
@@ -773,22 +790,41 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
   /* 皮肤九宫格左右框厚约 20–23px；--borderImageWidth 定义在子元素上，
    * 容器读不到，无法用 var() 换算，这里取固定值。 */
   padding: 8px 20px 8px 20px !important;
-  --ll-on-glass: var(--on_bubble_host_text, var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))) !important;
-  --ll-on-glass-2: var(--on_bubble_host_text, var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))) !important;
-  --ll-on-glass-3: var(--on_bubble_host_text, var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))) !important;
-  --ll-bubble-self-fg: var(--on_bubble_host_text, var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))) !important;
+  --ll-on-glass: var(
+    --on_bubble_host_text,
+    var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))
+  ) !important;
+  --ll-on-glass-2: var(
+    --on_bubble_host_text,
+    var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))
+  ) !important;
+  --ll-on-glass-3: var(
+    --on_bubble_host_text,
+    var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))
+  ) !important;
+  --ll-bubble-self-fg: var(
+    --on_bubble_host_text,
+    var(--on_bubble_guest_text, var(--bubble_guest_text, inherit))
+  ) !important;
   --ll-bubble-self-link: var(--text_link, inherit) !important;
 }
 
-.message-container .message-content__wrapper .msg-content-container.container--personalization::before,
-.message-container .message-content__wrapper .msg-content-container.container--personalization::after {
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization::before,
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization::after {
   content: none !important;
   background: none !important;
   border: none !important;
 }
 
 /* 皮肤层本身：别让主题的圆角/阴影盖上去 */
-.message-container .message-content__wrapper .msg-content-container.container--personalization .personalization-bubble {
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization
+  .personalization-bubble {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
@@ -801,7 +837,9 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
  *   对方的气泡：先找 --on_bubble_guest_text，没有再用 --bubble_guest_text（内联有就是皮肤色，没有就是继承来的主题色）
  * 对方气泡也要写 --ll-bubble-other-fg / -link：「配色」里把对方气泡换成彩色时，body 上的这两个变量会盖过皮肤色。
  * 不用 inherit 作兜底：var() 的兜底里写 CSS 关键字不生效。 */
-.message-container .message-content__wrapper .msg-content-container.container--personalization.container--self:not(#ll) {
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization.container--self:not(#ll) {
   --ll-skin-fg: var(--on_bubble_host_text);
   --ll-on-glass: var(--ll-skin-fg) !important;
   --ll-on-glass-2: var(--ll-skin-fg) !important;
@@ -809,7 +847,9 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
   --ll-bubble-self-fg: var(--ll-skin-fg) !important;
   --ll-bubble-self-link: var(--text_link, var(--ll-link)) !important;
 }
-.message-container .message-content__wrapper .msg-content-container.container--personalization.container--others:not(#ll) {
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization.container--others:not(#ll) {
   --ll-skin-fg: var(--on_bubble_guest_text, var(--bubble_guest_text));
   --ll-on-glass: var(--ll-skin-fg) !important;
   --ll-on-glass-2: var(--ll-skin-fg) !important;
@@ -819,7 +859,11 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
 }
 /* 尾巴：上面 #19 的 content:none 优先级 (0,4,0) 低于尾巴规则 (0,5,0)，尾巴其实还在（只是底色透明看不见）。
  * 加 :not(#ll) 压过去，真正去掉。 */
-.message-container .message-content__wrapper .msg-content-container.container--personalization:not(#ll)::before,
-.message-container .message-content__wrapper .msg-content-container.container--personalization:not(#ll)::after {
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization:not(#ll)::before,
+.message-container
+  .message-content__wrapper
+  .msg-content-container.container--personalization:not(#ll)::after {
   content: none !important;
 }

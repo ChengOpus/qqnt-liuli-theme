@@ -32,7 +32,9 @@ body {
   --text_secondary: var(--ll-on-glass-2) !important;
   --text_secondary_01: var(--ll-on-glass-2) !important;
   --text_secondary_02: var(--ll-on-glass-3) !important;
-  --text_tertiary: var(--ll-on-glass-3) !important; /* 原来是 on-glass-4（outlineVariant，描边色），三级文字几乎看不见 */
+  --text_tertiary: var(
+    --ll-on-glass-3
+  ) !important; /* 原来是 on-glass-4（outlineVariant，描边色），三级文字几乎看不见 */
   --text_link: var(--ll-brand) !important;
   --text_black: var(--ll-on-glass) !important;
   /* 反色文字（在品牌色实底上）保持白 */
@@ -194,9 +196,9 @@ body {
 }
 
 /* 暗色下只需调整「反色」语义：亮底 → 暗字，暗底 → 亮字 */
-body[q-theme="dark"]:not([data-liuli-dark="0"]),
-body.q-theme-tokens-dark:not([data-liuli-dark="0"]),
-body[data-liuli-dark="1"] {
+body[q-theme='dark']:not([data-liuli-dark='0']),
+body.q-theme-tokens-dark:not([data-liuli-dark='0']),
+body[data-liuli-dark='1'] {
   --text_black: var(--ll-on-glass) !important;
   --icon_black: var(--ll-on-glass) !important;
   --bubble_guest: rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.12)) !important;
@@ -257,17 +259,21 @@ body {
  * 于是红包卡片上多出一层壁纸色的 40% 罩子 —— 就是用户 #27 第 4 条截图里的「红包背景被误伤」。
  *
  * 长消息卡片还要用这个新色，不能撤掉上面的全局覆盖；
- * 所以在红包作用域内把 token 还原成 QQ 原值（亮色 #FFFFFF / 暗色 #000000，
- * 与 QQ 自己的 .q-theme-tokens-light/dark 里 --background-05 的值一致）。
- * 作用域用类名前缀 lucky-money：红包卡片内部所有 lucky-money__* 都跟着还原，
- * 长消息卡片不在这个作用域里，不受影响。
- * ⚠️ 未真机验证：取证时本机会话里没有红包消息，无法打开实测；
- *   选择器取自 QQ 自己的 CSS 快照，若打开红包的详情页换了类名需补选择器。 */
-body [class*="lucky-money"] {
+ * 所以在红包作用域内把这些 token 还原成 QQ 原值。
+ * #52 实测补充（2026-11-09）：红包**详情页**的卡片底用的是 --bg_bottom_light
+ * （QQ 原生暗色 #1b1b1b / --bg_bottom_standard #111111 / --background_05 #212121），
+ * 主题把前两个设成了 transparent，导致详情页整块透明、壁纸透出来。
+ * 作用域用类名前缀 lucky-money：红包卡片、详情页、发红包弹层都在这个作用域里，
+ * 长消息卡片不在，不受影响。 */
+body [class*='lucky-money'] {
   --background_05: #ffffff !important;
+  --bg_bottom_light: #ffffff !important;
+  --bg_bottom_standard: #f5f5f5 !important;
 }
-body[q-theme="dark"]:not([data-liuli-dark="0"]) [class*="lucky-money"],
-body.q-theme-tokens-dark:not([data-liuli-dark="0"]) [class*="lucky-money"],
-body[data-liuli-dark="1"] [class*="lucky-money"] {
-  --background_05: #000000 !important;
+body[q-theme='dark']:not([data-liuli-dark='0']) [class*='lucky-money'],
+body.q-theme-tokens-dark:not([data-liuli-dark='0']) [class*='lucky-money'],
+body[data-liuli-dark='1'] [class*='lucky-money'] {
+  --background_05: #212121 !important;
+  --bg_bottom_light: #1b1b1b !important;
+  --bg_bottom_standard: #111111 !important;
 }

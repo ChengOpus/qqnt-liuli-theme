@@ -12,7 +12,7 @@
 .resize-handler,
 .resize-handler.ew,
 .resize-handler.ns,
-[class*="resize-handler"] {
+[class*='resize-handler'] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -20,7 +20,7 @@
 }
 /* 悬停时给一点点提示，避免用户找不到拖拽位置 */
 .resize-handler:hover,
-[class*="resize-handler"]:hover {
+[class*='resize-handler']:hover {
   opacity: 1 !important;
   background: rgba(var(--ll-brand-rgb), 0.25) !important;
 }
@@ -96,9 +96,8 @@
  */
 .group-box,
 .user-profile-card:not(.topbar-profile) {
-  box-shadow:
-    0 0 calc(8px + 26px * var(--ll-glow-strength, 0.15))
-        rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.55)) !important;
+  box-shadow: 0 0 calc(8px + 26px * var(--ll-glow-strength, 0.15))
+    rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.55)) !important;
 }
 
 /* 相邻拼接的层：完全不要外发光，避免在接缝处留下暗带 */
@@ -117,4 +116,3 @@
 .container-sidebar {
   margin-right: 0 !important;
 }
-

@@ -52,12 +52,12 @@
  * ════════════════════════════════════════════════════════════ */
 
 /* 容器：横向 flex，两侧线 + 中间 pill */
-[class*="new-msg"],
-[class*="newMsg"],
-[class*="newmsg"],
+[class*='new-msg'],
+[class*='newMsg'],
+[class*='newmsg'],
 .chat-msg-area__tip,
-[class*="msg-divider"],
-[class*="unread-divider"] {
+[class*='msg-divider'],
+[class*='unread-divider'] {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
@@ -74,27 +74,29 @@
 }
 
 /* 两侧细线 */
-[class*="new-msg"]::before,
-[class*="new-msg"]::after,
-[class*="msg-divider"]::before,
-[class*="msg-divider"]::after,
-[class*="unread-divider"]::before,
-[class*="unread-divider"]::after {
-  content: "" !important;
+[class*='new-msg']::before,
+[class*='new-msg']::after,
+[class*='msg-divider']::before,
+[class*='msg-divider']::after,
+[class*='unread-divider']::before,
+[class*='unread-divider']::after {
+  content: '' !important;
   flex: 1 1 auto !important;
   height: 1px !important;
   border: none !important;
-  background: linear-gradient(90deg,
+  background: linear-gradient(
+    90deg,
     transparent 0%,
     rgba(var(--ll-brand-rgb), 0.42) 35%,
     rgba(var(--ll-brand-rgb), 0.42) 65%,
-    transparent 100%) !important;
+    transparent 100%
+  ) !important;
 }
 
 /* 中间胶囊：把文字本身做成 pill（若结构里文字是独立元素） */
-[class*="new-msg"] > *,
-[class*="msg-divider"] > *,
-[class*="unread-divider"] > * {
+[class*='new-msg'] > *,
+[class*='msg-divider'] > *,
+[class*='unread-divider'] > * {
   flex: 0 0 auto !important;
   padding: 3px 12px !important;
   border-radius: 999px !important;
@@ -122,7 +124,7 @@
 
 /* 会话列表：名字强调、摘要退后 */
 .recent-contact-item .contact-name,
-.recent-contact-item [class*="contact-name"],
+.recent-contact-item [class*='contact-name'],
 .recent-contact-item .item__title {
   font-size: 14px !important;
   font-weight: 500 !important;
@@ -133,7 +135,7 @@
 
 .recent-contact-item .summary-main,
 .recent-contact-item .item__summary,
-.recent-contact-item [class*="summary"] {
+.recent-contact-item [class*='summary'] {
   font-size: 12px !important;
   font-weight: 400 !important;
   line-height: 16px !important;
@@ -143,7 +145,7 @@
 
 /* 时间戳：更弱，等宽数字避免跳动 */
 .recent-contact-item .secondary-info,
-.recent-contact-item [class*="time"] {
+.recent-contact-item [class*='time'] {
   font-size: 11px !important;
   font-weight: 400 !important;
   letter-spacing: 0.3px !important;
@@ -163,7 +165,7 @@
 
 /* 聊天区标题：标题级 */
 .chat-header .panel-header__title,
-.chat-header [class*="title"],
+.chat-header [class*='title'],
 .chat-header {
   font-size: 16px !important;
   font-weight: 500 !important;
@@ -194,7 +196,7 @@
 /* 输入区：只设字号字重，绝不设 line-height / letter-spacing。
  * ProseMirror 靠这两个值计算光标坐标与文字位置，
  * 一改就会「光标错位 + 文字显示异常」。 */
-.chat-input-area [contenteditable="true"],
+.chat-input-area [contenteditable='true'],
 .chat-input-area textarea {
   font-size: 14px !important;
   font-weight: 400 !important;
@@ -202,7 +204,7 @@
 
 /* 群公告正文 */
 .group-notice,
-.group-notice [class*="content"],
+.group-notice [class*='content'],
 .group-notice p {
   font-size: 12px !important;
   line-height: 18px !important;

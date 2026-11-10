@@ -58,19 +58,19 @@
 }
 
 .forward-msg .count,
-.forward-msg [class*="count"] {
+.forward-msg [class*='count'] {
   color: var(--ll-on-glass-2) !important;
   border: none !important;
 }
 
-.forward-msg [class*="title"],
-.forward-msg [class*="summary"] {
+.forward-msg [class*='title'],
+.forward-msg [class*='summary'] {
   color: var(--ll-on-glass) !important;
 }
 
 /* ark 卡片（小程序/富媒体消息）同款材质 */
 .ark-msg-content-container,
-[class*="ark-msg"] {
+[class*='ark-msg'] {
   background: rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.12)) !important;
   border: 1px solid rgba(var(--ll-tint-rgb), 0.08) !important;
   border-radius: var(--ll-radius-sm) !important;
@@ -87,7 +87,7 @@
 .text-link,
 .text--link,
 a.text-link,
-[class*="text-link"],
+[class*='text-link'],
 .msg-content-container .text-link {
   color: var(--ll-link, var(--ll-brand)) !important;
   text-decoration-color: rgba(var(--ll-brand-rgb), 0.5) !important;
@@ -103,10 +103,14 @@ a.text-link,
 .message-container .msg-content-container.container--self .text--link,
 .message-container .msg-content-container.container--self .text-element .text-link,
 .message-container .msg-content-container.container--self .text-element .text--link,
-.message-container .msg-content-container.container--self .text-element [class*="text-link"],
-.message-container .msg-content-container.container--self .text-element [class*="text-link"] * {
+.message-container .msg-content-container.container--self .text-element [class*='text-link'],
+.message-container .msg-content-container.container--self .text-element [class*='text-link'] * {
   color: var(--ll-bubble-self-link, var(--ll-tertiary)) !important;
-  text-decoration-color: color-mix(in srgb, var(--ll-bubble-self-link, var(--ll-tertiary)) 55%, transparent) !important;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--ll-bubble-self-link, var(--ll-tertiary)) 55%,
+    transparent
+  ) !important;
 }
 
 /* 自己发的转发卡片：和自己的气泡同色 */
@@ -117,17 +121,25 @@ a.text-link,
   border-color: transparent !important;
 }
 .message-container--self .forward-msg,
-.message-container--self .forward-msg [class*="title"],
-.message-container--self .forward-msg [class*="summary"],
-.message-container--self .forward-msg [class*="content"],
-.message-container--self .forward-msg [class*="text"] {
+.message-container--self .forward-msg [class*='title'],
+.message-container--self .forward-msg [class*='summary'],
+.message-container--self .forward-msg [class*='content'],
+.message-container--self .forward-msg [class*='text'] {
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
 }
 .message-container--self .forward-msg .count,
-.message-container--self .forward-msg [class*="count"],
-.message-container--self .forward-msg [class*="footer"] {
-  color: color-mix(in srgb, var(--ll-bubble-self-fg, var(--ll-on-glass)) 70%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ll-bubble-self-fg, var(--ll-on-glass)) 15%, transparent) !important;
+.message-container--self .forward-msg [class*='count'],
+.message-container--self .forward-msg [class*='footer'] {
+  color: color-mix(
+    in srgb,
+    var(--ll-bubble-self-fg, var(--ll-on-glass)) 70%,
+    transparent
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--ll-bubble-self-fg, var(--ll-on-glass)) 15%,
+    transparent
+  ) !important;
 }
 
 /* ════════════════════════════════════════════════════════════

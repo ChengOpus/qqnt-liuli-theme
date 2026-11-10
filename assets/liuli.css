@@ -49,13 +49,13 @@
 body {
   --ll-tint-rgb: 255, 255, 255;
 }
-body[data-liuli-dark="0"] {
+body[data-liuli-dark='0'] {
   --ll-tint-rgb: var(--ll-on-glass-rgb, 31, 27, 22);
 }
 
-body[q-theme="dark"]:not([data-liuli-dark="0"]),
-body.q-theme-tokens-dark:not([data-liuli-dark="0"]),
-body[data-liuli-dark="1"] {
+body[q-theme='dark']:not([data-liuli-dark='0']),
+body.q-theme-tokens-dark:not([data-liuli-dark='0']),
+body[data-liuli-dark='1'] {
   --ll-material-opacity: 0.5;
   --ll-acrylic: 30, 37, 48;
   --ll-acrylic-low: 26, 32, 42;
@@ -70,8 +70,17 @@ body[data-liuli-dark="1"] {
  * ════════════════════════════════════════════════════════════ */
 
 body {
-  font-family: "MiSans", "Inter", "Space Grotesk", "Segoe UI", system-ui,
-    -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family:
+    'MiSans',
+    'Inter',
+    'Space Grotesk',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
   background-color: transparent !important;
 }
 
@@ -79,12 +88,23 @@ body {
  * 以前 #app 是透明的，没选壁纸时底下是什么取决于 QQ 和系统（acrylic 窗口会透出桌面），
  * 颜色角色没有固定的基准可依。现在按琉璃的明暗模式铺底，壁纸（#app::before）盖在它上面。
  * 语音 / 视频通话窗口（#/av）不铺，免得盖住原生视频层（#9）。
+ * 迷你窗（#/mini-fishing）也不铺（#52）：它是 QQ 的透明小窗，铺底会把原生透明区盖住。
  * 要 !important：下面「中间容器全部打透」那条 #app { background: transparent !important } 会压掉它。 */
-body[data-liuli-dark="0"]:not([data-hash^="#/av"]) #app {
+body[data-liuli-dark='0']:not([data-hash^='#/av']):not([data-liuli-av]):not([data-hash^='#/mini-fishing']) #app {
   background-color: #ffffff !important;
 }
-body[data-liuli-dark="1"]:not([data-hash^="#/av"]) #app {
+body[data-liuli-dark='1']:not([data-hash^='#/av']):not([data-liuli-av]):not([data-hash^='#/mini-fishing']) #app {
   background-color: #000000 !important;
+}
+
+/* 迷你窗（#/mini-fishing）：保持 QQ 原生的透明/亚克力，不铺壁纸和材质（#52） */
+body[data-hash^='#/mini-fishing'] #app {
+  background-color: transparent !important;
+  isolation: auto !important;
+}
+body[data-hash^='#/mini-fishing'] #app::before,
+body[data-hash^='#/mini-fishing'] #app::after {
+  content: none !important;
 }
 
 /* 全局颗粒：已关闭（2026-10-30）。
@@ -201,12 +221,12 @@ body::after {
 }
 
 .recent-contact-item .contact-name,
-.recent-contact-item [class*="name"] {
+.recent-contact-item [class*='name'] {
   color: var(--ll-on-glass) !important;
 }
 
 .recent-contact-item .summary-main,
-.recent-contact-item [class*="summary"] {
+.recent-contact-item [class*='summary'] {
   color: var(--ll-on-glass-2) !important;
 }
 
@@ -240,10 +260,10 @@ body::after {
   color: var(--ll-tertiary) !important;
 }
 
-body[q-theme="light"]:not([data-liuli-dark="1"]) .q-tag--orange,
-body[data-liuli-dark="0"] .q-tag--orange,
-body[q-theme="light"]:not([data-liuli-dark="1"]) .q-tag--orange .title,
-body[data-liuli-dark="0"] .q-tag--orange .title {
+body[q-theme='light']:not([data-liuli-dark='1']) .q-tag--orange,
+body[data-liuli-dark='0'] .q-tag--orange,
+body[q-theme='light']:not([data-liuli-dark='1']) .q-tag--orange .title,
+body[data-liuli-dark='0'] .q-tag--orange .title {
   color: var(--ll-on-glass) !important;
 }
 
@@ -286,8 +306,8 @@ body[data-liuli-dark="0"] .q-tag--orange .title {
 /* 消息时间戳：QQ 用深色胶囊浮在壁纸上，很突兀。
  * 改成无底、弱化的次要色，并用等宽数字。 */
 .msg-time,
-[class*="msg-time"],
-.message-container [class*="time"] {
+[class*='msg-time'],
+.message-container [class*='time'] {
   background: transparent !important;
   padding: 0 4px !important;
   border-radius: 0 !important;
@@ -304,11 +324,13 @@ body[data-liuli-dark="0"] .q-tag--orange .title {
 /* 亮色主题：直接压壁纸的字是深色，黑色投影只会让字糊进暗处。
  * 改成底色（--ll-halo-rgb，浅色）的光晕，把字周围提亮。
  * 注意：不能用 --ll-veil-rgb —— 它以后可能被用户设成黑色。 */
-body[data-liuli-dark="0"] .chat-msg-area,
-body[data-liuli-dark="0"] .msg-time,
-body[data-liuli-dark="0"] [class*="msg-time"],
-body[data-liuli-dark="0"] .message-container [class*="time"] {
-  text-shadow: 0 0 2px rgba(var(--ll-halo-rgb, 255, 255, 255), 0.9), 0 0 6px rgba(var(--ll-halo-rgb, 255, 255, 255), 0.7);
+body[data-liuli-dark='0'] .chat-msg-area,
+body[data-liuli-dark='0'] .msg-time,
+body[data-liuli-dark='0'] [class*='msg-time'],
+body[data-liuli-dark='0'] .message-container [class*='time'] {
+  text-shadow:
+    0 0 2px rgba(var(--ll-halo-rgb, 255, 255, 255), 0.9),
+    0 0 6px rgba(var(--ll-halo-rgb, 255, 255, 255), 0.7);
 }
 /* 消息时间分隔条（QQ 原生 .babble 是写死的 rgba(0,0,0,0.3)：暗色下融进黑底，亮色下是一块脏灰）。
  * 按 M3 改成 surfaceContainerHigh 底 + onSurfaceVariant 字，两种模式都是同一套角色。 */
@@ -335,7 +357,7 @@ body[data-liuli-dark="0"] .message-container [class*="time"] {
 
 /* 只给编辑器设文字色，不再把 .msg-input 的背景强制成 transparent
  * （那会覆盖 input-bar.css 给的可见底色）。 */
-.chat-input-area [contenteditable="true"] {
+.chat-input-area [contenteditable='true'] {
   color: var(--ll-on-glass) !important;
 }
 
@@ -361,7 +383,7 @@ a,
 
 .q-context-menu,
 .q-dialog,
-[class*="popover"] {
+[class*='popover'] {
   background: rgba(var(--ll-acrylic-high), 0.94) !important;
   backdrop-filter: blur(28px) saturate(1.8) !important;
   -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
@@ -440,7 +462,8 @@ a,
 .user-profile-card:not(.topbar-profile) {
   box-shadow:
     var(--ll-shadow),
-    0 0 calc(8px + 26px * var(--ll-glow-strength, 0.15)) rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.55)) !important;
+    0 0 calc(8px + 26px * var(--ll-glow-strength, 0.15))
+      rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.55)) !important;
 }
 
 /* 输入框与选中项：更强的内发光，让"激活"有品牌色暗示 */
@@ -448,13 +471,6 @@ a,
 .recent-contact-item--active {
   box-shadow:
     inset 0 0 0 1px rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 1.2)),
-    0 0 calc(6px + 14px * var(--ll-glow-strength, 0.15)) rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.4)) !important;
+    0 0 calc(6px + 14px * var(--ll-glow-strength, 0.15))
+      rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.4)) !important;
 }
-
-/* 浮动按钮与面板：泛光最明显的地方 */
-#liuli-fab {
-  box-shadow:
-    var(--ll-shadow),
-    0 0 calc(10px + 30px * var(--ll-glow-strength, 0.15)) rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.7)) !important;
-}
-

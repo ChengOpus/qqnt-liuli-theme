@@ -9,7 +9,9 @@
  * ============================================================ */
 
 /* 亮色 */
-:root, body[q-theme="light"]:not([data-liuli-dark="1"]), body[data-liuli-dark="0"] {
+:root,
+body[q-theme='light']:not([data-liuli-dark='1']),
+body[data-liuli-dark='0'] {
   --ll-brand: #00629d;
   --ll-brand-rgb: 0, 98, 157;
   --ll-brand-hover: #006dad;
@@ -47,7 +49,9 @@
 }
 
 /* 暗色 */
-body[q-theme="dark"]:not([data-liuli-dark="0"]), body.q-theme-tokens-dark:not([data-liuli-dark="0"]), body[data-liuli-dark="1"] {
+body[q-theme='dark']:not([data-liuli-dark='0']),
+body.q-theme-tokens-dark:not([data-liuli-dark='0']),
+body[data-liuli-dark='1'] {
   --ll-brand: #99cbff;
   --ll-brand-rgb: 153, 203, 255;
   --ll-brand-hover: #81c1ff;

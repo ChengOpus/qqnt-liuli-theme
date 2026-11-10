@@ -5,16 +5,22 @@
 .ll-inline-md .text-normal code {
   margin: 0 2px;
   padding: 1px 5px;
-  font-family: "Cascadia Code", Consolas, "MiSans", monospace !important;
+  font-family: 'Cascadia Code', Consolas, 'MiSans', monospace !important;
   font-size: 0.92em;
   border-radius: var(--ll-radius-sm, 6px);
   background: rgba(var(--ll-tint-rgb), 0.14);
   color: inherit;
 }
 
-.ll-inline-md .text-normal strong { font-weight: 600; }
-.ll-inline-md .text-normal em { font-style: italic; }
-.ll-inline-md .text-normal del { opacity: 0.7; }
+.ll-inline-md .text-normal strong {
+  font-weight: 600;
+}
+.ll-inline-md .text-normal em {
+  font-style: italic;
+}
+.ll-inline-md .text-normal del {
+  opacity: 0.7;
+}
 
 /* 剧透：模糊，悬停或按住时显示 */
 .ll-inline-md .text-normal .ll-spoiler {
@@ -29,7 +35,7 @@
 /* 亮色：深色字压 12% 的深色底，blur 之后仍然认得出字（遮罩失效）。
  * 亮色的玻璃底本来就是浅色，用同一族亚克力色做接近实心的遮罩：
  * 既挡得住文字，悬停去掉 blur 后深色字仍然可读。 */
-body[data-liuli-dark="0"] .ll-inline-md .text-normal .ll-spoiler {
+body[data-liuli-dark='0'] .ll-inline-md .text-normal .ll-spoiler {
   background: rgba(var(--ll-acrylic), 0.94);
 }
 .ll-inline-md .text-normal .ll-spoiler:hover,
@@ -38,9 +44,10 @@ body[data-liuli-dark="0"] .ll-inline-md .text-normal .ll-spoiler {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ll-inline-md .text-normal .ll-spoiler { transition: none; }
+  .ll-inline-md .text-normal .ll-spoiler {
+    transition: none;
+  }
 }
-
 
 /* ============================================================
  * @ 高亮（renderer 的 llAtPass 写 data-ll-at）
@@ -48,18 +55,17 @@ body[data-liuli-dark="0"] .ll-inline-md .text-normal .ll-spoiler {
  *   me：   @我 / @全体成员，按 M3 用 tertiaryContainer 底 + onTertiaryContainer 字的小标签，
  *          和正文、链接都区分得开（以前是写死的橙色）
  * ============================================================ */
-.ml-item .text-element--at[data-ll-at="other"] {
+.ml-item .text-element--at[data-ll-at='other'] {
   color: var(--ll-link, var(--ll-brand)) !important;
   font-weight: 500;
 }
-.ml-item .text-element--at[data-ll-at="me"] {
+.ml-item .text-element--at[data-ll-at='me'] {
   color: var(--ll-on-tertiary-container) !important;
   font-weight: 600;
   padding: 0 4px;
   border-radius: 6px;
   background: var(--ll-tertiary-container);
 }
-
 
 /* ============================================================
  * 名字颜色：统一用 MCU 从壁纸派生的 tertiary（第三色），和品牌色区分开
@@ -73,6 +79,7 @@ body[data-liuli-dark="0"] .ll-inline-md .text-normal .ll-spoiler {
 .ml-item .msg-content-container .user-name .group-member-label {
   background: color-mix(in srgb, var(--ll-tertiary, var(--ll-brand)) 18%, transparent) !important;
 }
+
 /* ============================================================
  * 消息入场：级联（renderer 的 llAnimateEnter 加 .ll-enter 和 --ll-enter-i）
  * 只动 opacity / transform，不碰排版。
@@ -82,13 +89,19 @@ body[data-liuli-dark="0"] .ll-inline-md .text-normal .ll-spoiler {
   to { opacity: 1; transform: none; }
 }
 .ml-item.ll-enter {
-  animation: ll-msg-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: ll-msg-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   animation-delay: calc(var(--ll-enter-i, 0) * 28ms);
+  /* 缩放原点钉在头像那一侧：行宽约 1200px，默认以整行中心缩放会把左边的头像
+   * 横向推出约 12px 再弹回来。改成以头像下角为原点，头像不动、气泡朝头像收缩。
+   * 别人的消息头像在左，自己的消息头像在右。 */
+  transform-origin: 0 100%;
+}
+.ml-item.ll-enter:has(.message-container--self) {
+  transform-origin: 100% 100%;
 }
 @media (prefers-reduced-motion: reduce) {
   .ml-item.ll-enter { animation: none; }
 }
-
 
 /* ============================================================
  * 字体（renderer 的 llApplyFont 写 --ll-font 和 data-ll-font）
