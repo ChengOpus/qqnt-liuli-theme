@@ -59,7 +59,7 @@
 
 ### 方式一：SnowLora 安装器
 
-SnowLora 安装器（发布地址待定）**自带琉璃主题**，装好 SnowLora 后 QQ 设置里就有「琉璃」。
+[SnowLora 安装器](https://github.com/SnowLuma/SnowLora/releases/latest) **自带琉璃主题**，装好 SnowLora 后 QQ 设置里就有「琉璃」。仓库公开前只有 SnowLuma 成员能下载。
 
 ### 方式二：从本地安装
 
@@ -122,6 +122,10 @@ gh release create "v<版本>" --repo LilycleHeart/qqnt-liuli-theme --latest=fals
 `--latest=false` 是必须的：本仓库的 `releases/latest` 留给 **LiteLoader 版的一键安装器**——liteloader 分支 README 里的安装器链接、QQ 增强 README 里的安装说明都依赖它，被 SnowLora 版顶掉会让人下错安装器。
 
 发完之后把 `dist/*.index-entry.json` 的内容提 PR 到 [SnowLuma/snowlora-plugins](https://github.com/SnowLuma/snowlora-plugins) 的 `plugins.json`，规范见该仓库的 `docs/`。
+
+## 致谢
+
+加载器 [SnowLora](https://github.com/SnowLuma/SnowLora) 由 MliKiowa（手瓜一十雪）开发，SnowLuma 维护，MIT 许可。
 
 ## 问题反馈
 
