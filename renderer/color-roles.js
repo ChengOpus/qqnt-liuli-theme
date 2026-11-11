@@ -81,6 +81,16 @@
     const sp = containerPair(mcu, s, sel === 'secondary' || sel === 'tertiary' ? sel : 'primary');
     v['--ll-primary-container'] = sp[0];
     v['--ll-on-primary-container'] = sp[1];
+    // 会话实底选中态也要跟随「选中项」，不能固定跟随链接/按钮的强调色。
+    const selectedRole = sel === 'secondary' || sel === 'tertiary' ? sel : 'primary';
+    v['--ll-selected'] = hex(s[selectedRole]);
+    v['--ll-on-selected'] = hex(s['on' + cap(selectedRole)]);
+    const rgb = color => {
+      const value = parseInt(color.slice(1), 16);
+      return [(value >>> 16) & 255, (value >>> 8) & 255, value & 255].join(',');
+    };
+    v['--ll-selected-rgb'] = rgb(v['--ll-selected']);
+    v['--ll-on-selected-rgb'] = rgb(v['--ll-on-selected']);
     let self;
     switch (roles.self) {
       case 'secondary':

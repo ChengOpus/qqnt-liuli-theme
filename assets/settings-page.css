@@ -242,3 +242,36 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* #63：琉璃页只滚当前页正文，标签栏留在独立区域。
+ * QQ 自带的 q-scroll-view、外层 wrapper 和 setting-main 原本都能滚，
+ * sticky 标签会随不同祖先漂移，正文还会从上方透出；限定这一页为单滚动区。 */
+.setting-main .q-scroll-view:has(> .liuli-embedded) {
+  overflow: hidden !important;
+}
+.setting-main .q-scroll-view > .liuli-embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+}
+.setting-main .liuli-embedded > .liuli-tabs,
+.setting-main .liuli-embedded > .liuli-panel__sub {
+  flex: 0 0 auto;
+}
+.setting-main .liuli-embedded > .liuli-tabs {
+  position: relative;
+  top: auto;
+}
+.setting-main .liuli-embedded > .liuli-tabpage:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px 32px 0;
+  overscroll-behavior: contain;
+}

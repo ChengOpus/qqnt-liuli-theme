@@ -44,7 +44,10 @@
 |---|---|
 | **动态色板** | 从壁纸取色，用 Material Color Utilities 派生整套 M3 配色，亮/暗跟随 QQ；「配色」里可以指定强调色、选中项、自己和对方的气泡各用哪种颜色 |
 | **磨砂玻璃** | 会话列表、详情栏、弹层、右键菜单都是壁纸上的半透明材质 |
-| **TG 式布局** | 连续消息合并、名字进气泡、单行输入栏、指向唤出的顶部胶囊 |
+| **聊天布局** | TG / 经典 / TIM 三种布局；可选头像位于消息开头或末尾；纯图片消息可以隐藏昵称和头衔 |
+| **消息文字** | 正文、昵称、头衔字号分别设置；昵称不超过正文大小，长昵称在消息范围内省略 |
+| **置顶分组** | 置顶会话合为可折叠的一组，显示数量，支持可选强调色；选中态保留完整圆角 |
+| **视频壁纸** | 本地 H.264 MP4 / WebM，静音循环，首帧取色；窗口隐藏时暂停，减少动态效果时显示首帧 |
 | **Markdown 行内渲染** | `` `代码` ``、`**粗体**`、`*斜体*`、`~~删除线~~`、`\|\|剧透\|\|`（移植自 BetterQQNT） |
 | **@ 高亮** | @我 / @全体成员 暖色淡底，@别人 品牌色 |
 | **名字颜色** | 统一用 MCU 派生的第三色（tertiary），和主题同源又一眼可分 |
@@ -59,11 +62,11 @@
 
 ### 方式一：琉璃套件版安装器
 
-在本仓库 [v1.3.5+snowlora.2](https://github.com/LilycleHeart/qqnt-liuli-theme/releases/tag/v1.3.5%2Bsnowlora.2) 下载 `SnowLora-Liuli-Installer-2.0.0.exe`，一次装好加载器 SnowLora 和琉璃主题，装完 QQ 设置里就有「琉璃」。只要加载器的，用 [SnowLora 仓库的纯本体版](https://github.com/SnowLuma/SnowLora/releases/latest)（仓库公开前只有 SnowLuma 成员能下载），再按方式二装主题。
+在本仓库 [v1.3.5+snowlora.3](https://github.com/LilycleHeart/qqnt-liuli-theme/releases/tag/v1.3.5%2Bsnowlora.3) 下载 `SnowLora-Liuli-Installer-2.0.0.exe`，一次装好加载器 SnowLora 和琉璃主题，装完 QQ 设置里就有「琉璃」。只要加载器的，用 [SnowLora 仓库的纯本体版](https://github.com/SnowLuma/SnowLora/releases/latest)（仓库公开前只有 SnowLuma 成员能下载），再按方式二装主题。
 
 ### 方式二：从本地安装
 
-在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.2`），到 QQ 设置 → SnowLora 页选「从本地安装」，然后重启 QQ。
+在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.3`），到 QQ 设置 → SnowLora 页选「从本地安装」，然后重启 QQ。
 
 ### 方式三：在线安装
 

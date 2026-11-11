@@ -59,5 +59,43 @@
     return profileStore?.selfProfileInfo?.uid ? String(profileStore.selfProfileInfo.uid) : '';
   }
 
-  window.LiuliQQ = Object.freeze({ messageRecord, selfUid });
+  let shortcutComponent;
+  const shortcutDefaults = new WeakMap();
+  function sidebarShortcut(mode) {
+    const anchor = document.querySelector('.sidebar__menu .func-menu-more-component .icon-item');
+    if (!anchor) return false;
+    const suitable = component => {
+      const node = component.vnode?.el;
+      return component.ctx?.switchHMenuItem && component.setupState?.allMenuConfig &&
+        node?.nodeType === 1 && node.contains(anchor);
+    };
+    if (!shortcutComponent || shortcutComponent.isUnmounted || !suitable(shortcutComponent)) {
+      shortcutComponent = null;
+      // 仅使用已存在的渲染组件；不写 QQ 的账户配置，也不调用持久化服务。
+      for (let c = anchor.__VUE__?.[0]; c; c = c.parent) {
+        if (suitable(c)) { shortcutComponent = c; break; }
+      }
+      if (!shortcutComponent) visitComponents(anchor, c => {
+        if (!suitable(c)) return false;
+        shortcutComponent = c;
+        return true;
+      });
+    }
+    const component = shortcutComponent;
+    const items = component?.ctx?.items;
+    if (!Array.isArray(items)) return false;
+    const index = items.findIndex(item => item.id === 8 || item.id === 9);
+    if (index < 0) return false;
+    if (!shortcutDefaults.has(component)) shortcutDefaults.set(component, items[index]);
+    const desired = mode === 'favorite' ? component.setupState.allMenuConfig[8] :
+      mode === 'mail' ? component.setupState.allMenuConfig[9] : shortcutDefaults.get(component);
+    if (!desired) return false;
+    if (items[index].id !== desired.id) {
+      items.splice(index, 1, desired);
+      component.proxy?.$forceUpdate();
+    }
+    return true;
+  }
+
+  window.LiuliQQ = Object.freeze({ messageRecord, selfUid, sidebarShortcut });
 })();

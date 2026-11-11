@@ -567,6 +567,20 @@ body[data-liuli-tb="native"] .liuli-top-hint {
   display: none !important;
 }
 
+/* #60：窗口按钮的 no-drag 遮罩（位置由 renderer 的 syncCtlShield 同步）。
+ * 透明、不接收鼠标事件，只用来让按钮区域在系统命中测试里始终是客户区。
+ * 「常驻（原版）」模式下聊天标题栏不是拖动区，不需要它。 */
+#liuli-ctl-shield {
+  position: fixed;
+  display: none;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+  background: transparent;
+}
+body[data-liuli-tb="native"] #liuli-ctl-shield,
+body:not([data-liuli-scope="main"]) #liuli-ctl-shield {
+  display: none !important;
+}
 /* 感应条：窗口顶边 8px，左右各一段，中间仍是拖动区 */
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .liuli-top-hint {
   position: fixed;
@@ -1773,4 +1787,29 @@ body .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll):not(#ll) .bar-icon
 body .chat-func-bar.liuli-expanded .bar-more-menu .bar-more-menu-inner.q-context-menu:not(#ll) {
   margin-top: -10px !important;
   margin-left: -29px !important;  /* 小三角中心在格子左边 + 29px */
+}
+
+/* ── 多选底栏（#25，2026-11-10）──
+ * 多选时 QQ 显示 .forward-ops（逐条转发 / 合并转发 / 删除 …）。它平时一直在 DOM 里，
+ * 只是被 v-show 写了内联 display: none，所以「正在多选」= 它没有这条内联样式。
+ * 只认和 .msg-input 同在一个输入区的那个（页面里还有一个隐藏的空输入区）。
+ * :has() 不能嵌套，所以都用兄弟选择器写在一层 :has() 里。
+ * 多选时编辑器 .msg-input 仍占 44px，主题浮在输入框上的按钮（#liuli-input-overlay）也还在，
+ * 操作栏被挤到底、文字贴着卡片下沿。这里把两样收掉，上下各留 10px，操作栏居中。 */
+body .aio .chat-input-area > .msg-input:has(~ .forward-ops:not([style*="display: none"]):not([style*="display:none"])),
+body .aio .chat-input-area > .chat-func-bar:has(~ .forward-ops:not([style*="display: none"]):not([style*="display:none"])) {
+  display: none !important;
+}
+body:has(.aio .chat-input-area > .msg-input ~ .forward-ops:not([style*="display: none"]):not([style*="display:none"])) #liuli-input-overlay {
+  display: none !important;
+}
+body .aio .chat-input-area:has(> .msg-input ~ .forward-ops:not([style*="display: none"]):not([style*="display:none"])) {
+  justify-content: center !important;
+  padding: 10px 0 !important;
+}
+
+/* #61：仅隐藏未选会话面板的占位图，搜索空结果和错误提示仍正常显示。 */
+body[data-liuli-scope="main"][data-liuli-hide-empty-logo] .empty-aio .q-empty-page-img,
+body[data-liuli-scope="main"][data-liuli-hide-empty-logo] .empty-aio .qq-logo {
+  display: none !important;
 }

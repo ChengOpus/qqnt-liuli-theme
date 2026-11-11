@@ -10,6 +10,10 @@ const SCRIPTS = [
   'renderer/ark-external.js',
   'renderer/diag.js',
   'renderer/motion.js',
+  // 置顶会话分组（#55）：必须排在 index.js 之前，index 启动时就会调
+  // window.__liuliPinGroups.apply。
+  'renderer/pin-groups.js',
+  'renderer/video-wallpaper.js',
   'renderer/index.js'
 ];
 const roots = new Map();

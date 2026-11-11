@@ -867,3 +867,143 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
   .msg-content-container.container--personalization:not(#ll)::after {
   content: none !important;
 }
+
+/* ════════════════════════════════════════════════════════════
+ * 21. 多选（#25，2026-11-10）
+ * ------------------------------------------------------------
+ * 多选时 QQ 在每行 grid 的第 1 列（checkbox 区）放 .msg-picker，
+ * 但 17/19/20 节把第 1 列写死成 0px：勾选框没有位置，只能溢出，
+ * 自己的消息往左溢出到消息区外，被 overflow:hidden 切掉一半。
+ * 多选时第 1 列给 28px（勾选框 16 + 间距 12）。
+ * 未勾选的圈原本只有 20% 透明度的描边，压在壁纸上几乎看不见；
+ * 选中的行加一层主色淡底，一眼看出选了哪些。
+ * ════════════════════════════════════════════════════════════ */
+body .message-container:has(.msg-content-container.container--others):has(.msg-picker):not(#ll),
+body .message-container:not(.message-container--self):not(:has(.container--self)):has(.msg-picker):not(#ll) {
+  grid-template-columns: 28px 32px 14px minmax(0, 1fr) 46px 0px !important;
+}
+body .message-container:has(.msg-content-container.container--self):has(.msg-picker):not(#ll) {
+  grid-template-columns: 28px minmax(46px, 1fr) 8px auto 14px 32px !important;
+}
+.message-container .msg-picker {
+  align-self: center !important;
+}
+.message-container .msg-picker:not(.is-checked) > .q-checkbox__input {
+  background: rgba(var(--ll-acrylic), 0.72) !important;
+  border-color: rgba(var(--ll-on-glass-rgb), 0.5) !important;
+}
+.ml-item:has(.msg-picker.is-checked) > .message {
+  background: rgba(var(--ll-brand-rgb), 0.12) !important;
+  border-radius: 14px !important;
+}
+
+/* #47：纯图片可以单独隐藏昵称/头衔，正文仍保留完整图片与头像。 */
+body[data-liuli-hide-image-names] .msg-content-container[data-liuli-image-only] > .user-name {
+  display: none !important;
+}
+body[data-liuli-hide-image-names] .msg-content-container[data-liuli-image-only] {
+  padding: 3px !important;
+}
+body[data-liuli-hide-image-names] .msg-content-container[data-liuli-image-only] > .message-content {
+  margin-top: 0 !important;
+}
+
+/* 消息正文、昵称、头衔分别调节；昵称不参与气泡的横向固有宽度计算。 */
+body .message-container .msg-content-container .message-content,
+body .message-container .msg-content-container .text-element,
+body .message-container .msg-content-container .text-normal {
+  font-size: var(--ll-message-font-size, 14px) !important;
+  line-height: 1.5 !important;
+}
+body .message-container .msg-content-container > .user-name {
+  box-sizing: border-box !important;
+  contain: inline-size;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  font-size: var(--ll-name-font-size, 12px) !important;
+  line-height: 1.4 !important;
+  gap: 5px !important;
+}
+body .message-container .msg-content-container > .user-name > .text-ellipsis {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: inherit !important;
+}
+body .message-container .msg-content-container > .user-name .q-tag,
+body .message-container .msg-content-container > .user-name .q-tag * {
+  font-size: var(--ll-title-font-size, 10px) !important;
+  line-height: 1.4 !important;
+}
+body .message-container .msg-content-container > .user-name .q-tag {
+  height: auto !important;
+  min-height: 15px;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 经典式每条独立，TIM 连续分组；头像上下位置由独立选项决定。 */
+body[data-liuli-chat-style='classic'] .message-container .msg-content-container,
+body[data-liuli-chat-style='tim'] .message-container .msg-content-container {
+  border-radius: 12px !important;
+}
+body[data-liuli-chat-style='classic'] .message-container .msg-content-container::before,
+body[data-liuli-chat-style='tim'] .message-container .msg-content-container::before {
+  display: none !important;
+}
+body[data-liuli-chat-style='classic'] .message-container > .avatar-span {
+  display: block !important;
+  align-self: end !important;
+  transform: none !important;
+}
+body[data-liuli-avatar-position='top'] .message-container[data-liuli-g='first'] > .avatar-span {
+  display: block !important;
+  align-self: start !important;
+  transform: none !important;
+}
+body[data-liuli-avatar-position='top'] .message-container[data-liuli-g='last'] > .avatar-span {
+  display: none !important;
+}
+body[data-liuli-avatar-position='top'] .message-container[data-liuli-g='single'] > .avatar-span {
+  align-self: start !important;
+  transform: none !important;
+}
+/* 顶部头像模式的 TG 尾巴也移到消息开头，组内其它消息不留尾巴。 */
+body[data-liuli-chat-style='tg'][data-liuli-avatar-position='top'] .message-container[data-liuli-g='last'] .msg-content-container::before {
+  display: none !important;
+}
+body[data-liuli-chat-style='tg'][data-liuli-avatar-position='top'] .message-container:is([data-liuli-g='first'], [data-liuli-g='single']) .msg-content-container:not([data-liuli-image-only])::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  top: 0 !important;
+  bottom: auto !important;
+  width: 9px !important;
+  height: 17px !important;
+  background: inherit !important;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 17'%3E%3Cpath d='M10 0v17H0c4.5-.5 8-3.5 9-9V0z'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
+  transform: scaleY(-1) !important;
+}
+body[data-liuli-chat-style='tg'][data-liuli-avatar-position='top'] .message-container .msg-content-container.container--self::before {
+  transform: scale(-1) !important;
+}
+/* 经典 / TIM 的昵称回到原生 nickname 网格，不给它背景，不让长名字撑宽整行。 */
+body[data-liuli-chat-style]:not([data-liuli-chat-style='tg']) .message-container > .user-name {
+  grid-area: nickname;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  font-size: var(--ll-name-font-size, 12px) !important;
+  line-height: 1.4 !important;
+  margin: 0 0 4px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+body[data-liuli-chat-style]:not([data-liuli-chat-style='tg']) .message-container > .user-name .q-tag,
+body[data-liuli-chat-style]:not([data-liuli-chat-style='tg']) .message-container > .user-name .q-tag * {
+  font-size: var(--ll-title-font-size, 10px) !important;
+  line-height: 1.4 !important;
+}
+body[data-liuli-chat-style]:not([data-liuli-chat-style='tg']) .message-container--self > .user-name,
+body[data-liuli-hide-image-names] .message-container[data-liuli-image-only] > .user-name {
+  display: none !important;
+}

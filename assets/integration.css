@@ -93,6 +93,26 @@
 #liuli-settings-dialog .liuli-seg__item {
   white-space: nowrap;
 }
+/* 视频替换图片层，遮罩仍使用当前明暗配置，前景只抬高一个绘制层。 */
+#liuli-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#liuli-video-wallpaper { width: 100%; height: 100%; display: block; }
+#liuli-video-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--ll-veil-rgb, 0, 0, 0), var(--ll-wallpaper-dim, 0.18));
+}
+body:not([data-liuli-video-wallpaper]) #liuli-video-layer { visibility: hidden; }
+body[data-liuli-video-wallpaper] #app::before { background-image: none !important; }
+body[data-liuli-video-wallpaper] #app > .global-container { position: relative; z-index: 1; }
+body[data-liuli-av] #liuli-video-layer,
+body[data-hash^='#/mini-fishing'] #liuli-video-layer { display: none !important; }
 @media (max-width: 480px) {
   #liuli-settings-dialog #liuli-embedded {
     padding: 12px;
