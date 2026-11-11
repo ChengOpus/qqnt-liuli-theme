@@ -64,11 +64,11 @@
 
 ### 方式一：琉璃套件版安装器
 
-在本仓库 [v1.3.5+snowlora.3](https://github.com/LilycleHeart/qqnt-liuli-theme/releases/tag/v1.3.5%2Bsnowlora.3) 下载 `SnowLora-Liuli-Installer-2.0.0.exe`，一次装好加载器 SnowLora 和琉璃主题。
+在本仓库 [v1.3.5+snowlora.4](https://github.com/LilycleHeart/qqnt-liuli-theme/releases/tag/v1.3.5%2Bsnowlora.4) 下载 `SnowLora-Liuli-Installer-2.0.0.exe`，一次装好加载器 SnowLora 和琉璃主题。
 
 ### 方式二：从本地安装
 
-在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.3`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
+在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
 ### 方式三：在线安装
 

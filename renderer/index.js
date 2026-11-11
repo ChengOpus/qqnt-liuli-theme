@@ -987,9 +987,20 @@
   }
   function groupMessages() {
     try {
-      var list = document.querySelectorAll('.message-container');
+      var list = document.querySelectorAll('.chat-msg-area .message-container');
       if (list.length === 0) return;
+      var records = new WeakMap();
+      function recordOf(mc) {
+        if (records.has(mc)) return records.get(mc);
+        var record = null;
+        try { record = window.LiuliQQ?.messageRecord(mc) || null; } catch (e) {}
+        records.set(mc, record);
+        return record;
+      }
       function keyOf(mc) {
+        var record = recordOf(mc);
+        var sender = record && (record.senderUid || record.senderUin);
+        if (sender) return [record.chatType, record.peerUid || record.peerUin, sender].join(':');
         var av = mc.querySelector(':scope > .avatar-span');
         var lbl = av && av.getAttribute('aria-label');
         if (lbl) return lbl;
@@ -1002,6 +1013,17 @@
         if (img && img.src) return img.src;
         return '';
       }
+      function adjacent(a, b) {
+        if (!a || !b || a.closest('.chat-msg-area') !== b.closest('.chat-msg-area')) return false;
+        var ra = recordOf(a), rb = recordOf(b);
+        if (rb && rb.showTimestamp) return false;
+        var ta = Number(ra && ra.msgTime), tb = Number(rb && rb.msgTime);
+        if (ta > 0 && tb > 0 && (tb < ta || tb - ta > 300)) return false;
+        var rowA = a.closest('.ml-item'), rowB = b.closest('.ml-item');
+        // 原生列表中的系统提示、撤回行和时间分隔不能被同一发送者的分组合并跨过。
+        if (rowA && rowB && rowA !== rowB && rowA.nextElementSibling !== rowB) return false;
+        return true;
+      }
       var keys = [];
       for (var i = 0; i < list.length; i++) keys.push(keyOf(list[i]));
       for (var j = 0; j < list.length; j++) {
@@ -1012,8 +1034,8 @@
           continue;
         }
         var grouped = llModeCfg.chatStyle !== 'classic';
-        var prevSame = grouped && j > 0 && keys[j - 1] === key;
-        var nextSame = grouped && j < list.length - 1 && keys[j + 1] === key;
+        var prevSame = grouped && j > 0 && keys[j - 1] === key && adjacent(list[j - 1], mc);
+        var nextSame = grouped && j < list.length - 1 && keys[j + 1] === key && adjacent(mc, list[j + 1]);
         var g;
         if (!prevSame && !nextSame) g = 'single';
         else if (!prevSame && nextSame) g = 'first';

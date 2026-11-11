@@ -205,7 +205,8 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .use
   flex: 0 0 auto !important;
   /* QQ 自己写了 width:0 + flex:1，flex 改成 auto 后宽度会塌到 0，必须显式给宽 */
   width: max-content !important;
-  max-width: 50vw !important;
+  /* 左侧起点 64px，右侧控件 144px，两者之间保留间距。 */
+  max-width: min(50vw, max(40px, calc(100vw - 240px))) !important;
   height: 30px !important;
   margin: 5px 0 0 var(--ll-dock-gap) !important;
   padding: 0 12px 0 4px !important;
@@ -218,11 +219,26 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .use
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile .user-profile-card__content,
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile .user-profile-card__info {
-  flex: 0 0 auto !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   height: 30px !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile .user-avatar-container {
+  flex: 0 0 24px !important;
   height: 30px !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile :is(.user-profile-card__nick-row, .user-profile-card__nickname, .user-profile-card__long-nick) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile :is(.profile-nickname__text, .profile_signature) {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile .user-avatar {
   margin-top: -5px !important;
@@ -941,6 +957,12 @@ body .editor-at-panel .active:not(#ll) .item-name * {
 }
 body[data-liuli-r-nav] #liuli-nav-handle::after {
   opacity: 0;
+}
+/* #65：标记和感应区分开；隐藏提示不影响边缘 hover 或 no-drag 命中区域。 */
+body[data-liuli-hide-edge-hints] .liuli-top-hint::after,
+body[data-liuli-hide-edge-hints] #liuli-nav-handle::after {
+  content: none !important;
+  display: none !important;
 }
 
 /* ════════════════════════════════════════════════════════════

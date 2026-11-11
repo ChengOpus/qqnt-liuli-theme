@@ -10,7 +10,8 @@
     navHidden: [],
     titlebar: 'float',
     navPin: false,
-    sidebarShortcut: 'native'
+    sidebarShortcut: 'native',
+    edgeHints: true
   };
   const ICON_UP =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
@@ -219,6 +220,7 @@
       const cfg = loadLayout();
       window.LiuliQQ?.sidebarShortcut?.(cfg.sidebarShortcut);
       document.body.toggleAttribute('data-liuli-menu-compact', !!cfg.menuCompact);
+      document.body.toggleAttribute('data-liuli-hide-edge-hints', cfg.edgeHints === false);
       const tb = cfg.titlebar === 'native' ? 'native' : 'float';
       if (document.body.dataset.liuliTb !== tb) document.body.dataset.liuliTb = tb;
       document.body.toggleAttribute('data-liuli-nav-pin', !!cfg.navPin);
@@ -347,6 +349,11 @@
         '悬浮：最小化 / 关闭按钮和头像平时隐藏，鼠标移到窗口顶边左右两端时出现。常驻：恢复 QQ 原来的标题栏，按钮一直显示。'
       )
     );
+    seg(host, '显示边缘提示标记', [['1', '开启'], ['0', '关闭']], cfg.edgeHints === false ? '0' : '1', value => {
+      cfg.edgeHints = value === '1';
+      save();
+    });
+    host.appendChild(el('div', 'liuli-field__hint', '只隐藏顶部短横线和左侧提示线，鼠标移到边缘仍可唤出控件。'));
     host.appendChild(el('div', 'liuli-panel__group', '右键菜单'));
     seg(
       host,

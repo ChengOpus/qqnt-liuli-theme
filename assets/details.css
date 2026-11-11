@@ -170,3 +170,32 @@ a.text-link,
 .q-badge-dot {
   background: var(--ll-brand) !important;
 }
+
+/* 图片查看器只给控制栏上材质，不改变图片容器的 transform、尺寸和事件。 */
+body[data-hash^='#/image-viewer'] .main-area__header,
+body[data-hash^='#/image-viewer'] .main-area__footer {
+  background: rgba(var(--ll-acrylic), max(var(--ll-material-opacity, 0.5), 0.72)) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
+  color: var(--ll-on-glass) !important;
+  border: none !important;
+}
+body[data-hash^='#/image-viewer'] .main-area__header .q-svg-icon,
+body[data-hash^='#/image-viewer'] .main-area__footer .q-svg-icon {
+  --340fd034: var(--ll-on-glass) !important;
+  color: var(--ll-on-glass) !important;
+}
+body[data-hash^='#/image-viewer'] .main-area__footer .image-viewer__size {
+  color: var(--ll-on-glass) !important;
+}
+body[data-hash^='#/image-viewer'] .image-viewer__icon:hover {
+  background: rgba(var(--ll-brand-rgb), 0.14) !important;
+  border-radius: 8px;
+}
+body[data-hash^='#/image-viewer'] .window-control-area__btn.close:hover {
+  background: var(--ll-danger) !important;
+}
+body[data-hash^='#/image-viewer'] .window-control-area__btn.close:hover .q-svg-icon {
+  --340fd034: var(--ll-on-danger) !important;
+  color: var(--ll-on-danger) !important;
+}
