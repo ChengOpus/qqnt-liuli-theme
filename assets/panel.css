@@ -3,7 +3,7 @@
 /* ── 白色的两种用法 ──
  * 交互反馈与"看得见的"白（悬停底色、发丝线、虚线框）统一走
  *   rgba(var(--ll-tint-rgb, var(--ll-specular)), 原 alpha)
- * --ll-tint-rgb 由 liuli.css 定义：暗色是纯白 255,255,255（与改前的 --ll-specular 等价），
+ * --ll-tint-rgb 由 foundation.css 定义：暗色是纯白 255,255,255（与改前的 --ll-specular 等价），
  * 亮色换成玻璃上的正文墨色，否则"白色的高光画在白玻璃上"等于没有。
  * 装饰高光使用 --ll-specular，不随明暗主题反相。 */
 

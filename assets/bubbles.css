@@ -496,7 +496,7 @@
 /* 对方：深色亚克力，0.36 → 0.86，亮壁纸上也能读。
  * 配色里把「对方的气泡」换成颜色时，renderer 写 --ll-bubble-other / -fg / -link（color-roles.js） */
 .message-container .msg-content-container.container--others {
-  background: var(--ll-bubble-other, rgba(var(--ll-acrylic), 0.70)) !important;
+  background: var(--ll-bubble-other, var(--ll-glass-surface)) !important;
   color: var(--ll-bubble-other-fg, var(--ll-on-glass)) !important;
 }
 
@@ -639,7 +639,6 @@
 .message-container[data-liuli-g='single'] > .avatar-span {
   position: relative !important;
   z-index: 3 !important;
-  will-change: transform;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -650,13 +649,13 @@
  * ════════════════════════════════════════════════════════════ */
 .message-container .msg-content-container.mix-message__container--pic {
   padding: 3px !important;
-  background: rgba(var(--ll-acrylic), 0.86) !important;
+  background: var(--ll-glass-surface) !important;
 }
 .message-container .msg-content-container.mix-message__container--pic.container--others {
-  background: var(--ll-bubble-other, rgba(var(--ll-acrylic), 0.86)) !important;
+  background: var(--ll-bubble-other, var(--ll-glass-surface)) !important;
 }
 .message-container .msg-content-container.mix-message__container--pic.container--self {
-  background: var(--ll-bubble-self, rgba(var(--ll-acrylic), 0.86)) !important;
+  background: var(--ll-bubble-self, var(--ll-glass-surface)) !important;
 }
 .message-container[data-liuli-g='last'] .msg-content-container.mix-message__container--pic,
 .message-container[data-liuli-g='single'] .msg-content-container.mix-message__container--pic {
@@ -675,7 +674,7 @@
 .message-container .msg-content-container.ark-msg-content-container,
 .message-container .msg-content-container:has(.ark-view-message),
 .message-container .msg-content-container:has(.forward-msg) {
-  background: rgba(var(--ll-acrylic), 0.86) !important;
+  background: var(--ll-glass-surface) !important;
   border-radius: 16px !important;
   padding: 8px !important;
 }
@@ -708,7 +707,7 @@
 
 /* 转发卡片与其他卡片同一套深色底 */
 .message-container .message-content__wrapper > .forward-msg {
-  background: rgba(var(--ll-acrylic), 0.86) !important;
+  background: var(--ll-glass-surface) !important;
   backdrop-filter: none !important;
   border: none !important;
   border-radius: 16px !important;
@@ -717,7 +716,7 @@
 }
 /* 自己发的转发卡片：和自己的气泡同色 */
 .message-container.message-container--self .message-content__wrapper > .forward-msg {
-  background: var(--ll-bubble-self, rgba(var(--ll-acrylic), 0.86)) !important;
+  background: var(--ll-bubble-self, var(--ll-glass-surface)) !important;
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
 }
 
@@ -908,7 +907,7 @@ body[data-liuli-hide-image-names] .msg-content-container[data-liuli-image-only] 
   margin-top: 0 !important;
 }
 
-/* 消息正文、昵称、头衔分别调节；昵称不参与气泡的横向固有宽度计算。 */
+/* 正文、昵称、头衔分别调节；发送者行参与气泡宽度，短正文不会挤扁头衔。 */
 body .message-container .msg-content-container .message-content,
 body .message-container .msg-content-container .text-element,
 body .message-container .msg-content-container .text-normal {

@@ -1,0 +1,27 @@
+/* Shared by injection and diagnostics; obsolete layers are never loaded. */
+window.LiuliStyles = Object.freeze({
+  files: Object.freeze([
+    "wallpaper.css",
+    "qq-tokens.css",
+    "palette.css",
+    "foundation.css",
+    "typography.css",
+    "panel.css",
+    "color-picker.css",
+    "settings-page.css",
+    "details.css",
+    "composer.css",
+    "bubbles.css",
+    "shell.css",
+    "overlays.css",
+    "auxiliary.css",
+    "lists.css",
+    "motion.css",
+    "markdown.css",
+    "layout-custom.css",
+    "integration.css",
+    "search.css",
+    "pin-groups.css",
+    "surfaces.css",
+  ]),
+});

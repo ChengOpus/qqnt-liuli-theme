@@ -1,0 +1,257 @@
+/* Foundation: tokens, wallpaper plane, native text and scrollbars. */
+:root {
+  --ll-material-opacity: 0.55;
+  --ll-material-blur: blur(18px) saturate(1.6);
+
+  /* DSH 的亚克力底（固定值，不跟 M3 走） */
+  --ll-acrylic: 221, 229, 237;
+  --ll-acrylic-low: 232, 238, 244;
+  --ll-acrylic-high: 200, 212, 223;
+
+  --ll-radius: 14px;
+  --ll-radius-sm: 10px;
+  --ll-radius-xs: 7px;
+  --ll-panel-radius: 16px;
+  --ll-menu-radius: 12px;
+  --ll-menu-pad: 6px;
+  --ll-menu-item-height: 34px;
+  --ll-ui-duration: 220ms;
+  --ll-ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ll-popup-edge: inset 0 1px rgba(var(--ll-specular), 0.16);
+
+  /* 阴影与遮罩一律走 RGB 三元组，由 M3 的 scrim 语义提供（黑），
+   * 这样暗/亮主题只需要换 alpha，不需要另写颜色。 */
+  --ll-shadow-rgb: 0, 0, 0;
+  --ll-scrim-rgb: 0, 0, 0;
+  --ll-specular: 255, 255, 255;
+
+  --ll-shadow: 0 2px 10px rgba(var(--ll-shadow-rgb), 0.24);
+  --ll-shadow-float: 0 8px 28px rgba(var(--ll-shadow-rgb), 0.23);
+  --ll-scrim-alpha: 0.18;
+
+  --ll-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.045'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 亮色下的"看得见的白"载体（T2）：玻璃本身就是近白，白色高光在亮色下等于没有。
+ * 暗色保持纯白（与改前的 --ll-specular 完全等价），亮色换成玻璃上的正文色。
+ * --ll-on-glass-rgb 由 JS 内联写在 body 上，同一元素上的 var() 能取到。 */
+body {
+  --ll-tint-rgb: 255, 255, 255;
+}
+body[data-liuli-scope] ::selection {
+  background: rgba(var(--ll-brand-rgb), 0.32);
+  color: var(--ll-on-glass);
+}
+body[data-liuli-dark="0"] {
+  --ll-tint-rgb: var(--ll-on-glass-rgb, 31, 27, 22);
+}
+
+body[q-theme="dark"]:not([data-liuli-dark="0"]),
+body.q-theme-tokens-dark:not([data-liuli-dark="0"]),
+body[data-liuli-dark="1"] {
+  --ll-material-opacity: 0.5;
+  --ll-acrylic: 30, 37, 48;
+  --ll-acrylic-low: 26, 32, 42;
+  --ll-acrylic-high: 63, 74, 92;
+  --ll-scrim-alpha: 0.28;
+  --ll-shadow: 0 2px 10px rgba(var(--ll-shadow-rgb), 0.45);
+  --ll-shadow-float: 0 10px 32px rgba(var(--ll-shadow-rgb), 0.38);
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 0. 基础
+ * ════════════════════════════════════════════════════════════ */
+
+body {
+  font-family:
+    "MiSans",
+    "Inter",
+    "Space Grotesk",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
+  background-color: transparent !important;
+}
+
+/* 没有壁纸时的基准底色：亮色纯白、暗色纯黑（2026-11-01）。
+ * 以前 #app 是透明的，没选壁纸时底下是什么取决于 QQ 和系统（acrylic 窗口会透出桌面），
+ * 颜色角色没有固定的基准可依。现在按琉璃的明暗模式铺底，壁纸（#app::before）盖在它上面。
+ * 语音 / 视频通话窗口（#/av）不铺，免得盖住原生视频层（#9）。
+ * 迷你窗（#/mini-fishing）也不铺（#52）：它是 QQ 的透明小窗，铺底会把原生透明区盖住。
+ * 要 !important：下面「中间容器全部打透」那条 #app { background: transparent !important } 会压掉它。 */
+body[data-liuli-dark="0"]:not([data-hash^="#/av"]):not([data-liuli-av]):not(
+    [data-hash^="#/mini-fishing"]
+  )
+  #app {
+  background-color: #ffffff !important;
+}
+body[data-liuli-dark="1"]:not([data-hash^="#/av"]):not([data-liuli-av]):not(
+    [data-hash^="#/mini-fishing"]
+  )
+  #app {
+  background-color: #000000 !important;
+}
+
+/* 迷你窗（#/mini-fishing）：保持 QQ 原生的透明/亚克力，不铺壁纸和材质（#52） */
+body[data-hash^="#/mini-fishing"] #app {
+  background-color: transparent !important;
+  isolation: auto !important;
+}
+body[data-hash^="#/mini-fishing"] #app::before,
+body[data-hash^="#/mini-fishing"] #app::after {
+  content: none !important;
+}
+
+body[data-liuli-theme] {
+  --ll-unread-mark: #bd2453;
+}
+body[data-liuli-dark="1"] {
+  --ll-unread-mark: #ff81a5;
+}
+body[data-liuli-theme]
+  :is(
+    .chat-header,
+    .chat-msg-area,
+    .msg-time,
+    .message-container,
+    .group-notice,
+    .recent-contact,
+    .topbar-profile
+  ) {
+  text-shadow: none !important;
+}
+.global-container,
+.container-content,
+.container-content-view,
+.two-col-layout,
+.two-col-layout__aside,
+.two-col-layout__main,
+.aio,
+.message-panel,
+.message-panel__content,
+.group-chat,
+.chat-msg-area,
+.sidebar-nav,
+.sidebar-wrapper,
+.group-box__wrapper,
+.group-box__container,
+.group-member,
+.group-notice,
+.group-user {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.dark-mode-overlay {
+  background: transparent !important;
+}
+body :is(.q-badge-dot, .q-badge__dot, .badge-dot, .red-dot) {
+  background-color: var(--ll-unread-mark) !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 1.5px var(--ll-surface-low) !important;
+}
+body .container-sidebar :is(.q-icon, .q-svg-icon, .icon-item, .nav-item) {
+  color: var(--ll-on-glass-2) !important;
+}
+body
+  .topbar-profile
+  :is(.user-status, .online-status, .status-icon, .q-icon, .q-svg-icon) {
+  color: var(--ll-on-glass-2) !important;
+  opacity: 1 !important;
+}
+body .q-tag {
+  border-radius: 5px;
+}
+.q-tag--blue {
+  color: var(--ll-link, var(--ll-brand)) !important;
+  background: rgba(var(--ll-brand-rgb), 0.12) !important;
+}
+.q-tag--orange {
+  color: var(--ll-name) !important;
+}
+.message__timestamp .babble,
+.gray-tip-message__inner.babble {
+  background: rgba(var(--ll-acrylic), 0.28) !important;
+  color: var(--ll-on-glass-2) !important;
+  text-shadow: none !important;
+}
+body .liuli-ui-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  flex: none;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* 滚动条用主题色（品牌色，随壁纸取色变） */
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ll-brand) 55%, transparent);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ll-brand) 85%, transparent);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* QQ 的列表滚动区（.q-scroll-view：会话列表、群成员栏、设置页等）自己画滑块：
+ * 底色透明，用 inset box-shadow 的 currentColor 画，平时 color 透明、指向列表时才变灰。
+ * 上面那条全局的「滑块底色 = 品牌色」在这里变成了平时显示品牌色、指向时被 QQ 改回灰色，
+ * 看起来就是激活和未激活反了。这里统一成：平时淡（30%），指向列表 60%，指向滑块本身 90%。 */
+.q-scroll-view::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 10px
+    color-mix(in srgb, var(--ll-brand) 30%, transparent) !important;
+}
+.q-scroll-view:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 0 10px
+    color-mix(in srgb, var(--ll-brand) 60%, transparent) !important;
+}
+.q-scroll-view::-webkit-scrollbar-thumb:hover,
+.q-scroll-view::-webkit-scrollbar-thumb:active {
+  box-shadow: inset 0 0 0 10px
+    color-mix(in srgb, var(--ll-brand) 90%, transparent) !important;
+}
+/* 带 scroll-view--hide-scrollbar 的滚动区（聊天消息区等）用 QQ 自己画的 .v-scrollbar，原生滚动条只是没画出来：
+ * QQ 用 display:block !important 让它一直在，靠滑块透明藏起来。上面给滑块上色后它就露出来了，
+ * 聊天区出现两条滚动条（2026-11-02 用户反馈）。这里把它的滑块重新设成透明。 */
+.q-scroll-view.scroll-view--hide-scrollbar::-webkit-scrollbar-thumb,
+.q-scroll-view.scroll-view--hide-scrollbar:hover::-webkit-scrollbar-thumb,
+.q-scroll-view.scroll-view--hide-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* 消息区的滚动条不是原生的：QQ 用 .v-scrollbar-thumb 的内阴影画成灰色 */
+.v-scrollbar-thumb {
+  box-shadow: inset 0 0 0 10px
+    color-mix(in srgb, var(--ll-brand) 55%, transparent) !important;
+  border-radius: 999px !important;
+}
+.v-scrollbar-thumb:hover,
+.v-scrollbar-track:hover .v-scrollbar-thumb {
+  box-shadow: inset 0 0 0 10px
+    color-mix(in srgb, var(--ll-brand) 85%, transparent) !important;
+}
+
+.topbar-profile {
+  --icon_white: var(--ll-on-glass-2) !important;
+  --text_white: var(--ll-on-glass) !important;
+  --icon_brand: var(--ll-link) !important;
+}
+
+.container-sidebar {
+  --icon_white: var(--ll-on-glass-2) !important;
+  --icon_primary: var(--ll-on-glass-2) !important;
+}

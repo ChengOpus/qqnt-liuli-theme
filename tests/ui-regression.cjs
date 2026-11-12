@@ -170,7 +170,7 @@ const readResources = require("../resources.cjs");
       await page.mouse.move(600, 150);
       await page.waitForTimeout(750);
       await page.mouse.move(variant.width - 20, 15);
-      await page.waitForTimeout(90);
+      await page.waitForTimeout(280);
       result.rightReveal = await page.evaluate(() => ({
         right: document.body.hasAttribute("data-liuli-r-r"),
         asidePad: getComputedStyle(
@@ -233,7 +233,7 @@ const readResources = require("../resources.cjs");
       }));
       assert.equal(result.search.surface, "search");
       assert.match(result.search.filter, /blur\(18px\)/);
-      assert.equal(result.search.list, "hidden");
+      assert.equal(result.search.list, "visible");
       if (variant.scale === 1)
         await page.screenshot({ path: path.join(out, "search.png") });
       await page.evaluate(
@@ -419,6 +419,46 @@ const readResources = require("../resources.cjs");
       "none",
     );
     await aux.close();
+    const search = await browser.newPage({
+      viewport: { width: 760, height: 640 },
+    });
+    await search.goto(`http://127.0.0.1:${server.address().port}/#/search`);
+    await search.evaluate(() => {
+      document.title = "综合搜索";
+      document.querySelector("#app").innerHTML =
+        '<section class="search-layout"><div class="main-search" style="width:600px"><input placeholder="搜索"/><div class="search-result" style="width:560px"><div class="search-empty">输入关键词开始搜索</div></div></div></section>';
+    });
+    await search.addScriptTag({
+      content:
+        "const bootstrap=" +
+        JSON.stringify({
+          token: "[qa-host]",
+          assets: bundle.assets,
+          wallpaper: "",
+          info: { versions: {} },
+        }) +
+        ";\n" +
+        bundle.source,
+    });
+    await search.evaluate(() => window.SnowLoraLiuli.ready);
+    await search.waitForTimeout(100);
+    assert.equal(
+      await search.locator("body").getAttribute("data-liuli-scope"),
+      "search",
+    );
+    assert.equal(
+      await search
+        .locator(".search-result")
+        .evaluate((n) => n.getBoundingClientRect().width),
+      560,
+      "standalone search must not inherit main-window column width",
+    );
+    assert.equal(
+      await search.locator(".search-result").getAttribute("data-liuli-surface"),
+      null,
+    );
+    assert.equal(await search.locator("#liuli-input-overlay").count(), 0);
+    await search.close();
     fs.writeFileSync(
       path.join(out, "results.json"),
       JSON.stringify(results, null, 2),

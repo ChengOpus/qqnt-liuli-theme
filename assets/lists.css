@@ -1,186 +1,70 @@
-/* ============================================================
- * 琉璃 · 侧栏列表（会话列表 / 群成员）  2026-10-29
- * ------------------------------------------------------------
- * 标记由 renderer 的 llWatchContactList / llGroupMembersPass 写入，
- * 动画用 WAAPI 播放，这里只管静态外观。
- * ============================================================ */
-
-/* ── 1. 会话：选中底色挪到 ::before，切换时从旧位置滑过来 ──
- * 选中项 z-index 0、其余 z-index 1：滑动途中底色压在别的行下面，
- * 不会盖住路过那几行的文字。 */
-body .recent-contact .recent-contact-item {
+/* Continuous native lists: one hover/selection plane, no moving virtual rows. */
+.recent-contact-item {
   position: relative !important;
-  z-index: 1;
+  isolation: isolate;
+  margin: 2px 6px !important;
+  width: calc(100% - 12px) !important;
+  box-sizing: border-box;
+  border-radius: 11px !important;
+  transition: background-color 150ms ease;
 }
-body .recent-contact .recent-contact-item.recent-contact-item--selected {
-  z-index: 0;
-}
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll),
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll):hover {
+.recent-contact-item .item__content {
   background: transparent !important;
-  background-image: none !important;
+}
+.recent-contact-item:hover {
+  background: rgba(var(--ll-on-glass-rgb), 0.055) !important;
+}
+.recent-contact-item.recent-contact-item--selected {
+  background: rgba(
+    var(--ll-selected-rgb, var(--ll-brand-rgb)),
+    0.16
+  ) !important;
+  color: var(--ll-on-glass) !important;
   box-shadow: none !important;
 }
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll)::before {
-  content: '' !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  border-radius: 12px !important;
-  background:
-    linear-gradient(var(--ll-on-primary-container), var(--ll-on-primary-container)) no-repeat 0
-      50% / 3px 18px,
-    var(--ll-primary-container) !important;
-  box-shadow: var(--ll-card-shadow) !important;
-  pointer-events: none !important;
+.recent-contact-item::before,
+.recent-contact-item::after {
+  content: none !important;
+  display: none !important;
 }
-
-/* 悬停：头像轻轻放大 */
-body .recent-contact .recent-contact-item .item__avatar {
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+.recent-contact-item :is(.item__avatar, .avatar) {
+  transform: none !important;
+  box-shadow: none !important;
 }
-body .recent-contact .recent-contact-item:hover .item__avatar {
-  transform: scale(1.06);
-}
-
-/* ── 2. 群聊头像圆角方形，好友保持圆形（按头像缓存路径区分） ── */
-body .recent-contact-item .avatar[style*='/avatar/group/'],
-body .contact-layout .avatar[style*='/avatar/group/'] {
-  border-radius: 12px !important;
-}
-
-/* ── 3. 未读 ──
- * 名字加粗；没开免打扰的再在左缘点一道品牌色微光。 */
-body .recent-contact-item .item__content {
-  position: relative;
-}
-body .recent-contact-item:has(.q-badge-num) .contact-name__text {
+.recent-contact-item:has(.q-badge-num) .contact-name__text {
   font-weight: 600 !important;
 }
-body
-  .recent-contact-item:has(.q-badge-num):not(:has(.no-disturb-icon)):not(:has(.q-badge__grey)):not(
-    .recent-contact-item--selected
-  )
-  .item__content::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 3px;
-  height: 22px;
-  margin-top: -11px;
-  border-radius: 0 3px 3px 0;
-  background: var(--ll-brand);
-  box-shadow:
-    0 0 10px rgba(var(--ll-brand-rgb), 0.85),
-    0 0 2px var(--ll-brand);
-  pointer-events: none;
+.recent-contact-item .secondary-info {
+  color: var(--ll-on-glass-3);
+  font-variant-numeric: tabular-nums;
 }
-body
-  .recent-contact-item:has(.q-badge-num):not(:has(.no-disturb-icon))
-  .q-badge-num:not(.q-badge__grey):not(#ll) {
-  box-shadow: 0 0 8px rgba(var(--ll-brand-rgb), 0.5) !important;
+.recent-contact .q-scroll-view {
+  padding-right: 6px;
+  box-sizing: border-box;
 }
-
-/* 免打扰：未读数改灰色胶囊，摘要淡一档。
- * QQ 给免打扰会话的角标加 q-badge__grey，有的会话不显示免打扰图标，两种都认（#23）。 */
-body .recent-contact-item:has(.no-disturb-icon) .q-badge-num:not(#ll),
-body .recent-contact-item .q-badge-num.q-badge__grey:not(#ll) {
-  background: rgba(var(--ll-on-glass-rgb), 0.16) !important;
+.recent-contact-item:has(.no-disturb-icon) .q-badge-num {
+  background: rgba(var(--ll-on-glass-rgb), 0.12) !important;
   color: var(--ll-on-glass-2) !important;
   box-shadow: none !important;
 }
-body .recent-contact-item:has(.no-disturb-icon) .q-badge-num:not(#ll) *,
-body .recent-contact-item .q-badge-num.q-badge__grey:not(#ll) * {
+.group-user .q-tag {
+  flex: none;
   background: transparent !important;
-  color: inherit !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding-inline: 2px;
+  white-space: nowrap;
 }
-body .recent-contact-item:has(.no-disturb-icon):not(.recent-contact-item--selected) .item__summary,
-body .recent-contact-item:has(.q-badge__grey):not(.recent-contact-item--selected) .item__summary {
-  opacity: 0.72;
-}
-
-/* ── 4. 身份标签分色：群主 tertiary、管理员 secondary（都由壁纸派生） ──
- * 群成员栏和气泡里的名字标签用同一套。 */
-body .group-user .q-tag.q-tag--orange:not(#ll) {
-  background: transparent !important;
+.group-user .q-tag--orange {
   color: var(--ll-tertiary) !important;
-  border: none !important;
 }
-body .message-container .user-name .q-tag.q-tag--orange:not(#ll) {
-  background: var(--ll-tertiary-container) !important;
-  color: var(--ll-on-tertiary-container) !important;
-  border: none !important;
-}
-body .group-user .q-tag.q-tag--blue:not(#ll) {
-  background: transparent !important;
+.group-user .q-tag--blue {
   color: var(--ll-secondary) !important;
-  border: none !important;
 }
-body .message-container .user-name .q-tag.q-tag--blue:not(#ll) {
-  background: var(--ll-secondary-container) !important;
-  color: var(--ll-on-secondary-container) !important;
-  border: none !important;
-}
-body .group-user .q-tag.q-tag--orange:not(#ll) *,
-body .group-user .q-tag.q-tag--blue:not(#ll) *,
-body .message-container .user-name .q-tag.q-tag--orange:not(#ll) *,
-body .message-container .user-name .q-tag.q-tag--blue:not(#ll) * {
-  background: transparent !important;
-  color: inherit !important;
-}
-/* 标签字号：QQ 原本 10px / 常规粗细。实测本机缩放 100%（devicePixelRatio=1），
- * 10px 的中文笔画挤在一起，在半透明玻璃上又只能用灰度抗锯齿，看起来发虚。
- * 改成 11px + 中粗，行高取整数像素。 */
-body .group-user .q-tag:not(#ll),
-body .group-user .q-tag:not(#ll) *,
-body .message-container .user-name .q-tag:not(#ll),
-body .message-container .user-name .q-tag:not(#ll) * {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  line-height: 16px !important;
-}
-body .group-user .q-tag:not(#ll),
-body .message-container .user-name .q-tag:not(#ll) {
-  height: 16px !important;
-  padding: 0 5px !important;
-}
-
-/* ── 5. 群成员：管理团队连成一块 ──
- * .group-user 的 background 被 renderer 内联打透了，底色画在 ::before 上。 */
-body .group-member .group-user {
-  z-index: 0;
-}
-body .group-member .group-user[data-liuli-staff]::before {
-  content: none !important;
-  display: none !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  background: rgba(var(--ll-brand-rgb), 0.08) !important;
-  pointer-events: none !important;
-}
-body .group-member .group-user[data-liuli-staff='first']::before {
-  top: 2px !important;
-  border-radius: 10px 10px 0 0 !important;
-}
-body .group-member .group-user[data-liuli-staff='last']::before {
-  bottom: 2px !important;
-  border-radius: 0 0 10px 10px !important;
-}
-body .group-member .group-user[data-liuli-staff='single']::before {
-  top: 2px !important;
-  bottom: 2px !important;
-  border-radius: 10px !important;
-}
-
-/* 管理人数可能使标题换行；QQ 原生的 28px 固定高度会让居中的文字
- * 溢出到 group-member__main 的裁切区。保留单行高度，多行时随内容扩展。 */
-body .group-member .group-member-title {
+.group-member .group-member-title {
   height: auto !important;
   min-height: 46px !important;
-  flex: 0 0 auto !important;
+  flex: none;
   padding: 4px 10px !important;
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) 30px;
@@ -188,145 +72,52 @@ body .group-member .group-member-title {
   column-gap: 4px;
   align-items: center;
 }
-body .group-member .group-member-title > .search-icon {
-  grid-column: 2;
-  grid-row: 1 / 3;
+.group-member-title > span[data-liuli-staff] {
+  grid-area: 1/1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-member-title > .liuli-staff-count {
+  grid-area: 2/1;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ll-on-glass-3);
+  white-space: nowrap;
+}
+.group-member-title > .search-icon {
+  grid-area: 1/2/3/3;
   width: 28px !important;
   height: 28px !important;
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
-
-/* 标题后补管理人数：「群聊成员 262 · 管理 3」 */
-body .group-member-title > span[data-liuli-staff]::after {
-  content: none;
-}
-
-/* #32.1a 群人数到 4 位（>1000）后「· 管理 N」被截断（2026-11-06）
- * .group-member-title 是 display:flex + justify-content:space-between（QQ 原样式），
- * 追加的计数和标题同属一个 flex item：容器不够宽时 flex-shrink 先压这个 span，
- * 于是 "· 管理 N" 连同标题尾部一起被 QQ 自己的 overflow/ellipsis 吃掉。
- * 让这个 span 不参与压缩、不换行、允许溢出：计数永远完整，
- * 标题文字的截断仍旧交给 QQ（它自己的 .text-ellipsis 负责），<1000 人时观感不变。 */
-body .group-member-title > span[data-liuli-staff] {
-  grid-column: 1;
-  grid-row: 1;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-}
-body .group-member-title > .liuli-staff-count {
-  grid-column: 1;
-  grid-row: 2;
-  color: var(--ll-on-glass-3) !important;
-  font-size: 11px;
-  line-height: 16px;
-  white-space: nowrap;
-}
-body .group-member .group-user__content {
+.group-member .group-user__content {
   display: flex !important;
   align-items: center;
-  min-width: 0 !important;
+  min-width: 0;
+  border-radius: 8px;
 }
-body .group-member .group-user__name {
-  min-width: 0 !important;
-  flex: 1 1 auto;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-body .group-member .group-member-label,
-body .group-member .group-user .q-tag {
-  flex: 0 0 auto;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding-inline: 2px !important;
+.group-member .group-user__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
-
-/* 悬停 */
-body .group-member .group-user .group-user__content {
-  border-radius: 8px !important;
-  transition: background-color 140ms ease;
-}
-body .group-member .group-user:hover .group-user__content {
-  background: rgba(var(--ll-brand-rgb), 0.12) !important;
-}
-
-/* ── 6. 最近发言：头像亮一圈，最近 3 位呼吸 ──
- * 名字颜色被 renderer 内联成 var(--ll-on-glass-2)，在行上改写变量即可提亮。 */
-body .group-member .group-user__avatar {
-  transition: box-shadow 240ms ease;
-}
-body .group-member .group-user[data-liuli-active] {
-  --ll-on-glass-2: var(--ll-on-glass);
-}
-body .group-member .group-user[data-liuli-active] .group-user__avatar {
-  box-shadow: 0 0 0 1.5px rgba(var(--ll-brand-rgb), 0.6);
-}
-body .group-member .group-user[data-liuli-active='hot'] .group-user__avatar {
-  animation: liuli-speaking 2.4s ease-in-out infinite;
-}
-@keyframes liuli-speaking {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1.5px var(--ll-brand),
-      0 0 3px rgba(var(--ll-brand-rgb), 0.45);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1.5px var(--ll-brand),
-      0 0 10px rgba(var(--ll-brand-rgb), 0.9);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body .group-member .group-user[data-liuli-active='hot'] .group-user__avatar {
-    animation: none;
-  }
-  body .recent-contact .recent-contact-item .item__avatar {
-    transition: none;
-  }
-}
-
-/* A single quiet selection surface, without outline, glow or avatar frame. */
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll):not(#ll),
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll):not(#ll):hover {
+.group-member .group-member-label {
+  flex: none;
   background: transparent !important;
-  color: var(--ll-on-glass) !important;
+  border: 0;
+  box-shadow: none;
 }
-body .recent-contact .recent-contact-item.recent-contact-item--selected:not(#ll):not(#ll)::before {
-  inset: 2px 0 !important;
-  border-radius: 12px !important;
-  background: rgba(var(--ll-selected-rgb,var(--ll-brand-rgb)), .15) !important;
-  box-shadow: none !important;
-  transition: background-color 180ms ease !important;
+.group-member .group-user:hover .group-user__content {
+  background: rgba(var(--ll-on-glass-rgb), 0.06) !important;
 }
-body .recent-contact .recent-contact-item--selected:not(#ll) .contact-name__text,
-body .recent-contact .recent-contact-item--selected:not(#ll) .contact-name__text * {
-  color: var(--ll-on-glass) !important;font-weight: 600 !important;
-}
-body .recent-contact .recent-contact-item--selected:not(#ll) :is(.item__summary,.secondary-info,.no-disturb-icon),
-body .recent-contact .recent-contact-item--selected:not(#ll) :is(.item__summary,.secondary-info,.no-disturb-icon) * {
-  color: var(--ll-on-glass-2) !important;
-}
-body .recent-contact .recent-contact-item--selected:not(#ll) .item__avatar .avatar {box-shadow: none !important;}
-
-/* ── 会话列表的滚动条不再压在内容上（2026-11-01）──
- * QQ 的列表滚动区是 overflow: overlay，滚动条盖在会话项右侧（时间、未读数上）。
- * 给滚动区右侧留出滚动条的宽度（liuli.css 里是 8px），内容和滚动条各占各的。 */
-body .recent-contact .q-scroll-view:not(#ll) {
-  padding-right: 8px !important;
-  box-sizing: border-box !important;
-}
-
-/* 会话项本身也越界了：QQ 给它 width:100%，琉璃又加了左右 6px 外边距，右边多出 12px 伸进滚动条那一列。
- * 宽度减掉两侧外边距。 */
-body .recent-contact .recent-contact-item:not(#ll) {
-  width: calc(100% - 12px) !important;
+.group-user[data-liuli-active] .group-user__avatar {
+  outline: 1px solid rgba(var(--ll-brand-rgb), 0.5);
+  outline-offset: 1px;
 }

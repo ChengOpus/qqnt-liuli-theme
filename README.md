@@ -50,12 +50,12 @@
 | **聊天布局** | TG / 经典 / TIM 三种布局；可选头像位于消息开头或末尾；纯图片消息可以隐藏昵称和头衔 |
 | **消息文字** | 正文、昵称、头衔字号分别设置；昵称不超过正文大小，长昵称在消息范围内省略 |
 | **置顶标识** | 保留轻量「置顶」标题、横向分隔线和图钉，可选淡底色；无数量和折叠控件 |
-| **简洁布局** | 导航展开时按可用宽度让位，群成员与菜单共用轻量材质；小窗口保留聊天区最低宽度 |
+| **简洁布局** | 导航使用真实布局列，左右顶部独立让位；悬浮输入栏跟随当前可见会话，兼容缓存页面复用 |
 | **视频壁纸** | 本地 H.264 MP4 / WebM，静音循环，首帧取色；窗口隐藏时暂停，减少动态效果时显示首帧 |
 | **Markdown 行内渲染** | `` `代码` ``、`**粗体**`、`*斜体*`、`~~删除线~~`、`\|\|剧透\|\|`（移植自 BetterQQNT） |
 | **@ 高亮** | @我 / @全体成员 暖色淡底，@别人 品牌色 |
 | **名字颜色** | 统一用 MCU 派生的第三色（tertiary），和主题同源又一眼可分 |
-| **消息入场** | 打开会话时级联浮入，新消息单条浮入（遵守系统「减少动画」） |
+| **消息与输入动效** | 会话切换最多八条可见消息轻量浮入；新消息、输入与删除提示、原生图片和文件附件渐入，遵守系统「减少动画」 |
 | **自定义字体** | 设置页「文字」里填本机已安装的字体名，留空回默认 |
 | **布局自定义** | 右键菜单可切「只显示图标」并自定义顺序；输入框里放几个按钮、放哪些、顺序，「更多」宫格里的顺序都能调；左侧边栏可隐藏分区 |
 | **卡片用浏览器打开** | 点 B 站、腾讯文档等「QQ小程序」卡片时不再走 QQ 内置的打开逻辑，改取卡片里的网页链接用默认浏览器打开；同时装了 QQ 增强时也会优先使用琉璃的处理 |
@@ -72,7 +72,7 @@
 
 在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
-本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.8`**。PR 附带的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收与回退清单见 [UI 改版验收](docs/UI-REWORK.md)。
+本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.9`**。PR 附带的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)。
 
 ### 方式三：在线安装
 
@@ -104,7 +104,15 @@ diagnostics.cjs       宿主诊断：收集环境/资源/日志/UI 状态，导�
 window-state.cjs      记住 QQ 设置窗的位置
 resources.cjs         预读 CSS 与 renderer 脚本，注入时一并交给渲染侧
 zip.cjs               诊断包的 zip 打包
-renderer/index.js     注入 CSS、路由作用域、动态色板、布局修补、Markdown、@ 高亮、入场、设置面板
+renderer/index.js     启动、路由作用域、动态色板、Markdown、@ 高亮、设置面板
+renderer/styles.js    唯一 CSS 清单，供注入与诊断共用
+renderer/dom.js       可见窗口与受保护组件边界
+renderer/runtime.js   页面变化分类、合帧调度、当前编辑器尺寸观察
+renderer/dock.js      导航、左右顶部状态与子弹窗生命周期
+renderer/composer.js  当前原生输入栏、悬浮布局、局部按钮和输入反馈
+renderer/icons.js     主题按钮独立 SVG，避免复制原生 mask ID
+renderer/surfaces.js  原生弹层与资料卡的单层材质所有权
+renderer/pin-groups.js 原生置顶状态与横向分组提示
 renderer/host.js      宿主桥：selfUid / openExternal / diagExport / diagOpenPath
 renderer/qq.js        QQ 内核与消息数据访问
 renderer/color-roles.js  配色角色（强调色、选中项、气泡等）
@@ -112,7 +120,8 @@ renderer/layout-custom.js 布局自定义
 renderer/ark-external.js  「QQ小程序」卡片改用外部浏览器打开
 renderer/motion.js    消息入场动画
 renderer/diag.js      渲染进程诊断：启动标记、错误环形缓冲、壁纸状态
-assets/               各层 CSS、MCU（mcu.js）
+assets/               各职责 CSS、MCU（mcu.js）
+tests/                匿名 DOM 回归、缓存生命周期与对比基准
 ```
 
 ## 诊断包

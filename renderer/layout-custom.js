@@ -115,9 +115,10 @@
     });
   }
   function barIcons() {
-    const bar = document.querySelector('.chat-input-area .chat-func-bar');
+    const bar = window.LiuliComposer?.bar() || window.LiuliDOM.visibleQuery('.chat-input-area .chat-func-bar');
     if (!bar) return [];
     return [...bar.querySelectorAll('.bar-icon')]
+      .filter(b => !b.hidden && b.getAttribute('aria-hidden') !== 'true' && b.style.display !== 'none')
       .map(b => {
         const it = b.querySelector(':scope > .icon-item[aria-label]');
         return it
@@ -160,9 +161,10 @@
       x.el.classList.toggle('liuli-pinned', pin);
       x.el.classList.toggle('liuli-in-menu', !pin);
       const k = lay.order.indexOf(x.label);
-      x.el.style.setProperty('order', String(k >= 0 ? k : 500 + i));
+      const order = String(k >= 0 ? k : 500 + i);
+      if (x.el.style.order !== order) x.el.style.order = order;
     });
-    return lay.pinned;
+    return lay.pinned.filter(label => icons.some(x => x.label === label));
   }
   function nativeBarItem(label) {
     const x = barIcons().find(y => y.label === label);
@@ -224,7 +226,6 @@
       const tb = cfg.titlebar === 'native' ? 'native' : 'float';
       if (document.body.dataset.liuliTb !== tb) document.body.dataset.liuliTb = tb;
       document.body.toggleAttribute('data-liuli-nav-pin', !!cfg.navPin);
-      if (cfg.navPin && document.body.dataset.liuliRNav) delete document.body.dataset.liuliRNav;
       applyNav();
       /* #52：输入框按钮顺序/分界属于主窗口和独立聊天窗（#/chat）；
        * 迷你窗等其它非主窗口保留 QQ 原生工具栏，不套主窗的 order/显隐类。 */

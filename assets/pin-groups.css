@@ -1,96 +1,62 @@
-/* A quiet tint distinguishes pinned rows. There is no group heading, count,
- * collapse control or leading guide stripe. */
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top:not(.recent-contact-item--selected):not(#ll):not(
-    #ll
-  ) {
-  background: transparent !important;
+/* A visible horizontal grouping cue; no count, fold button or leading stripe. */
+body {
+  --ll-pin-line: color-mix(in srgb, var(--ll-on-glass-2) 34%, transparent);
 }
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top:not(.recent-contact-item--selected):hover:not(
-    #ll
-  ):not(#ll) {
-  background: rgba(var(--ll-brand-rgb), 0.095) !important;
+[data-liuli-pin-heading],
+.liuli-pin-label {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 22px;
+  padding-right: 8px;
+  color: var(--ll-on-glass-2);
+  font-size: 11px;
+  font-weight: 500;
+  background-image: linear-gradient(var(--ll-pin-line), var(--ll-pin-line));
+  background-repeat: no-repeat;
+  background-size: calc(100% - 48px) 1px;
+  background-position: right center;
 }
-body[data-liuli-pin-color="1"]
-  .recent-contact
-  .recent-contact-item--top:not(.recent-contact-item--selected):not(#ll):not(
-    #ll
-  ) {
-  background: rgba(var(--ll-brand-rgb), 0.075) !important;
-}
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top:not(#ll):not(#ll)::after {
-  content: none !important;
-  display: none !important;
-}
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top.recent-contact-item--selected:not(#ll):not(
-    #ll
-  )::before {
-  background: rgba(
-    var(--ll-selected-rgb, var(--ll-brand-rgb)),
-    0.15
-  ) !important;
-  box-shadow: inset 0 1px rgba(var(--ll-specular), 0.12) !important;
-}
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top
-  .secondary-info {
-  position: relative !important;
-  margin-left: 17px !important;
-}
-body[data-liuli-pin-group="1"]
-  .recent-contact
-  .recent-contact-item--top
-  .secondary-info::after {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  right: calc(100% + 3px) !important;
-  top: 2px !important;
-  width: 11px !important;
-  height: 11px !important;
-  background-color: var(--ll-on-glass-3) !important;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 9V4h1V2H7v2h1v5c0 1.7-1.3 3-3 3v2h6v7l1 1 1-1v-7h6v-2c-1.7 0-3-1.3-3-3z'/%3E%3C/svg%3E")
-    center / contain no-repeat !important;
-  pointer-events: none !important;
-}
-
-/* Lightweight horizontal group cue, without count or collapse interaction. */
-body .recent-contact [data-liuli-pin-first] {
+.recent-contact-item[data-liuli-pin-first] {
   padding-top: 24px !important;
 }
-body .recent-contact [data-liuli-pin-first] > .liuli-pin-label {
+.recent-contact-item[data-liuli-pin-first] > .liuli-pin-label {
   position: absolute;
   left: 10px;
   right: 10px;
   top: 0;
   height: 22px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--ll-on-glass-3);
-  font-size: 11px;
-  line-height: 22px;
-  font-weight: 500;
   pointer-events: none;
 }
-.liuli-pin-label::after {
+.recent-contact-item[data-liuli-pin-last] {
+  border-bottom: 1px solid var(--ll-pin-line) !important;
+  margin-bottom: 8px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+body[data-liuli-pin-color="1"]
+  .recent-contact-item[data-liuli-pinned]:not(.recent-contact-item--selected) {
+  background: rgba(var(--ll-brand-rgb), 0.085) !important;
+}
+.recent-contact-item[data-liuli-pinned] .secondary-info {
+  position: relative;
+  margin-left: 15px;
+}
+.recent-contact-item[data-liuli-pinned] .secondary-info::after {
   content: "";
-  height: 1px;
-  flex: 1;
-  background: rgba(var(--ll-brand-rgb), 0.16);
+  position: absolute;
+  right: calc(100% + 4px);
+  top: 2px;
+  width: 10px;
+  height: 11px;
+  background: var(--ll-on-glass-2);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 9V4h1V2H7v2h1v5c0 1.7-1.3 3-3 3v2h6v7l1 1 1-1v-7h6v-2c-1.7 0-3-1.3-3-3z'/%3E%3C/svg%3E")
+    center/contain no-repeat;
+  pointer-events: none;
 }
 body
   .recent-contact
-  [data-liuli-pin-first].recent-contact-item--selected:not(#ll):not(
-    #ll
-  )::before {
+  .recent-contact-item[data-liuli-pin-first].recent-contact-item--selected::before {
   top: 24px !important;
 }

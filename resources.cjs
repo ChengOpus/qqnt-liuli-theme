@@ -4,6 +4,9 @@ const path = require('node:path');
 const SCRIPTS = [
   'renderer/host.js',
   'renderer/qq.js',
+  'renderer/dom.js',
+  'renderer/styles.js',
+  'renderer/icons.js',
   'assets/mcu.js',
   'renderer/color-picker.js',
   'renderer/color-roles.js',
@@ -16,6 +19,9 @@ const SCRIPTS = [
   'renderer/pin-groups.js',
   'renderer/video-wallpaper.js',
   'renderer/surfaces.js',
+  'renderer/dock.js',
+  'renderer/composer.js',
+  'renderer/runtime.js',
   'renderer/index.js'
 ];
 const roots = new Map();

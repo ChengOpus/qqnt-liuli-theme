@@ -1,0 +1,311 @@
+/* Shell owns geometry. Dock state is written only by renderer/dock.js. */
+body {
+  --ll-dock-gap: 8px;
+  --ll-nav-slot: 0px;
+  --ll-card-border: none;
+  --ll-card-shadow: var(--ll-shadow);
+  --ll-float-bg: var(--ll-popup-surface);
+  --ll-float-blur: var(--ll-material-blur);
+  --ll-float-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+}
+.global-container .container-content {
+  display: flex !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 8px !important;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.container-content-view {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+.two-col-layout {
+  min-height: 0;
+  height: 100%;
+}
+.two-col-layout__aside {
+  min-width: 160px;
+  max-width: var(--ll-aside-cap, none);
+  box-sizing: border-box;
+  min-height: 0;
+}
+.two-col-layout__main {
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.recent-contact {
+  height: 100%;
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 0;
+  border-radius: 0 !important;
+}
+body[data-liuli-scope="main"] .container-content > .container-sidebar {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  flex: 0 0 var(--ll-nav-slot) !important;
+  width: var(--ll-nav-slot) !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  transition:
+    flex-basis 200ms var(--ll-ui-ease),
+    width 200ms var(--ll-ui-ease) !important;
+  overflow: clip !important;
+  z-index: auto !important;
+  border-radius: 14px;
+  visibility: hidden;
+  pointer-events: none;
+}
+body[data-liuli-r-nav]:not([data-liuli-nav-moving])
+  .container-content
+  > .container-sidebar {
+  overflow: visible !important;
+}
+body[data-liuli-r-nav] .container-content > .container-sidebar {
+  visibility: visible;
+  pointer-events: auto;
+}
+body[data-liuli-nav-moving] .container-content > .container-sidebar {
+  visibility: visible;
+}
+.container-sidebar > :is(.sidebar-nav, .sidebar-wrapper) {
+  width: 56px !important;
+  min-width: 56px;
+}
+body[data-liuli-r-nav]
+  .container-sidebar
+  > :is(.sidebar-nav, .sidebar-wrapper) {
+  animation: liuli-nav-in 180ms var(--ll-ui-ease) backwards;
+}
+@keyframes liuli-nav-in {
+  from {
+    opacity: 0.45;
+    clip-path: inset(0 24% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0);
+  }
+}
+.aio > .chat-header {
+  margin: 0 0 8px 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-app-region: drag;
+}
+.chat-header :is(button, input, .icon-item, .panel-header__action) {
+  -webkit-app-region: no-drag;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .global-container
+  > .topbar,
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content {
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  :is(.topbar-profile, .window-title-bar .window-control-area) {
+  position: fixed !important;
+  top: 6px !important;
+  margin: 0 !important;
+  height: 30px !important;
+  box-sizing: border-box;
+  z-index: 3200;
+  background: var(--ll-glass-paint) !important;
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow:
+    var(--ll-popup-edge),
+    0 3px 12px rgba(var(--ll-shadow-rgb), 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: none !important;
+  transition: opacity 150ms ease;
+  -webkit-app-region: no-drag;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile {
+  left: var(--ll-nav-slot) !important;
+  max-width: min(48vw, calc(var(--ll-aside-width, 280px) - 8px)) !important;
+  width: max-content !important;
+  padding: 0 10px 0 4px;
+}
+.topbar-profile :is(.user-profile-card__content, .user-profile-card__info) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  gap: 5px;
+  background: transparent !important;
+}
+.topbar-profile
+  :is(
+    .profile_signature,
+    .profile-nickname__text,
+    .user-profile-card__long-nick
+  ) {
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.topbar-profile .user-avatar {
+  width: 24px !important;
+  height: 24px !important;
+}
+.topbar-profile :is(.user-status, .online-status) {
+  background: transparent !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .window-title-bar
+  .window-control-area {
+  right: 8px !important;
+  display: flex !important;
+  gap: 0;
+  padding: 2px 4px;
+}
+.window-title-bar {
+  z-index: 3100;
+  -webkit-app-region: drag;
+}
+.window-control-area,
+.window-control-area * {
+  -webkit-app-region: no-drag;
+}
+.window-control-area > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 26px;
+  border-radius: 8px;
+}
+.window-control-area > *:hover {
+  background: rgba(var(--ll-on-glass-rgb), 0.08);
+}
+.window-control-area > .close:hover {
+  background: var(--ll-danger);
+  color: var(--ll-on-danger);
+}
+body[data-liuli-r-l]:not([data-liuli-tb="native"]) .topbar-profile,
+body[data-liuli-r-r]:not([data-liuli-tb="native"])
+  .window-title-bar
+  .window-control-area {
+  opacity: 1;
+  pointer-events: auto;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  :is(.two-col-layout__aside, .two-col-layout__main) {
+  padding-top: 0;
+  transition: padding-top 200ms var(--ll-ui-ease);
+}
+body[data-liuli-r-l]:not([data-liuli-tb="native"]) .two-col-layout__aside {
+  padding-top: 36px;
+}
+body[data-liuli-r-r]:not([data-liuli-tb="native"]) .two-col-layout__main {
+  padding-top: 36px;
+}
+#liuli-ctl-shield {
+  position: fixed;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+  z-index: 3100;
+}
+.liuli-top-hint {
+  position: fixed;
+  top: 0;
+  width: 150px;
+  height: 8px;
+  z-index: 3150;
+  -webkit-app-region: no-drag;
+}
+#liuli-top-hint-l {
+  left: 0;
+}
+#liuli-top-hint-r {
+  right: 0;
+}
+.liuli-top-hint::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 22px;
+  width: 24px;
+  height: 3px;
+  border-radius: 4px;
+  background: rgba(var(--ll-on-glass-rgb), 0.4);
+}
+#liuli-top-hint-r::after {
+  left: auto;
+  right: 22px;
+}
+#liuli-nav-handle {
+  position: fixed;
+  left: 0;
+  top: calc(50% - 22px);
+  width: 13px;
+  height: 44px;
+  z-index: 2500;
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  background: rgba(var(--ll-acrylic), 0.42);
+  color: var(--ll-on-glass-2);
+  padding: 0;
+  font: 22px system-ui;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+body[data-liuli-r-nav] #liuli-nav-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+body:is([data-liuli-tb="native"], [data-liuli-hide-edge-hints]) .liuli-top-hint,
+body:not([data-liuli-scope="main"])
+  :is(.liuli-top-hint, #liuli-nav-handle, #liuli-ctl-shield),
+body[data-liuli-nav-pin] #liuli-nav-handle {
+  display: none;
+}
+body[data-liuli-hide-edge-hints] #liuli-nav-handle {
+  background: transparent;
+}
+.tab-item-mask.is-active {
+  background: rgba(
+    var(--ll-selected-rgb, var(--ll-brand-rgb)),
+    0.16
+  ) !important;
+  border-radius: 10px;
+  box-shadow: none !important;
+}
+.resize-handler {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body[data-hash^="#/chat"] .chat-container > .container-content {
+  padding: 0 8px 8px !important;
+  margin: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-liuli-scope="main"] .container-content > .container-sidebar {
+    transition: none !important;
+  }
+  body[data-liuli-r-nav] .container-sidebar > * {
+    animation: none !important;
+  }
+  .topbar-profile,
+  .window-control-area {
+    transition: none !important;
+  }
+}

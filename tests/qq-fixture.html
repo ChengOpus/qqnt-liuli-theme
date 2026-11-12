@@ -344,7 +344,7 @@
           <main class="two-col-layout__main">
             <div class="aio">
               <div class="chat-header">
-                <b>示例群聊</b
+                <b class="panel-header__title">示例群聊</b
                 ><span class="panel-header__action">⌕　＋　⋯</span>
               </div>
               <div class="message-panel">
@@ -372,12 +372,18 @@
                   <h3>群公告</h3>
                   <p>这是一段匿名示例公告。</p>
                   <div class="group-member">
-                    <div class="group-member-title">群聊成员 24</div>
-                    <div>管理 3</div>
-                    <button class="group-member-search">⌕</button>
+                    <div class="group-member-title">
+                      <span>群聊成员 24</span
+                      ><button class="search-icon" aria-label="搜索群成员">
+                        ⌕
+                      </button>
+                    </div>
                     <div class="group-user">
-                      <span class="group-user__name">匿名成员</span
-                      ><span class="q-tag q-tag--blue">管理员</span>
+                      <div class="group-user__content">
+                        <span class="group-user__name"
+                          >匿名成员名字很长很长的省略测试</span
+                        ><span class="q-tag q-tag--blue">管理员</span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -33,7 +33,7 @@
 
   function enterMessages(items) {
     if (!enabled() || !items.length) return 0;
-    const viewport = document.querySelector('.chat-msg-area');
+    const viewport = window.LiuliComposer?.viewport();
     if (!viewport) return 0;
     const bounds = viewport.getBoundingClientRect();
     const top = Math.max(0, bounds.top);
@@ -42,7 +42,7 @@
     const visible = [];
     // Measure once per candidate, before starting any animation. Prefer recent messages.
     for (const item of [...new Set(items)].reverse()) {
-      if (!item.isConnected) continue;
+      if (!item.isConnected || item.querySelector('video,webview,embed,.video-element,.container--personalization')) continue;
       const rect = item.getBoundingClientRect();
       if (
         rect.width < 1 ||
@@ -55,13 +55,13 @@
         continue;
       const bubble = item.querySelector('.message-content__wrapper') || item;
       visible.push({ bubble, top: rect.top });
-      if (visible.length === 14) break;
+      if (visible.length === 8) break;
     }
     visible.sort((a, b) => a.top - b.top);
     let started = 0;
     visible.forEach(({ bubble }, index) => {
       // Bursts arriving in successive frames share the same animation budget.
-      if (messages.size >= 14) {
+      if (messages.size >= 8) {
         const oldest = messages.values().next().value;
         messages.delete(oldest);
         oldest.cancel();
@@ -69,12 +69,12 @@
       const animation = play(
         bubble,
         [
-          { opacity: 0, transform: 'translateY(10px) scale(0.98)' },
-          { opacity: 1, transform: 'none' }
+          { opacity: .65, translate: '0 4px' },
+          { opacity: 1, translate: '0 0' }
         ],
         {
-          duration: 260,
-          delay: Math.min(index * 18, 144),
+          duration: 180,
+          delay: Math.min(index * 12, 84),
           easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
         }
       );

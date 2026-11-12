@@ -1,0 +1,69 @@
+/* Native overlay geometry stays native. A context menu's material is on its
+ * pseudo-element so fixed submenus keep the viewport as their containing block. */
+body:not([data-liuli-av]):not(
+    :has(
+      .lucky-money-dialog,
+      .send-lucky-money-dialog,
+      .video-content,
+      .av-call,
+      .screen-share
+    )
+  )
+  :is(.q-dialog, .q-popup__modal, .q-dialog-modal, .q-modal-mask, .modal-mask) {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+[data-liuli-surface="context"] {
+  isolation: isolate;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 0;
+  border-radius: 12px;
+  color: var(--ll-on-glass);
+}
+[data-liuli-surface="context"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+}
+body .q-context-menu-item {
+  min-height: 32px;
+  padding: 6px 10px;
+  gap: 9px;
+  border: 0;
+  border-radius: 8px;
+  transition: background-color 160ms ease;
+}
+body .q-context-menu-item:hover {
+  background: rgba(var(--ll-brand-rgb), 0.12);
+}
+body .q-context-menu-item__icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--ll-on-glass-2);
+}
+body :is(.q-context-menu-item__label, .q-context-menu-item__text) {
+  color: var(--ll-on-glass);
+}
+.bar-more-menu {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.bar-more-menu-inner {
+  border-radius: 14px;
+  padding: 6px;
+}
+body .q-dialog-main {
+  border: 0;
+}

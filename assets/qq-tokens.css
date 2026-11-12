@@ -65,8 +65,8 @@ body {
   /* ── 填充 ── */
   --fill_standard_primary: rgba(var(--ll-on-glass-rgb), 0.2) !important;
   --fill_standard_secondary: rgba(var(--ll-on-glass-rgb), 0.08) !important;
-  --fill_light_primary: transparent !important;
-  --fill_light_secondary: transparent !important;
+  --fill_light_primary: rgba(var(--ll-on-glass-rgb), 0.12) !important;
+  --fill_light_secondary: rgba(var(--ll-on-glass-rgb), 0.07) !important;
   --fill_search_light: rgba(var(--ll-on-glass-rgb), 0.1) !important;
   --fill_search_dark: rgba(var(--ll-on-glass-rgb), 0.1) !important;
 
@@ -142,7 +142,7 @@ body {
 
   /* ── 徽标 ── */
   --badge-brand: var(--ll-brand) !important;
-  --badge-red: var(--ll-danger) !important;
+  --badge-red: var(--ll-unread-mark) !important;
   --badge-grey: var(--ll-on-glass-2) !important;
 
   /* ── 状态反馈 ── */

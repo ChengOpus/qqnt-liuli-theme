@@ -1,192 +1,99 @@
-/* Material ownership: one real backdrop per floating surface. Generic layout
- * wrappers stay clear; editors, videos and native media never receive a filter. */
+/* Optical material: low tint, actual backdrop blur, one edge per surface. */
 body {
-  --ll-glass-alpha: clamp(0.46, calc(var(--ll-material-opacity) + 0.16), 0.7);
+  --ll-glass-alpha: clamp(
+    0.16,
+    calc(var(--ll-material-opacity) * 0.64 + 0.08),
+    0.66
+  );
   --ll-glass-surface: rgba(var(--ll-acrylic), var(--ll-glass-alpha));
   --ll-popup-surface: var(--ll-glass-surface);
   --ll-glass-paint:
     linear-gradient(
-      145deg,
-      rgba(var(--ll-specular), 0.13),
-      rgba(var(--ll-specular), 0) 50%
+      140deg,
+      rgba(var(--ll-specular), 0.09),
+      rgba(var(--ll-specular), 0) 60%
     ),
     var(--ll-glass-surface);
+  --ll-search-paint:
+    linear-gradient(
+      140deg,
+      rgba(var(--ll-specular), 0.1),
+      rgba(var(--ll-specular), 0) 60%
+    ),
+    rgba(
+      var(--ll-acrylic),
+      clamp(0.32, calc(var(--ll-material-opacity) * 0.7), 0.7)
+    );
   --ll-popup-edge:
-    inset 0 1px rgba(var(--ll-specular), 0.28),
-    inset 0 -1px rgba(var(--ll-specular), 0.06);
+    inset 0 1px rgba(var(--ll-specular), 0.26),
+    inset 0 -1px rgba(var(--ll-specular), 0.08);
+  --ll-shadow-float: 0 5px 20px -6px rgba(var(--ll-shadow-rgb), 0.18);
   --ll-overlay-dim: 0;
-  --overlay_mask_standard: transparent !important;
-  --overlay_mask_dark: transparent !important;
+  --ll-surface-halo: 0 0 calc(var(--ll-glow-strength, 0) * 8px)
+    rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0) * 0.16));
 }
-body[data-liuli-surface],
-body [data-liuli-surface] {
-  background: var(--ll-glass-paint) !important;
-  backdrop-filter: var(--ll-material-blur) !important;
-  -webkit-backdrop-filter: var(--ll-material-blur) !important;
-  border: none !important;
-  border-radius: var(--ll-panel-radius) !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
+[data-liuli-surface]:not([data-liuli-surface="context"]) {
+  border-radius: var(--ll-panel-radius);
+  box-shadow:
+    var(--ll-popup-edge), var(--ll-shadow-float), var(--ll-surface-halo);
   color: var(--ll-on-glass);
 }
-/* A continuous conversation column does not need another full-height card. */
-body[data-liuli-scope="main"]
-  .two-col-layout__aside
-  > .recent-contact[data-liuli-surface] {
+[data-liuli-surface="panel"] {
+  box-shadow: var(--ll-popup-edge);
+}
+[data-liuli-surface-inner] {
   background: transparent !important;
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  margin-left: 0 !important;
-  width: 100% !important;
-}
-body .recent-contact .main-search .search-result[data-liuli-surface="search"] {
-  background: var(--ll-glass-paint) !important;
-  backdrop-filter: var(--ll-material-blur) !important;
-  -webkit-backdrop-filter: var(--ll-material-blur) !important;
-  border-radius: 18px !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
-  z-index: 1100 !important;
-  isolation: isolate;
-}
-/* The native list remains mounted and retains its scroll position. Its text
- * must not be readable behind the recent-search list. */
-body .recent-contact[data-liuli-search-open] > .list-toggler {
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-body [data-liuli-surface="profile"] {
-  --background_01: transparent;
-  --background_02: transparent;
-  --bg_top_standard: transparent;
-}
-body [data-liuli-surface-inner],
-body
-  [data-liuli-surface="profile"]
-  :is(
-    .profile__body,
-    .profile-body,
-    .profile-header,
-    .group-profile__content,
-    .group-profile-card,
-    .group-info__content,
-    .group-info-content,
-    .info-panel,
-    .card-container
-  ) {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  animation: none !important;
-}
-body
-  [data-liuli-surface="profile"]
-  :is(.q-tag, .group-tag, .group-label, .tag-item) {
-  border: 0 !important;
-  background: rgba(var(--ll-brand-rgb), 0.07) !important;
-  color: var(--ll-on-glass-2) !important;
-  border-radius: 6px !important;
   box-shadow: none !important;
 }
-body
-  [data-liuli-surface="profile"]
+[data-liuli-surface="profile"] :is(.group-tag, .tag-item, .q-tag) {
+  border: 0;
+  background: rgba(var(--ll-on-glass-rgb), 0.045);
+  border-radius: 5px;
+  box-shadow: none;
+}
+[data-liuli-surface="profile"]
   :is(
     .q-button--primary,
     button[class*="primary"],
-    .q-button.primary,
     .send-msg,
     .send-message-button
   ) {
   background: var(--ll-brand) !important;
   color: var(--ll-on-brand) !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  box-shadow: none;
+  border: 0;
 }
-/* Keep native modal hit testing and dismissal, with no full-window dimming. */
-body :is(.q-popup__modal, .q-dialog-modal, .q-modal-mask, .modal-mask) {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
+body[data-liuli-scope="main"]
+  .main-search
+  .search-result[data-liuli-surface="search"] {
+  width: calc(var(--ll-aside-width, 280px) - 16px) !important;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 16px;
+  z-index: 1200;
 }
-/* Only the actual editor host is positioned; the native message viewport is
- * allowed to extend behind it. Space at the end keeps the newest row reachable. */
-body [data-liuli-composer-host] {
-  position: relative !important;
-  min-height: 0;
+[data-liuli-surface="search"]::before,
+[data-liuli-surface="search"]::after {
+  content: none !important;
 }
-body [data-liuli-composer-bridge] {
-  position: static !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  flex: 0 0 0 !important;
-  overflow: visible !important;
+body .main-search {
+  position: relative;
 }
-body [data-liuli-composer-host] .chat-input-area[data-liuli-composer="float"] {
-  position: absolute !important;
-  left: 14px !important;
-  right: 14px !important;
-  bottom: 14px !important;
-  top: auto !important;
-  margin: 0 !important;
-  width: auto !important;
-  max-height: 50%;
-  height: auto !important;
-  min-height: 44px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 20px !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  isolation: isolate !important;
-  overflow: visible !important;
-  z-index: 120 !important;
-  box-shadow:
-    var(--ll-popup-edge),
-    0 8px 24px -8px rgba(var(--ll-shadow-rgb), 0.24) !important;
-  transition: box-shadow var(--ll-ui-duration) var(--ll-ui-ease) !important;
-}
-body .chat-input-area[data-liuli-composer="float"]::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  border-radius: inherit !important;
-  pointer-events: none !important;
-  background: var(--ll-glass-paint) !important;
-  backdrop-filter: var(--ll-material-blur) !important;
-  -webkit-backdrop-filter: var(--ll-material-blur) !important;
-}
-body .chat-input-area[data-liuli-composer="float"] > .msg-input {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  border-radius: inherit !important;
-  min-height: 44px !important;
-}
-body [data-liuli-composer-scroll] {
-  scroll-padding-bottom: var(--ll-composer-clearance, 88px) !important;
-}
-body [data-liuli-composer-scroll]::after {
-  content: "";
-  display: block;
-  height: var(--ll-composer-clearance, 88px);
-  flex: none;
-  pointer-events: none;
-}
-body .chat-input-area[data-liuli-composer="float"]:focus-within {
-  box-shadow:
-    var(--ll-popup-edge),
-    0 0 0 1px rgba(var(--ll-brand-rgb), 0.18),
-    0 8px 24px -8px rgba(var(--ll-shadow-rgb), 0.24) !important;
-}
-/* Only text bubbles use the frosted base; native skins and rich media keep
- * their own painting path. A capped radius limits the per-message GPU work. */
 body
-  .message-container
+  :is(
+    .group-notice,
+    .group-member,
+    .group-box__wrapper,
+    .group-box__container
+  ) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.message-container
   .msg-content-container.container--others:not(.container--personalization):not(
     .mix-message__container--pic
   ):not(:has(.pic-element, .video-element, .ark-view-message, .forward-msg)) {
@@ -194,70 +101,10 @@ body
   backdrop-filter: var(--ll-bubble-blur, none) !important;
   -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
 }
-body
-  .message-container
+.message-container
   .msg-content-container.container--self:not(.container--personalization):not(
     .mix-message__container--pic
   ):not(:has(.pic-element, .video-element, .ark-view-message, .forward-msg)) {
   backdrop-filter: var(--ll-bubble-blur, none) !important;
   -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
-}
-/* Uniform entry/exit timing, without permanent transform or will-change. */
-body [data-liuli-surface]:not([data-liuli-surface="panel"]) {
-  animation: liuli-surface-enter var(--ll-ui-duration) var(--ll-ui-ease)
-    backwards;
-}
-@keyframes liuli-surface-enter {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-body :is(.q-popup__main, .q-dialog-main, .q-menu).v-leave-active,
-body :is(.q-popup__main, .q-dialog-main, .q-menu).q-transition-leave-active {
-  transition:
-    opacity 160ms ease,
-    transform 180ms var(--ll-ui-ease) !important;
-  pointer-events: none !important;
-}
-body :is(.q-popup__main, .q-dialog-main, .q-menu).v-leave-to,
-body :is(.q-popup__main, .q-dialog-main, .q-menu).q-transition-leave-to {
-  opacity: 0 !important;
-  transform: translateY(4px) scale(0.99);
-}
-@media (prefers-reduced-motion: reduce) {
-  body [data-liuli-surface] {
-    animation: none !important;
-  }
-  body .chat-input-area[data-liuli-composer="float"] {
-    transition: none !important;
-  }
-}
-@media (max-width: 780px) {
-  body .chat-input-area[data-liuli-composer="float"] {
-    left: 8px !important;
-    right: 8px !important;
-    bottom: 10px !important;
-  }
-  body[data-liuli-r-r] .two-col-layout__main {
-    padding-top: 32px !important;
-  }
-}
-body .liuli-tabpage.is-active {
-  animation: liuli-fade-in 200ms var(--ll-ui-ease) backwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  body .liuli-tabpage.is-active {
-    animation: none !important;
-  }
-}
-
-/* A profile page owns its surface; an auxiliary-window backing sheet would
- * otherwise add a second opaque layer under it. */
-body[data-liuli-scope="aux"]:has(#app > [data-liuli-surface="profile"])
-  #app::after,
-body[data-hash^="#/chat"] #app::after {
-  content: none !important;
 }

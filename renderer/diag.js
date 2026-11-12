@@ -4,25 +4,7 @@
   const PLUGIN_SLUG = 'liuli-dsh-theme';
   const STYLE_ID = 'liuli-dsh-theme';
   const WALLPAPER_STYLE_ID = 'liuli-wallpaper-style';
-  const FILES = [
-    'wallpaper.css',
-    'qq-tokens.css',
-    'palette.css',
-    'liuli.css',
-    'typography.css',
-    'panel.css',
-    'settings-page.css',
-    'details.css',
-    'no-dividers.css',
-    'input-bar.css',
-    'bubbles.css',
-    'layout.css',
-    'lists.css',
-    'motion.css',
-    'markdown.css',
-    'layout-custom.css',
-    'integration.css'
-  ];
+  const FILES = window.LiuliStyles.files;
   const OPTIONAL_FILES = ['wallpaper.css'];
   const DEFAULT_WALLPAPER = {
     css: 'wallpaper.css',
@@ -1460,7 +1442,9 @@
       errors: getErrors(),
       settings: settingsInfo(),
       dom: domInfo(),
-      performance: performanceBaseInfo()
+      performance: performanceBaseInfo(),
+      rendererScheduler: safe(() => win().__liuliRuntime?.stats(), null),
+      dockState: safe(() => win().LiuliDock?.state(), null)
     };
     if (asyncInfo && typeof asyncInfo === 'object') {
       if (asyncInfo.themeFiles) snap.theme.files = asyncInfo.themeFiles;

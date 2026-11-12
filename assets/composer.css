@@ -1,0 +1,314 @@
+/* One active composer, positioned in its native message host. */
+[data-liuli-composer-host] {
+  position: relative !important;
+  min-height: 0;
+}
+[data-liuli-composer-bridge] {
+  display: contents !important;
+}
+.chat-input-area[data-liuli-composer="float"] {
+  position: absolute !important;
+  inset: auto 14px 14px !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 44px;
+  max-height: 50vh !important;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  box-sizing: border-box;
+  isolation: isolate;
+  overflow: visible !important;
+  z-index: 120;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 0 !important;
+  border-radius: 18px;
+  box-shadow:
+    var(--ll-popup-edge),
+    0 6px 20px -8px rgba(var(--ll-shadow-rgb), 0.2),
+    var(--ll-surface-halo);
+  transform: none;
+}
+.chat-input-area[data-liuli-composer="float"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+}
+.chat-input-area[data-liuli-composer="float"] > .msg-input {
+  width: 100% !important;
+  min-height: 44px !important;
+  max-height: 50vh !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 48px 0 var(--liuli-bar-pad, 44px) !important;
+  box-sizing: border-box;
+  overflow: visible;
+  border: 0 !important;
+  border-radius: inherit;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.chat-input-area[data-liuli-composer="float"] .qq-msg-editor {
+  --qq-editor-height: auto !important;
+  height: auto !important;
+  max-height: 44vh;
+}
+.chat-input-area[data-liuli-composer="float"] .ExEditor-qq-msg-editor {
+  height: auto !important;
+}
+.chat-input-area[data-liuli-composer="float"] .ProseMirror {
+  min-height: 44px !important;
+  max-height: 44vh !important;
+  padding-top: 11px !important;
+  padding-bottom: 10px !important;
+  box-sizing: border-box;
+}
+[data-liuli-composer-scroll] {
+  padding-bottom: var(--ll-composer-clearance, 76px) !important;
+  scroll-padding-bottom: var(--ll-composer-clearance, 76px);
+  box-sizing: border-box;
+}
+.chat-input-area[data-liuli-composer] > .resize-handler {
+  display: none !important;
+}
+.chat-input-area[data-liuli-composer] > .operation {
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 7px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  z-index: 2;
+}
+.chat-input-area[data-liuli-composer] .send-btn-wrap {
+  height: 30px !important;
+  min-width: 30px !important;
+  width: 30px !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+.chat-input-area[data-liuli-composer] .operation :is(.send, .send-msg) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50%;
+  background: rgba(var(--ll-brand-rgb), 0.15) !important;
+  color: var(--ll-link, var(--ll-on-glass)) !important;
+  box-shadow: none !important;
+}
+.chat-input-area[data-liuli-composer] .operation .send-msg {
+  font-size: 0 !important;
+}
+.chat-input-area[data-liuli-composer] .operation .send-msg::after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m22 2-7 20-4-9-9-4 20-7M22 2 11 13' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center/contain no-repeat;
+}
+.chat-input-area[data-liuli-composer]
+  .operation
+  :is(.divider, .send-setting__wrapper, .close) {
+  display: none !important;
+}
+#liuli-input-overlay {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+#liuli-bar-pins {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+#liuli-input-overlay button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(var(--ll-on-glass-rgb), 0.08);
+  color: var(--ll-on-glass-2);
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: none;
+}
+#liuli-input-overlay button:hover {
+  background: rgba(var(--ll-brand-rgb), 0.18);
+  color: var(--ll-link);
+}
+#liuli-input-overlay button:active {
+  background: rgba(var(--ll-brand-rgb), 0.28);
+}
+#liuli-func-toggle[aria-expanded="true"] svg {
+  rotate: 45deg;
+}
+#liuli-func-toggle svg {
+  transition: rotate 180ms ease;
+}
+.chat-input-area[data-liuli-composer] > .chat-func-bar {
+  display: none !important;
+}
+.chat-input-area[data-liuli-composer] > .chat-func-bar.liuli-expanded {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  position: absolute !important;
+  left: 0 !important;
+  right: auto !important;
+  bottom: calc(100% + 8px) !important;
+  top: auto !important;
+  max-width: min(270px, calc(100vw - 32px));
+  width: max-content !important;
+  max-height: min(300px, 50vh);
+  height: auto !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  overflow: visible !important;
+  z-index: 1000;
+  border: 0 !important;
+  border-radius: 18px;
+  background: transparent !important;
+  box-shadow: none;
+  isolation: isolate;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.chat-func-bar.liuli-expanded
+  > :is(.chat-func-bar__left, .chat-func-bar__right, .chat-func-bar__main) {
+  display: contents !important;
+}
+.chat-func-bar.liuli-expanded .bar-icon {
+  display: flex !important;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 9px;
+}
+.chat-func-bar.liuli-expanded .bar-icon:hover {
+  background: rgba(var(--ll-on-glass-rgb), 0.06);
+}
+.chat-func-bar.liuli-expanded .bar-icon > .icon-item {
+  position: static !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  color: var(--ll-on-glass);
+}
+.chat-func-bar.liuli-expanded .bar-icon :is(.q-icon, svg) {
+  width: 22px;
+  height: 22px;
+}
+.chat-func-bar.liuli-expanded .bar-icon > .arrow {
+  position: absolute;
+  top: auto;
+  left: auto;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  background: rgba(var(--ll-on-glass-rgb), 0.1);
+  color: var(--ll-on-glass-2);
+  box-shadow: none;
+}
+.chat-func-bar.liuli-expanded .bar-icon > .arrow:hover {
+  background: rgba(var(--ll-brand-rgb), 0.2);
+  color: var(--ll-link);
+}
+.chat-func-bar.liuli-expanded .bar-icon > .arrow svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.chat-func-bar.liuli-expanded
+  .bar-icon:is(
+    .liuli-pinned,
+    [hidden],
+    [aria-hidden="true"],
+    [style*="display: none"]
+  ) {
+  display: none !important;
+}
+.chat-func-bar.liuli-expanded::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 44px;
+  height: 12px;
+}
+.liuli-edit-feedback {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  width: 2px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--ll-link);
+  opacity: 0;
+}
+.liuli-edit-feedback[data-edit="delete"] {
+  width: 12px;
+  height: 2px;
+  margin-left: -9px;
+}
+@media (max-width: 780px) {
+  .chat-input-area[data-liuli-composer="float"] {
+    inset: auto 8px 10px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liuli-edit-feedback {
+    display: none;
+  }
+  #liuli-func-toggle svg {
+    transition: none;
+  }
+}
+
+.chat-input-area[data-liuli-composer] > .chat-func-bar.liuli-expanded::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+}

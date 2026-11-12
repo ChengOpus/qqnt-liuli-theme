@@ -1,80 +1,71 @@
-/* QQ supplies .recent-contact-item--top. Keep settings compatibility without
- * observing or changing virtual rows. */
+/* QQ owns pin state and ordering. Theme markers do not depend on a particular
+ * virtual-list wrapper, inject counts, or implement another collapse control. */
 (() => {
   "use strict";
-  let legacyCleaned = false;
-  function removeLegacyMarks() {
-    if (legacyCleaned) return;
-    legacyCleaned = true;
-    document
-      .querySelectorAll(".recent-contact .liuli-pin-heading")
-      .forEach((node) => node.remove());
-    document
-      .querySelectorAll(
-        ".recent-contact [data-liuli-pin], .recent-contact [data-liuli-pin-count]",
-      )
-      .forEach((node) => {
-        node.removeAttribute("data-liuli-pin");
-        node.removeAttribute("data-liuli-pin-count");
-      });
-    document
-      .querySelectorAll(".recent-contact[data-liuli-pin-collapsed]")
-      .forEach((node) => node.removeAttribute("data-liuli-pin-collapsed"));
-  }
-  function clear() {
-    removeLegacyMarks();
-    if (document.body.hasAttribute("data-liuli-pin-group"))
-      document.body.removeAttribute("data-liuli-pin-group");
-    if (document.body.hasAttribute("data-liuli-pin-color"))
-      document.body.removeAttribute("data-liuli-pin-color");
-    sync();
-  }
-  function apply(options) {
-    removeLegacyMarks();
-    const group = !!options && !!options.group;
-    const color = group && !!options.color;
-    if (group) document.body.setAttribute("data-liuli-pin-group", "1");
-    else document.body.removeAttribute("data-liuli-pin-group");
-    if (color) document.body.setAttribute("data-liuli-pin-color", "1");
-    else document.body.removeAttribute("data-liuli-pin-color");
-    sync();
-  }
+  let options = { group: true, color: false };
   function sync() {
-    const enabled = document.body.getAttribute("data-liuli-pin-group") === "1";
-    const firstRows = new Set();
-    if (enabled)
-      for (const inner of document.querySelectorAll(
-        ".recent-contact .viewport-list__inner",
-      )) {
-        if (inner.closest(".viewport-list__measure")) continue;
-        const prev = inner.previousElementSibling;
-        const placeholderHeight = prev
-          ? Number.parseFloat(prev.style.height)
-          : 0;
-        const atTop =
-          !prev ||
-          !prev.matches(".viewport-list__placeholder") ||
-          (Number.isFinite(placeholderHeight)
-            ? placeholderHeight
-            : prev.offsetHeight) < 1;
-        const first = inner.firstElementChild;
-        if (atTop && first?.matches(".recent-contact-item--top"))
-          firstRows.add(first);
-      }
-    for (const old of document.querySelectorAll("[data-liuli-pin-first]")) {
-      if (firstRows.has(old)) continue;
-      old.removeAttribute("data-liuli-pin-first");
-      old.querySelector(":scope > .liuli-pin-label")?.remove();
-    }
-    for (const row of firstRows) {
-      row.dataset.liuliPinFirst = "";
-      if (!row.querySelector(":scope > .liuli-pin-label")) {
+    const root = window.LiuliDOM.visibleQuery(".recent-contact");
+    if (!root) return;
+    const rows = [...root.querySelectorAll(".recent-contact-item")].filter(
+      (n) => !n.closest(".viewport-list__measure"),
+    );
+    const pinned = rows.filter((n) =>
+      n.matches(
+        '.recent-contact-item--top,[data-is-top="true"],[data-top="true"]',
+      ),
+    );
+    const headers = [...root.querySelectorAll("div,span,button")].filter(
+      (n) =>
+        !n.closest(".recent-contact-item,.main-search") &&
+        n.children.length === 0 &&
+        /^置顶(?:\s*[（(]?\d+[）)]?)?$/.test(n.textContent.trim()),
+    );
+    const nativeHeader = headers[0];
+    const first = pinned[0],
+      last = pinned.at(-1);
+    for (const row of rows) {
+      row.toggleAttribute(
+        "data-liuli-pinned",
+        options.group && pinned.includes(row),
+      );
+      row.toggleAttribute("data-liuli-pin-last", options.group && row === last);
+      row.toggleAttribute(
+        "data-liuli-pin-first",
+        options.group && !nativeHeader && row === first,
+      );
+      const old = row.querySelector(":scope > .liuli-pin-label");
+      if (!options.group || nativeHeader || row !== first) old?.remove();
+      else if (!old) {
         const label = document.createElement("div");
-        label.className = "liuli-pin-label";
+        label.className = "liuli-pin-label liuli-owned-ui";
         label.textContent = "置顶";
         row.append(label);
       }
     }
+    for (const header of root.querySelectorAll("[data-liuli-pin-heading]"))
+      header.removeAttribute("data-liuli-pin-heading");
+    if (options.group && nativeHeader) {
+      const parent = nativeHeader.parentElement;
+      const heading =
+        parent && parent.getBoundingClientRect().height < 48
+          ? parent
+          : nativeHeader;
+      heading.dataset.liuliPinHeading = "";
+    }
   }
-  window.__liuliPinGroups = { apply, clear, sync };
+  function apply(next) {
+    options = { group: next?.group !== false, color: next?.color === true };
+    for (const [key, on] of [
+      ["data-liuli-pin-group", options.group],
+      ["data-liuli-pin-color", options.group && options.color],
+    ]) {
+      if (on) document.body.setAttribute(key, "1");
+      else document.body.removeAttribute(key);
+    }
+    sync();
+  }
+  function clear() {
+    apply({ group: false, color: false });
+  }
+  window.__liuliPinGroups = Object.freeze({ apply, clear, sync });
 })();

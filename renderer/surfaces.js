@@ -1,141 +1,191 @@
-/* Surface ownership and composer geometry. Called by the existing page and
- * resize observers; this module does not create another observer or poll. */
+/* Assign a single painted owner to native surfaces. No composer or dock state
+ * lives here; inline ownership defeats native important backgrounds in one place. */
 (() => {
   "use strict";
-  const PROFILE =
-    ".group-profile, .group-profile-card, .group-info, .group-info-panel, .group-detail-panel, .group-profile-info, .group-profile-panel, .group-profile-view, .group-card, .mini-group, .buddy-profile, .profile-card";
-  const POPUP =
-    ".q-tooltips__content, .q-tooltips-v2, .sidebar-tooltips__content, .q-notification, .q-color-picker, .mini-buddy, .finger-memo-dialog, .menu-stickers-panel, .menu-stickers-wrapper .menu-stickers, .editor-at-panel, .editor-qqface-short-panel, .expression-panel .sticker-panel, .bot-panel-wrapper, .handoff-menu, .aio .panel-container:not(:has(.side-panel)), .q-menu, .q-popup__main, .q-dialog-main, .form-modal, .q-float-card, .q-popover__content, .q-context-sub-menu__container, .pulldown-menu, .q-pulldown-menu-wrapper";
-  const PROTECTED =
-    ".lucky-money-dialog, .send-lucky-money-dialog, .video-content, .av-call, .screen-share";
-  let composer = null,
-    host = null,
-    scroll = null;
-  function within(root, selector) {
-    return [
-      ...(root.matches?.(selector) ? [root] : []),
-      ...root.querySelectorAll(selector),
-    ];
+  const D = window.LiuliDOM;
+  const profiles =
+    ".group-profile,.group-profile-card,.group-info,.group-info-panel,.group-detail-panel,.group-profile-info,.mini-group,.buddy-profile,.profile-card,.group-profile-panel,.group-card";
+  const popups =
+    ".q-menu,.q-popup__main,.q-dialog-main,.form-modal,.q-float-card,.q-popover__content,.pulldown-menu,.q-pulldown-menu-wrapper,.bar-more-menu-inner,.editor-at-panel,.editor-qqface-short-panel,.sticker-panel,.bot-panel-wrapper,.q-tooltips__content,.sidebar-tooltips__content";
+  const fields = [
+    "background",
+    "backdrop-filter",
+    "-webkit-backdrop-filter",
+    "box-shadow",
+    "border",
+  ];
+  function write(node, name, value) {
+    if (
+      node.style.getPropertyValue(name) !== value ||
+      node.style.getPropertyPriority(name) !== "important"
+    )
+      node.style.setProperty(name, value, "important");
   }
-  function mark(element, kind) {
-    if (element.closest(PROTECTED) || element.querySelector(PROTECTED)) return;
-    if (element.dataset.liuliSurface !== kind)
-      element.dataset.liuliSurface = kind;
+  function clear(node) {
+    if (!node.hasAttribute("data-liuli-surface-inner"))
+      node.dataset.liuliSurfaceInner = "";
+    for (const key of fields)
+      write(node, key, key === "background" ? "transparent" : "none");
+  }
+  function mark(node, kind) {
+    if (!D.safe(node)) return;
+    if (node.dataset.liuliSurface !== kind) node.dataset.liuliSurface = kind;
+    write(
+      node,
+      "background",
+      kind === "context"
+        ? "transparent"
+        : kind === "search"
+          ? "var(--ll-search-paint)"
+          : "var(--ll-glass-paint)",
+    );
+    write(
+      node,
+      "backdrop-filter",
+      kind === "context" ? "none" : "var(--ll-material-blur)",
+    );
+    write(
+      node,
+      "-webkit-backdrop-filter",
+      kind === "context" ? "none" : "var(--ll-material-blur)",
+    );
+    write(node, "border", "none");
+  }
+  function owner(node) {
+    let result = node;
+    for (
+      let p = node.parentElement;
+      p && p !== document.body;
+      p = p.parentElement
+    )
+      if (
+        p.matches(".q-popup__main,.q-float-card,.q-popover__content") &&
+        D.visible(p)
+      )
+        result = p;
+    return result;
+  }
+  function profile(node) {
+    const outer = owner(node);
+    if (!D.safe(outer)) return;
+    mark(outer, "profile");
+    if (outer !== node) clear(node);
+    for (const inner of outer.querySelectorAll("div,section,header,main")) {
+      if (
+        inner.matches(
+          '[role="button"],.q-button,.icon-item,.q-icon,.q-svg-icon,.q-tag,[class*="avatar"]',
+        ) ||
+        inner.closest('button,[role="button"],.q-button')
+      )
+        continue;
+      if (
+        !inner.hasAttribute("data-liuli-surface-inner") &&
+        /url\(/.test(getComputedStyle(inner).backgroundImage)
+      )
+        continue;
+      if (
+        inner.hasAttribute("data-liuli-surface") &&
+        !inner.matches(".q-float-card,.q-popup__main")
+      )
+        continue;
+      clear(inner);
+    }
+    for (const button of outer.querySelectorAll(
+      'button,[role="button"],.q-button',
+    )) {
+      if (/^(发消息|发送消息)$/.test(button.textContent.trim())) {
+        write(button, "background", "var(--ll-brand)");
+        write(button, "color", "var(--ll-on-brand)");
+      }
+    }
+  }
+  function semanticProfiles(root) {
+    // Match UI actions only, never messages or arbitrary chat text.
+    for (const button of D.within(root, 'button,[role="button"],.q-button')) {
+      if (button.closest(".message,.chat-input-area")) continue;
+      if (!/^(发消息|发送消息)$/.test(button.textContent.trim())) continue;
+      for (
+        let card = button.parentElement;
+        card && card !== document.body;
+        card = card.parentElement
+      ) {
+        if (card.matches(".aio,.recent-contact,#app")) break;
+        const rect = card.getBoundingClientRect(),
+          css = getComputedStyle(card);
+        if (
+          rect.width >= 240 &&
+          rect.width <= 700 &&
+          rect.height >= 180 &&
+          (/absolute|fixed/.test(css.position) ||
+            document.body.dataset.liuliScope === "aux")
+        ) {
+          profile(card);
+          break;
+        }
+      }
+    }
   }
   function apply(root = document.body) {
     if (document.body.hasAttribute("data-liuli-av")) return;
-    for (const element of within(
+    for (const node of D.within(
       root,
-      ".container-sidebar,.recent-contact,.group-box,.right-sidebar:not(:has(.group-box))",
+      ".container-sidebar,.group-box,.right-sidebar:not(:has(.group-box)),.aio .side-panel,.contact-profile .profile__body",
     ))
-      mark(element, "panel");
-    for (const element of within(root, POPUP)) {
-      if (!element.matches(".bar-more-menu")) mark(element, "popup");
+      mark(node, "panel");
+    for (const node of D.within(root, popups)) {
+      if (node.matches(".bar-more-menu")) continue;
+      if (D.visible(node)) mark(node, "popup");
     }
-    for (const element of within(root, PROFILE)) {
-      if (element.closest(".message")) continue;
-      let owner =
-        element.closest(".q-popup__main,.q-float-card,.q-popover__content") ||
-        element;
-      for (
-        let parent = owner.parentElement;
-        parent;
-        parent = parent.parentElement
-      ) {
-        if (parent.matches(".q-popup__main,.q-float-card,.q-popover__content"))
-          owner = parent;
-      }
-      mark(owner, "profile");
-      if (owner !== element) element.dataset.liuliSurfaceInner = "";
-      for (const inner of owner.querySelectorAll(
-        ".q-float-card,.q-popup__main,.q-popover__content",
-      ))
-        inner.dataset.liuliSurfaceInner = "";
-    }
-    // A result list can be mounted before its final parent is attached.
-    const searches = new Set(
-      within(
-        root,
-        ".main-search .search-result,.search-result:has(.search-result-item),.search-result:has(.search-contact-item)",
-      ),
+    for (const node of D.within(
+      root,
+      ".q-context-menu,.q-context-sub-menu__container",
+    ))
+      mark(node, "context");
+    for (const node of D.within(root, profiles))
+      if (!node.closest(".message") && D.visible(node)) profile(node);
+    const inlineSearch = document.body.dataset.liuliScope === "main";
+    const searchNodes = new Set(
+      inlineSearch
+        ? D.within(
+            root,
+            ".main-search .search-result,.search-result:has(.search-result-item)",
+          )
+        : [],
     );
-    const parentSearch = root.closest?.(".main-search .search-result");
-    if (parentSearch) searches.add(parentSearch);
-    for (const element of searches) mark(element, "search");
+    const searchParent =
+      inlineSearch && root.closest?.(".main-search .search-result");
+    if (searchParent) searchNodes.add(searchParent);
+    for (const node of searchNodes) {
+      const outer = owner(node);
+      if (outer !== node) clear(outer);
+      mark(node, "search");
+      for (const inner of node.querySelectorAll(
+        ".q-float-card,.q-popup__main,.search-result__content,.search-recent,.search-recent-contact,.search-result-list",
+      ))
+        clear(inner);
+      for (const inner of node.querySelectorAll(
+        ":scope > div,:scope > div > div",
+      )) {
+        if (
+          inner.querySelector(
+            ".search-result-item,.search-contact-item,.recent-contact-item,.q-scroll-view",
+          )
+        )
+          clear(inner);
+      }
+    }
+    if (!root.closest?.(".chat-msg-area,.chat-input-area,.recent-contact"))
+      semanticProfiles(root);
     const route = location.hash.split("?")[0];
     if (
       document.body.dataset.liuliScope === "aux" &&
-      /^#\/(?:group[-_]?profile|group[-_]?info|group[-_]?detail|buddy[-_]?profile|user[-_]?profile|contact[-_]?profile)(?:\/|$)/i.test(
+      /^#\/(?:mini-group|mini-profile|group[-_]?profile|group[-_]?info|group[-_]?detail|buddy[-_]?profile|user[-_]?profile)(?:\/|$)/i.test(
         route,
       )
     ) {
       const page = document.querySelector("#app > :not(.app-border)");
-      if (page && !page.querySelector(".chat-msg-area")) mark(page, "profile");
-    }
-    const affectsSearch =
-      root === document.body ||
-      root.closest?.(".recent-contact,.main-search,.search-result") ||
-      root.querySelector(".recent-contact,.main-search,.search-result");
-    const pane =
-      affectsSearch &&
-      document.querySelector(".recent-contact:has(.main-search)");
-    if (pane) {
-      const results = pane.querySelector(".main-search .search-result");
-      const list = pane.querySelector(":scope > .list-toggler");
-      const open =
-        !!results &&
-        !!list &&
-        !list.contains(results) &&
-        results.getClientRects().length > 0 &&
-        getComputedStyle(results).visibility !== "hidden";
-      if (pane.hasAttribute("data-liuli-search-open") !== open)
-        pane.toggleAttribute("data-liuli-search-open", open);
+      if (page && !page.querySelector(".chat-msg-area")) profile(page);
     }
   }
-  function syncComposer() {
-    if (
-      !["main"].includes(document.body.dataset.liuliScope) &&
-      !document.body.dataset.hash?.startsWith("#/chat")
-    )
-      return;
-    const area = [...document.querySelectorAll(".chat-input-area")].find(
-      (node) =>
-        node.getClientRects().length && node.querySelector(".msg-input"),
-    );
-    if (!area) return;
-    let nextHost = area.parentElement;
-    while (
-      nextHost &&
-      !nextHost.querySelector(".chat-msg-area") &&
-      !nextHost.matches(".aio")
-    )
-      nextHost = nextHost.parentElement;
-    if (!nextHost || !nextHost.querySelector(".chat-msg-area")) return;
-    const nextScroll =
-      nextHost.querySelector(".chat-msg-area__vlist") ||
-      nextHost.querySelector(".chat-msg-area");
-    if (host !== nextHost) {
-      host?.removeAttribute("data-liuli-composer-host");
-      scroll?.removeAttribute("data-liuli-composer-scroll");
-      host = nextHost;
-      host.dataset.liuliComposerHost = "";
-    }
-    if (composer !== area) {
-      composer?.removeAttribute("data-liuli-composer");
-      composer = area;
-      area.dataset.liuliComposer = "float";
-      for (let p = area.parentElement; p && p !== host; p = p.parentElement)
-        p.dataset.liuliComposerBridge = "";
-    }
-    if (scroll !== nextScroll) {
-      scroll?.removeAttribute("data-liuli-composer-scroll");
-      scroll = nextScroll;
-      scroll.dataset.liuliComposerScroll = "";
-    }
-    const height = Math.ceil(area.getBoundingClientRect().height) + 30;
-    const value = height + "px";
-    if (host.style.getPropertyValue("--ll-composer-clearance") !== value)
-      host.style.setProperty("--ll-composer-clearance", value);
-  }
-  window.LiuliSurfaces = Object.freeze({ apply, syncComposer });
+  window.LiuliSurfaces = Object.freeze({ apply });
 })();

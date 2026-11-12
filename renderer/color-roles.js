@@ -196,12 +196,12 @@
     v["--ll-bubble-self"] =
       roles.self === "surface" && !custom.self
         ? "var(--ll-glass-surface)"
-        : `color-mix(in srgb, ${custom.self || self[0]} 24%, var(--ll-glass-surface))`;
+        : `color-mix(in srgb, ${custom.self || self[0]} 14%, var(--ll-glass-surface))`;
     v["--ll-bubble-self-fg"] = ink;
     v["--ll-bubble-self-link"] = v["--ll-link"] || hex(s.primary);
     if (custom.others || v["--ll-bubble-other"]) {
       v["--ll-bubble-other"] =
-        `color-mix(in srgb, ${custom.others || v["--ll-bubble-other"]} 24%, var(--ll-glass-surface))`;
+        `color-mix(in srgb, ${custom.others || v["--ll-bubble-other"]} 14%, var(--ll-glass-surface))`;
       v["--ll-bubble-other-fg"] = ink;
       v["--ll-bubble-other-link"] = v["--ll-link"] || hex(s.primary);
     }

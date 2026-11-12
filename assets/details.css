@@ -49,7 +49,7 @@
  * 在壁纸上只有一条极淡的描边，完全看不出是卡片。
  * ════════════════════════════════════════════════════════════ */
 .forward-msg {
-  background: rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.14)) !important;
+  background: var(--ll-glass-surface) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 1px solid rgba(var(--ll-tint-rgb), 0.1) !important;
@@ -71,7 +71,7 @@
 /* ark 卡片（小程序/富媒体消息）同款材质 */
 .ark-msg-content-container,
 [class*='ark-msg'] {
-  background: rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.12)) !important;
+  background: var(--ll-glass-surface) !important;
   border: 1px solid rgba(var(--ll-tint-rgb), 0.08) !important;
   border-radius: var(--ll-radius-sm) !important;
 }
