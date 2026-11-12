@@ -16,8 +16,20 @@ body .recent-contact .recent-contact-item[data-liuli-pin]:not(#ll):not(#ll):not(
 }
 .recent-contact > .list-toggler { position: relative; z-index: 1; }
 body .recent-contact .recent-contact-item[data-liuli-pin]:not(#ll):not(#ll):not(#ll)::after {
-  content: none !important;
-  display: none !important;
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  left: 5px !important;
+  top: 6px !important;
+  bottom: 6px !important;
+  width: 2px !important;
+  border-radius: 2px !important;
+  background: rgba(var(--ll-brand-rgb), 0.32) !important;
+  pointer-events: none !important;
+}
+body .recent-contact .recent-contact-item[data-liuli-pin='first']:not(#ll):not(#ll):not(#ll)::after,
+body .recent-contact .recent-contact-item[data-liuli-pin='single']:not(#ll):not(#ll):not(#ll)::after {
+  top: 31px !important;
 }
 body .recent-contact .recent-contact-item[data-liuli-pin='first']:not(#ll):not(#ll):not(#ll),
 body .recent-contact .recent-contact-item[data-liuli-pin='single']:not(#ll):not(#ll):not(#ll) {
@@ -125,6 +137,9 @@ body .recent-contact[data-liuli-pin-collapsed='1'] .recent-contact-item:is([data
   display: none !important;
 }
 body .recent-contact[data-liuli-pin-collapsed='1'] .recent-contact-item[data-liuli-pin].recent-contact-item--selected:not(#ll):not(#ll):not(#ll)::before {
+  display: none !important;
+}
+body .recent-contact[data-liuli-pin-collapsed='1'] .recent-contact-item[data-liuli-pin]:not(#ll):not(#ll):not(#ll)::after {
   display: none !important;
 }
 .recent-contact[data-liuli-pin-collapsed='1'] .liuli-pin-heading::after { transform: rotate(-90deg); }

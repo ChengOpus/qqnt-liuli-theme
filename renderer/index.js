@@ -1712,8 +1712,8 @@
    *   ！`.group-box` 自己带 backdrop-filter 模糊，对它做 opacity / transform 会让模糊失效，
    *      所以只动它的子元素；滑动需要遮挡溢出时给它 overflow: clip（clip 不会让模糊失效），
    *      不用 hidden。
-   * 检测方式：rAF 轮询，从点击开始最多 1500ms；超时兜底把还没恢复的部分 cancel 离场并入场，
-   * 保证内容一定会出现。检测期间又点了别的会话就结束这一轮重新开始。
+   * 检测由已有页面观察器的变更信号唤醒；消息位置只在未稳定时短暂复查。
+   * 1500ms 超时兜底保证内容一定会出现。检测期间又点了别的会话就结束这一轮重新开始。
    * 非点击方式（键盘 / 搜索 / 通知）切换没有离场也没有 data-ll-switching，原有行为不变。
    */
   let llSwitchInstalled = false;
@@ -1737,6 +1737,8 @@
 
     let round = null; // 当前这一轮切换的检测状态
     let raf = 0;
+    let settleTimer = 0;
+    let deadlineTimer = 0;
     let clipTimer = 0;
     let clipEl = null;
     let clipPrev = '';
@@ -1820,6 +1822,15 @@
         cancelAnimationFrame(raf);
         raf = 0;
       }
+      if (settleTimer) { clearTimeout(settleTimer); settleTimer = 0; }
+      if (deadlineTimer) { clearTimeout(deadlineTimer); deadlineTimer = 0; }
+    }
+    function swWake() {
+      if (round && !raf) raf = requestAnimationFrame(swTick);
+    }
+    function swSettle(delay = 45) {
+      if (!settleTimer && round)
+        settleTimer = setTimeout(() => { settleTimer = 0; swWake(); }, delay);
     }
     function swDropAll(st) {
       try {
@@ -1875,7 +1886,8 @@
       try {
         if (area) area.setAttribute('data-ll-switching', '');
       } catch (e) {}
-      raf = requestAnimationFrame(swTick);
+      deadlineTimer = setTimeout(() => { if (round === st) swTimeout(st); }, SW_MAX);
+      swWake();
     }
 
     function swCheckTitle(st) {
@@ -1925,7 +1937,7 @@
       // 这段时间新成员会整块露出来再上浮（「闪现」）。可视区还没排好版就再等一帧，最多 4 帧。
       const host = el && (el.querySelector('.group-member-list') || el);
       const rows = host ? llVisibleIn(host, '.group-user') : [];
-      if (!rows.length && st.memberFrames++ < 4) return;
+      if (!rows.length && st.memberFrames++ < 4) { swSettle(); return; }
       llRiseIn(rows, 16);
       st.membersDone = true;
       // 成员只恢复可见：逐行上浮由 llGroupMembersPass 自己负责，
@@ -1956,7 +1968,7 @@
         st.sampleTop = top;
       }
       // 连续 2 帧不变才算稳定：QQ 先把消息行摆在错误的滚动位置，约 300ms 才滚到底
-      if (st.stable < 2) return;
+      if (st.stable < 2) { swSettle(); return; }
       st.messagesDone = true;
       swDropExit(st.exits, prevArea);
       swDropExit(st.exits, area);
@@ -2033,7 +2045,6 @@
         } catch (e2) {}
         return;
       }
-      raf = requestAnimationFrame(swTick);
     }
 
     /* ---------- 群公告高度：FLIP 位移 ---------- */
@@ -2159,6 +2170,10 @@
     // The page observer already classifies side panel changes. Reuse that
     // signal instead of scanning the whole document with a second observer.
     window.addEventListener('liuli-side-change', swBindNotice);
+    window.addEventListener('liuli-page-change', swWake);
+    document.addEventListener('scroll', event => {
+      if (round && event.target instanceof Element && event.target.closest(SW_AREA)) swWake();
+    }, true);
     swBindNotice();
   }
 
@@ -2323,6 +2338,8 @@
           mountInputBar();
           scheduleStick();
         }
+        if (pending.has('messages') || pending.has('side') || pending.has('structure'))
+          window.dispatchEvent(new Event('liuli-page-change'));
       } finally {
         observer.takeRecords();
         flushing = false;
@@ -2378,34 +2395,9 @@
     if (window.__liuliReveal2) return;
     window.__liuliReveal2 = true;
     var EDGE = 8,
-      PAD = 18,
-      CORNER = 200;
-    /* #32.4a：顶部唤出区不能只有窗口顶边 8px（--ll-dock-gap）。胶囊本体是
-     * top:6px + height:30px，按钮 34×26 的点击面从 y≈8 才开始——只认 y≤8 时
-     * 「光标已经在按钮上」反而唤不出来、点下去也没反应，用户必须再往下摸一次才行。
-     * 这里把顶部感应带放宽到胶囊底边（≈36px）；左边缘（导航）仍只用 EDGE，不受影响。 */
-    var TOP_EDGE = 36,
-      topEdgeCache = 0;
-    function topEdge() {
-      if (topEdgeCache) return topEdgeCache;
-      var v = TOP_EDGE;
-      try {
-        var el =
-          document.querySelector('.topbar-profile') || document.querySelector('.window-control-area');
-        if (el) {
-          var t = parseFloat(getComputedStyle(el).top);
-          var hh = el.offsetHeight || 0;
-          if (isFinite(t) && hh > 0) v = Math.max(v, t + hh); // top + height = 胶囊底边
-        }
-        var band = document.getElementById('liuli-top-hint-l');
-        if (band) {
-          var bh = band.getBoundingClientRect().height;
-          if (bh > 0) v = Math.max(v, bh); // CSS 若把感应条加高，跟着它走
-        }
-      } catch (e) {}
-      topEdgeCache = Math.max(EDGE, Math.min(64, v)); // 夹一层上限，CSS 改坏了也不至于整屏都算顶边
-      return topEdgeCache;
-    }
+      PAD = 14;
+    const TOP_EDGE = 11;
+    const TOP_APPROACH = 42;
     var HOLD = {
       nav: 250,
       l: 600,
@@ -2422,11 +2414,56 @@
         x: -1,
         y: -1
       };
+    const sample = { x: -1, y: -1, at: 0 };
+    const intent = { l: null, r: null };
+    let leftLimit = 260;
+    let rightStart = innerWidth - 170;
     let childWindowFocused = false;
+    let dialogCheckedAt = -Infinity;
+    let dialogOpen = false;
     function visibleDialog() {
-      return [...document.querySelectorAll('dialog[open], .q-dialog')].some(el =>
+      const now = performance.now();
+      if (now - dialogCheckedAt < 80) return dialogOpen;
+      dialogCheckedAt = now;
+      dialogOpen = [...document.querySelectorAll('dialog[open], .q-dialog')].some(el =>
         el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
       );
+      return dialogOpen;
+    }
+    function syncTopZones() {
+      const profile = document.querySelector('.topbar-profile');
+      const controls = document.querySelector('.window-title-bar .window-control-area:not(.window-title-bar__controls-left)');
+      leftLimit = Math.min(560, innerWidth * 0.48, Math.max(180, (profile?.getBoundingClientRect().width || 250) + 24));
+      rightStart = innerWidth - Math.max(150, (controls?.getBoundingClientRect().width || 130) + 24);
+    }
+    function topZone(k, x, y) {
+      return y >= 0 && y <= TOP_APPROACH &&
+        (k === 'l' ? x > EDGE && x <= leftLimit : x >= rightStart && x < innerWidth);
+    }
+    function cancelIntent(k) {
+      if (intent[k]) clearTimeout(intent[k].timer);
+      intent[k] = null;
+    }
+    function armIntent(k, delay) {
+      const due = performance.now() + delay;
+      if (intent[k] && intent[k].due <= due) return;
+      cancelIntent(k);
+      const startX = last.x;
+      intent[k] = {
+        due,
+        timer: setTimeout(() => {
+          intent[k] = null;
+          if (!childWindowFocused && !nativeBar() && topZone(k, last.x, last.y) &&
+              Math.abs(last.x - startX) < 28) set(k, true);
+        }, delay)
+      };
+    }
+    function updateTopIntent(k, dx, dy) {
+      if (state[k] || !topZone(k, last.x, last.y)) { cancelIntent(k); return; }
+      const upward = dy < -1.5 && Math.abs(dx) < Math.abs(dy) * 2 + 12;
+      if (upward) armIntent(k, 60);
+      else if (last.y <= TOP_EDGE) armIntent(k, 130);
+      else cancelIntent(k);
     }
     function navPinned() {
       return document.body.dataset.liuliNavPin === '1';
@@ -2512,28 +2549,30 @@
         y = e.clientY;
       last.x = x;
       last.y = y;
+      const now = performance.now();
+      if (now - sample.at < 16) return;
+      const dx = sample.x < 0 ? 0 : x - sample.x;
+      const dy = sample.y < 0 ? 0 : y - sample.y;
+      sample.x = x;
+      sample.y = y;
+      sample.at = now;
       const inPopup = popupUnderPointer(e.target);
       set('nav', x <= EDGE || (state.nav && (over('.container-sidebar', x, y) || inPopup)));
       if (nativeBar()) {
+        cancelIntent('l');
+        cancelIntent('r');
         set('l', false);
         set('r', false);
         return;
       }
-      // #32.4a：顶部按胶囊底边算（≈36px），不再只认窗口顶边 8px
-      var top = topEdge();
-      set(
-        'l',
-        (y <= top && x >= 56 && x <= CORNER + 56) ||
-          (state.l && (over('.topbar-profile', x, y) || inPopup))
-      );
-      set(
-        'r',
-        over('#liuli-top-hint-r', x, y, 0) ||
-          (y <= top && x >= window.innerWidth - CORNER) ||
-          (state.r && (over('.window-control-area', x, y) || inPopup))
-      );
+      updateTopIntent('l', dx, dy);
+      updateTopIntent('r', dx, dy);
+      set('l', state.l && (topZone('l', x, y) || over('.topbar-profile', x, y) || inPopup));
+      set('r', state.r && (topZone('r', x, y) || over('.window-control-area', x, y) || inPopup));
     }
     function onLeave() {
+      cancelIntent('l');
+      cancelIntent('r');
       if (childWindowFocused) return;
       set('nav', false);
       ['l', 'r'].forEach(function (k) {
@@ -2545,6 +2584,8 @@
       // A QQ child window takes focus from its parent. Keep the reveal until
       // focus returns, so opening Settings does not collapse the profile first.
       childWindowFocused = true;
+      cancelIntent('l');
+      cancelIntent('r');
       for (const k of ['nav', 'l', 'r']) {
         if (timers[k]) { clearTimeout(timers[k]); timers[k] = 0; }
       }
@@ -2552,18 +2593,20 @@
     function onFocus() {
       if (!document.hasFocus()) return;
       childWindowFocused = false;
+      dialogCheckedAt = -Infinity;
       if (visibleDialog()) return;
       if (!over('.container-sidebar', last.x, last.y)) set('nav', false, 240);
-      if (!over('.topbar-profile', last.x, last.y)) set('l', false, 240);
-      if (!over('.window-control-area', last.x, last.y)) set('r', false, 240);
+      if (!topZone('l', last.x, last.y) && !over('.topbar-profile', last.x, last.y)) set('l', false, 240);
+      if (!topZone('r', last.x, last.y) && !over('.window-control-area', last.x, last.y)) set('r', false, 240);
     }
-    document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('mousemove', onMove, { capture: true, passive: true });
     document.documentElement.addEventListener('mouseleave', onLeave);
     window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
     document.addEventListener('close', onFocus, true);
-    window.addEventListener('resize', syncRevealSpace);
+    window.addEventListener('resize', () => { syncRevealSpace(); syncTopZones(); });
     syncRevealSpace();
+    syncTopZones();
   }
   function syncCtlShield() {
     try {

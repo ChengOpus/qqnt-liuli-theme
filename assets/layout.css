@@ -21,7 +21,7 @@
 body {
   --ll-dock-gap: 8px;
   /* 悬浮胶囊需要比承载层更实，壁纸亮时才看得清 */
-  --ll-pill-opacity: min(0.92, calc(var(--ll-material-opacity) + 0.32));
+  --ll-pill-opacity: clamp(0.34, calc(var(--ll-material-opacity) + 0.22), 0.68);
   /* 卡片描边：按用户要求关闭（2026-10-28）。想恢复就改回
    * 1px solid var(--ll-stroke-3, rgba(var(--ll-tint-rgb), 0.08)) */
   --ll-card-border: none;
@@ -514,15 +514,13 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container > 
   overflow: visible !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .container-content {
-  padding-top: var(--ll-dock-gap) !important;
-  transition: padding-left var(--ll-ui-duration) var(--ll-ui-ease),
-    padding-top var(--ll-ui-duration) var(--ll-ui-ease) !important;
+  /* Reserve the title row once. Animating padding-top reflowed the full chat
+   * and its backdrop layers on every frame of a hover reveal. */
+  padding-top: 44px !important;
+  transition: padding-left var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content {
   padding-left: calc(var(--ll-dock-gap) + var(--ll-nav-claim, 0px)) !important;
-}
-body[data-liuli-scope="main"]:not([data-liuli-tb="native"]):is([data-liuli-r-l], [data-liuli-r-r]) .global-container .container-content {
-  padding-top: 44px !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .container-content > .container-sidebar {
   top: var(--ll-dock-gap) !important;
@@ -549,8 +547,13 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   transition: opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .user-profile-card.topbar-profile {
-  /* 让出左侧导航条（约 56px），展开时不压住导航顶部（2026-10-30） */
-  left: calc(var(--ll-dock-gap) + 56px) !important;
+  left: var(--ll-dock-gap) !important;
+  transition: left var(--ll-ui-duration) var(--ll-ui-ease),
+    opacity var(--ll-ui-duration) var(--ll-ui-ease),
+    transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
+}
+body[data-liuli-scope="main"][data-liuli-r-nav]:not([data-liuli-tb="native"]) .topbar-content .user-profile-card.topbar-profile {
+  left: calc(var(--ll-dock-gap) + var(--ll-nav-claim, 56px)) !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .window-control-area {
   right: var(--ll-dock-gap) !important;
@@ -574,7 +577,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   opacity: 1 !important;
   pointer-events: auto !important;
   transform: none !important;
-  transition: opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
+  transition: left var(--ll-ui-duration) var(--ll-ui-ease), opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 
 /* ── 标题栏控件「常驻（原版）」：data-liuli-tb="native"（设置 → 窗口按钮）──
@@ -614,7 +617,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .liuli-top-hint {
   -webkit-app-region: no-drag;
   cursor: default;
 }
-body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-l { left: 56px; }   /* 跟着头像胶囊让出导航条 */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-l { left: var(--ll-dock-gap); }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-r { right: 0; }
 /* 提示短横：告诉用户这里能唤出东西（DSH WindowControls 的 .hint 同款） */
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .liuli-top-hint::after {
@@ -776,7 +779,6 @@ body .expression-panel > *:not(:empty),
 body .bot-panel-wrapper,
 body .handoff-menu,
 body .q-float-card,
-body .main-search .search-result,
 body .aio .panel-container:not(:has(.side-panel)) {
   background: var(--ll-noise), var(--ll-menu-bg, var(--ll-float-bg)) !important;
   backdrop-filter: var(--ll-float-blur) !important;
@@ -785,6 +787,23 @@ body .aio .panel-container:not(:has(.side-panel)) {
   border-radius: var(--ll-radius) !important;
   box-shadow: var(--ll-float-shadow) !important;
   color: var(--ll-on-glass) !important;
+}
+/* Search suggestions live inside the already blurred conversation pane.
+ * Only a light tint is needed there; a second backdrop layer made the list
+ * look opaque and painted a conspicuous rectangle over the pane. */
+body .main-search .search-result:not(#ll) {
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
+  border: none !important;
+  border-radius: var(--ll-panel-radius) !important;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
+}
+body .recent-contact .main-search .search-result:not(#ll):not(#ll) {
+  background: rgba(var(--ll-acrylic), 0.12) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: var(--ll-popup-edge), 0 6px 16px rgba(var(--ll-shadow-rgb), 0.10) !important;
 }
 /* 右键菜单：模糊放到 ::before 上。
  * 实测（ll-probe）：「输入"/"时唤起」的子菜单 .q-context-sub-menu__container 是 position:fixed，
