@@ -44,6 +44,7 @@
     'markdown.css',
     'layout-custom.css',
     'integration.css',
+    'search.css',
     // 置顶会话分组（#55）：排在最后，才能在 typography.css 的
     // .recent-contact-item::before/after { display:none !important } 之后接管
     // 行的两个伪元素。
@@ -53,6 +54,28 @@
   const WALLPAPER = window.LiuliHost.wallpaper;
   const OPTIONAL_FILES = new Set(['wallpaper.css']);
   const DEFAULT_SOURCE = '#1d9bf0';
+  const COLOR_SOURCE_KEY = 'liuli-color-source';
+  function colorSourceConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLOR_SOURCE_KEY) || '{}');
+      const hex = typeof saved.hex === 'string' ? saved.hex.trim() : '';
+      if (saved.mode === 'manual' && /^#[0-9a-f]{6}$/i.test(hex))
+        return { mode: 'manual', hex: hex.toLowerCase() };
+      if (saved.mode === 'wallpaper' && /^#[0-9a-f]{6}$/i.test(hex))
+        return { mode: 'wallpaper', hex: hex.toLowerCase() };
+    } catch (e) {}
+    return { mode: 'wallpaper', hex: '' };
+  }
+  function saveColorSource(mode, hex) {
+    const manualHex = /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : colorSourceConfig().hex;
+    const value = mode === 'manual' && manualHex
+      ? { mode: 'manual', hex: manualHex }
+      : { mode: 'wallpaper', hex: manualHex };
+    try { localStorage.setItem(COLOR_SOURCE_KEY, JSON.stringify(value)); }
+    catch (error) { toast('主题色保存失败：' + error.message); }
+    window.__liuliPaletteApplied = false;
+    applyDynamicPalette();
+  }
   let refreshPaletteInfo = () => {};
   let refreshDiagnosticErrors = () => {};
   let refreshInputGeometry = () => {};
@@ -81,6 +104,8 @@
       const scope =
         hash.indexOf('#/setting') === 0
           ? 'setting'
+          : /^#\/(?:search|global-search)(?:[/?]|$)/i.test(hash) || /综合搜索/.test(document.title)
+            ? 'search'
           : hash.indexOf('#/main') === 0
             ? 'main'
             : hash === '' || hash === '#/blank'
@@ -93,6 +118,8 @@
     };
     sync();
     addEventListener('liuli-route', sync);
+    const titleNode = document.querySelector('title');
+    if (titleNode) new MutationObserver(sync).observe(titleNode, { childList: true, characterData: true, subtree: true });
   }
   function chromaticSourceFromCanvas(ctx, w, h) {
     let px;
@@ -300,11 +327,10 @@
     if (window.__liuliPaletteApplied) return;
     window.__liuliPaletteApplied = true;
     const generation = ++paletteGeneration;
-    let source = DEFAULT_SOURCE;
-    try {
-      source = await extractSource();
-    } catch (e) {
-      source = DEFAULT_SOURCE;
+    const selection = colorSourceConfig();
+    let source = selection.hex || DEFAULT_SOURCE;
+    if (selection.mode === 'wallpaper') {
+      try { source = await extractSource(); } catch (e) { source = DEFAULT_SOURCE; }
     }
     if (generation !== paletteGeneration) return;
     const mcu = window.LiuliMCU;
@@ -321,6 +347,7 @@
       else body.style.setProperty(k, vars[k]);
     }
     body.dataset.liuliSource = source;
+    body.dataset.liuliColorMode = selection.mode;
     body.toggleAttribute('data-liuli-other-solid', vars['--ll-bubble-other'] != null);
     llApplyModeSettings();
     refreshPaletteInfo();
@@ -331,7 +358,7 @@
   const GLASS = [
     ['.container-sidebar', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
     ['.recent-contact', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
-    ['.right-sidebar', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
+    ['.right-sidebar:not(:has(.group-box))', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
     ['.group-box', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
     [
       '.user-profile-card:not(.topbar-profile)',
@@ -497,6 +524,10 @@
     const cfg = Object.assign({}, DEFAULT_SETTINGS, raw || {});
     cfg.chatStyle = ['tg', 'classic', 'tim'].includes(cfg.chatStyle) ? cfg.chatStyle : 'tg';
     cfg.avatarPosition = cfg.avatarPosition === 'top' ? 'top' : 'bottom';
+    for (const [key, min, max] of [['blur', 0, 40], ['opacity', 0.1, 0.9], ['glow', 0, 1], ['shadow', 0, 1]]) {
+      const n = Number(cfg[key]);
+      cfg[key] = Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : DEFAULT_SETTINGS[key];
+    }
     for (const [key, min, max] of [['messageFontSize', 12, 24], ['nameFontSize', 10, 18], ['titleFontSize', 9, 14]]) {
       const n = Number(cfg[key]);
       cfg[key] = Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : DEFAULT_SETTINGS[key];
@@ -605,7 +636,10 @@
     llSettingsApplied = true;
     window.__liuliSettingsCache = llModeCfg;
     for (const panelSettings of llPanelSettings) Object.assign(panelSettings, llModeCfg);
-    b.style.setProperty('--ll-material-blur', 'blur(' + llModeCfg.blur + 'px) saturate(1.6)');
+    b.style.setProperty('--ll-material-blur', llModeCfg.blur > 0
+      ? 'blur(' + llModeCfg.blur + 'px) saturate(1.6)' : 'none');
+    b.style.setProperty('--ll-bubble-blur', llModeCfg.blur > 0
+      ? 'blur(' + Math.min(12, llModeCfg.blur) + 'px)' : 'none');
     b.style.setProperty('--ll-material-opacity', String(llModeCfg.opacity));
     b.style.setProperty('--ll-glow-strength', String(llModeCfg.glow));
     b.toggleAttribute('data-liuli-hide-image-names', llModeCfg.hideImageNames === true);
@@ -1467,6 +1501,15 @@
           if (want) span.dataset.liuliStaff = want;
           else delete span.dataset.liuliStaff;
         }
+        var title = span.parentElement;
+        var countNode = title.querySelector(':scope > .liuli-staff-count');
+        if (!countNode) {
+          countNode = document.createElement('span');
+          countNode.className = 'liuli-staff-count';
+          title.appendChild(countNode);
+        }
+        var label = want ? '管理 ' + want : '';
+        if (countNode.textContent !== label) countNode.textContent = label;
       }
       var recent = llRecentSpeakers();
       rows.forEach(function (r) {
@@ -2113,16 +2156,9 @@
       true
     );
 
-    try {
-      // 群公告元素可能被整块替换：靠 MutationObserver 重新绑定 ResizeObserver
-      const mo = new MutationObserver(() => {
-        try {
-          if (document.hidden) return;
-          swBindNotice();
-        } catch (e) {}
-      });
-      mo.observe(document.body, { childList: true, subtree: true });
-    } catch (e) {}
+    // The page observer already classifies side panel changes. Reuse that
+    // signal instead of scanning the whole document with a second observer.
+    window.addEventListener('liuli-side-change', swBindNotice);
     swBindNotice();
   }
 
@@ -2279,7 +2315,10 @@
           liuliMessagePass(topLevelRoots(changed.map(root => root.closest('.ml-item') || root)));
           llMotionPass(added);
         }
-        if (pending.has('side') || pending.has('messages')) llGroupMembersPass();
+        if (pending.has('side') || pending.has('messages')) {
+          llGroupMembersPass();
+          if (pending.has('side')) window.dispatchEvent(new Event('liuli-side-change'));
+        }
         if (pending.has('geometry') || pending.has('layout')) {
           mountInputBar();
           scheduleStick();
@@ -2383,8 +2422,32 @@
         x: -1,
         y: -1
       };
+    let childWindowFocused = false;
+    function visibleDialog() {
+      return [...document.querySelectorAll('dialog[open], .q-dialog')].some(el =>
+        el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
+      );
+    }
     function navPinned() {
       return document.body.dataset.liuliNavPin === '1';
+    }
+    function syncRevealSpace() {
+      if (document.body.dataset.liuliScope !== 'main') return;
+      const nav = document.querySelector('.container-content > .container-sidebar');
+      const aside = document.querySelector('.two-col-layout__aside');
+      const right = document.querySelector('.group-box');
+      const navWidth = nav?.getBoundingClientRect().width || 56;
+      const asideWidth = aside?.getBoundingClientRect().width || 240;
+      const rightWidth = right?.getBoundingClientRect().width || 0;
+      const free = innerWidth - asideWidth - rightWidth - 380 - 32;
+      const claim = Math.max(0, Math.min(navWidth + 12, free));
+      document.body.style.setProperty('--ll-nav-claim', Math.round(claim) + 'px');
+      document.body.toggleAttribute('data-liuli-nav-narrow', claim < navWidth);
+    }
+    function popupUnderPointer(target) {
+      return target instanceof Element && !!target.closest(
+        '.q-context-menu, .q-menu, .q-popup__main, .q-dialog-main, .bar-more-menu-inner, .sidebar-tooltips__content, dialog[open]'
+      );
     }
     function dropNav() {
       if (timers.nav) {
@@ -2408,9 +2471,12 @@
         if (!state[k]) {
           state[k] = true;
           document.body.dataset[KEYS[k]] = '1';
+          if (k === 'nav') syncRevealSpace();
         }
       } else if (state[k] && !timers[k]) {
+        if (childWindowFocused || visibleDialog()) return;
         timers[k] = setTimeout(function () {
+          if (childWindowFocused || visibleDialog()) { timers[k] = 0; return; }
           timers[k] = 0;
           state[k] = false;
           delete document.body.dataset[KEYS[k]];
@@ -2446,7 +2512,8 @@
         y = e.clientY;
       last.x = x;
       last.y = y;
-      set('nav', x <= EDGE || (state.nav && over('.container-sidebar', x, y)));
+      const inPopup = popupUnderPointer(e.target);
+      set('nav', x <= EDGE || (state.nav && (over('.container-sidebar', x, y) || inPopup)));
       if (nativeBar()) {
         set('l', false);
         set('r', false);
@@ -2456,16 +2523,18 @@
       var top = topEdge();
       set(
         'l',
-        (y <= top && x >= 56 && x <= CORNER + 56) || (state.l && over('.topbar-profile', x, y))
+        (y <= top && x >= 56 && x <= CORNER + 56) ||
+          (state.l && (over('.topbar-profile', x, y) || inPopup))
       );
       set(
         'r',
         over('#liuli-top-hint-r', x, y, 0) ||
           (y <= top && x >= window.innerWidth - CORNER) ||
-          (state.r && over('.window-control-area', x, y))
+          (state.r && (over('.window-control-area', x, y) || inPopup))
       );
     }
     function onLeave() {
+      if (childWindowFocused) return;
       set('nav', false);
       ['l', 'r'].forEach(function (k) {
         var sel = k === 'l' ? '.topbar-profile' : '.window-control-area';
@@ -2473,13 +2542,28 @@
       });
     }
     function onBlur() {
-      set('nav', false);
-      set('l', false);
-      set('r', false);
+      // A QQ child window takes focus from its parent. Keep the reveal until
+      // focus returns, so opening Settings does not collapse the profile first.
+      childWindowFocused = true;
+      for (const k of ['nav', 'l', 'r']) {
+        if (timers[k]) { clearTimeout(timers[k]); timers[k] = 0; }
+      }
+    }
+    function onFocus() {
+      if (!document.hasFocus()) return;
+      childWindowFocused = false;
+      if (visibleDialog()) return;
+      if (!over('.container-sidebar', last.x, last.y)) set('nav', false, 240);
+      if (!over('.topbar-profile', last.x, last.y)) set('l', false, 240);
+      if (!over('.window-control-area', last.x, last.y)) set('r', false, 240);
     }
     document.addEventListener('mousemove', onMove, true);
     document.documentElement.addEventListener('mouseleave', onLeave);
     window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('close', onFocus, true);
+    window.addEventListener('resize', syncRevealSpace);
+    syncRevealSpace();
   }
   function syncCtlShield() {
     try {
@@ -3483,7 +3567,7 @@
         llApplyMode(false);
         if (typeof llModeRefresh === 'function') llModeRefresh();
       }
-      if (e.key === ROLE_KEY) {
+      if (e.key === ROLE_KEY || e.key === COLOR_SOURCE_KEY) {
         window.__liuliPaletteApplied = false;
         applyDynamicPalette();
       }
@@ -3984,6 +4068,10 @@
     group.className = 'liuli-panel__group';
     group.textContent = '材质';
     pageLook.appendChild(group);
+    const blurPreview = document.createElement('div');
+    blurPreview.className = 'liuli-blur-preview';
+    blurPreview.textContent = '材质模糊预览';
+    pageLook.appendChild(blurPreview);
     const inputs = {};
     let frame = 0;
     const flush = () => {
@@ -4079,6 +4167,70 @@
     pageLook.appendChild(resetAll);
   }
   function buildColorControls(pageColor) {
+    const sourceGroup = document.createElement('div');
+    sourceGroup.className = 'liuli-panel__group';
+    sourceGroup.textContent = '主题基色';
+    pageColor.appendChild(sourceGroup);
+    const sourceRow = document.createElement('div');
+    sourceRow.className = 'liuli-color-source';
+    const auto = document.createElement('button');
+    auto.type = 'button';
+    auto.textContent = '壁纸自动取色';
+    const manual = document.createElement('button');
+    manual.type = 'button';
+    manual.textContent = '手动颜色';
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.setAttribute('aria-label', '选择主题色');
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.maxLength = 7;
+    hexInput.setAttribute('aria-label', 'HEX 主题色');
+    hexInput.placeholder = '#1d9bf0';
+    const resetSource = document.createElement('button');
+    resetSource.type = 'button';
+    resetSource.textContent = '恢复默认';
+    sourceRow.append(auto, manual, picker, hexInput, resetSource);
+    pageColor.appendChild(sourceRow);
+    const sourceHint = document.createElement('div');
+    sourceHint.className = 'liuli-field__hint';
+    sourceHint.textContent = '手动颜色会保持不变；切回自动后才从壁纸重新取色。';
+    pageColor.appendChild(sourceHint);
+    function syncSourceControls() {
+      const cfg = colorSourceConfig();
+      auto.classList.toggle('is-active', cfg.mode === 'wallpaper');
+      manual.classList.toggle('is-active', cfg.mode === 'manual');
+      picker.value = cfg.hex || DEFAULT_SOURCE;
+      hexInput.value = cfg.hex || '';
+      hexInput.setCustomValidity('');
+    }
+    auto.addEventListener('click', () => { saveColorSource('wallpaper', ''); syncSourceControls(); });
+    manual.addEventListener('click', () => {
+      saveColorSource('manual', colorSourceConfig().hex || document.body.dataset.liuliSource || DEFAULT_SOURCE);
+      syncSourceControls();
+    });
+    picker.addEventListener('change', () => { saveColorSource('manual', picker.value); syncSourceControls(); });
+    hexInput.addEventListener('change', () => {
+      const value = hexInput.value.trim();
+      if (!/^#[0-9a-f]{6}$/i.test(value)) {
+        hexInput.setCustomValidity('请输入 #RRGGBB 格式的颜色');
+        hexInput.reportValidity();
+        return;
+      }
+      saveColorSource('manual', value);
+      syncSourceControls();
+    });
+    resetSource.addEventListener('click', () => {
+      try { localStorage.removeItem(COLOR_SOURCE_KEY); }
+      catch (error) { toast('主题色重置失败：' + error.message); return; }
+      window.__liuliPaletteApplied = false;
+      applyDynamicPalette();
+      syncSourceControls();
+    });
+    window.addEventListener('storage', event => {
+      if (event.key === COLOR_SOURCE_KEY && sourceRow.isConnected) syncSourceControls();
+    });
+    syncSourceControls();
     const info = document.createElement('div');
     info.className = 'liuli-info';
     const swatch = document.createElement('div');
@@ -4091,7 +4243,7 @@
       const src = document.body.dataset.liuliSource || DEFAULT_SOURCE;
       const brand = getComputedStyle(document.body).getPropertyValue('--ll-brand').trim();
       swatch.style.background = brand || src;
-      infoText.textContent = '壁纸取色 ' + src + ' → 主题色 ' + brand;
+      infoText.textContent = (colorSourceConfig().mode === 'manual' ? '手动基色 ' : '壁纸取色 ') + src + ' → 主题色 ' + brand;
     };
     refreshInfo();
     refreshPaletteInfo = refreshInfo;

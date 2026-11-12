@@ -1,0 +1,45 @@
+/* QQ's comprehensive search is a separate Electron window. These rules only
+ * apply after its title or route has identified it as the search surface. */
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page) {
+  box-sizing: border-box;
+  min-width: 0;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-bar, .search-header, .search-input-wrap) {
+  gap: 8px !important;
+  padding-block: 8px !important;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  input[placeholder*='搜索'] {
+  min-width: 0 !important;
+  height: 38px !important;
+  border-radius: var(--ll-radius-sm) !important;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-tab, .search-tabs, .search-category, .search-category-list) {
+  gap: 4px !important;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-result, .search-result-list) {
+  min-height: 0 !important;
+  max-height: calc(100vh - 170px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-result-item, .search-item) {
+  padding-block: 8px !important;
+  border-radius: var(--ll-radius-xs) !important;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-result-item, .search-item):hover {
+  background: rgba(var(--ll-brand-rgb), 0.08) !important;
+}
+body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
+  :is(.search-result-item, .search-item):focus-visible {
+  outline: 2px solid var(--ll-brand) !important;
+  outline-offset: -2px;
+}

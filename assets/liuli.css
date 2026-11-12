@@ -29,6 +29,17 @@
   --ll-radius: 14px;
   --ll-radius-sm: 10px;
   --ll-radius-xs: 7px;
+  --ll-panel-radius: 16px;
+  --ll-menu-radius: 12px;
+  --ll-menu-pad: 6px;
+  --ll-menu-item-height: 34px;
+  --ll-ui-duration: 220ms;
+  --ll-ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ll-popup-alpha: clamp(0.56, calc(var(--ll-material-opacity) + 0.18), 0.82);
+  --ll-popup-surface: rgba(var(--ll-acrylic), var(--ll-popup-alpha));
+  --ll-popup-edge: inset 0 1px rgba(var(--ll-specular), 0.16);
+  --ll-composer-alpha: clamp(0.52, calc(var(--ll-material-opacity) + 0.10), 0.72);
+  --ll-composer-surface: rgba(var(--ll-acrylic), var(--ll-composer-alpha));
 
   /* 阴影与遮罩一律走 RGB 三元组，由 M3 的 scrim 语义提供（黑），
    * 这样暗/亮主题只需要换 alpha，不需要另写颜色。 */
@@ -132,7 +143,7 @@ body::after {
 /* .chat-input-area 也不加：backdrop-filter 会让它内部的 .msg-input
  * （ProseMirror 编辑器）在某些层叠条件下完全不绘制，
  * 表现就是「输入框消失」。输入区的背景改由 input-bar.css 单独给。 */
-.right-sidebar,
+.right-sidebar:not(:has(.group-box)),
 /* 右栏承载层：.group-box (180x800) 同时覆盖群公告与群成员，
  * 只挂这一块材质；里面的 .group-notice / .group-member / .group-user 全透明。 */
 .group-box,
@@ -284,8 +295,9 @@ body[data-liuli-dark='0'] .q-tag--orange .title {
 
 .msg-content-container {
   border-radius: var(--ll-radius) !important;
-  backdrop-filter: blur(12px) saturate(1.4) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(1.4) !important;
+  /* Keep bubble blur independent of panel blur to avoid a filter per message. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   box-shadow: 0 1px 6px rgba(var(--ll-shadow-rgb, 0, 0, 0), 0.16) !important;
 }
 
@@ -381,15 +393,8 @@ a,
  * 7. 弹层
  * ════════════════════════════════════════════════════════════ */
 
-.q-context-menu,
-.q-dialog,
-[class*='popover'] {
-  background: rgba(var(--ll-acrylic-high), 0.94) !important;
-  backdrop-filter: blur(28px) saturate(1.8) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
-  border-radius: var(--ll-radius) !important;
-  box-shadow: var(--ll-shadow-float) !important;
-}
+/* Popup surfaces are assigned to their visible root in layout.css. A generic
+ * [class*=popover] rule also hits nested shells and creates stacked glass. */
 
 /* ════════════════════════════════════════════════════════════
  * 8. 滚动条

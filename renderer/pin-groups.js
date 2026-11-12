@@ -45,6 +45,7 @@
   let scroller = null; // .q-scroll-view（滚动事件源）
   let observer = null; // 挂在 root 上，inner 被替换时也能自己重挂
   let frame = 0; // requestAnimationFrame 节流句柄
+  let wasAtTop = null;
 
   function isPinRow(node) {
     return (
@@ -95,7 +96,7 @@
       node.removeAttribute(PIN);
       node.removeAttribute(COUNT);
     }
-    document.querySelectorAll('.recent-contact .liuli-pin-heading, .recent-contact .liuli-pin-surface').forEach(node => node.remove());
+    document.querySelectorAll('.recent-contact .liuli-pin-heading').forEach(node => node.remove());
   }
 
   function syncHeader(row, role, countText) {
@@ -179,40 +180,6 @@
       if (value === 'first' || value === 'single') setAttr(row, COUNT, countText);
       else dropAttr(row, COUNT);
     }
-    syncSurface(run, realFirst, completeRun);
-  }
-
-  // 整组只铺一层底，不能每行向外扩 2px 再叠半透明色，否则接缝会变成横线。
-  function syncSurface(run, realFirst, completeRun) {
-    let surface = root.querySelector(':scope > .liuli-pin-surface');
-    const visible = run.filter(row => row.getBoundingClientRect().height > 0);
-    if (!visible.length) {
-      if (surface) surface.remove();
-      return;
-    }
-    if (!surface) {
-      surface = document.createElement('div');
-      surface.className = 'liuli-pin-surface';
-      surface.setAttribute('aria-hidden', 'true');
-      root.appendChild(surface);
-    }
-    const host = root.getBoundingClientRect();
-    const first = visible[0].getBoundingClientRect();
-    const last = visible[visible.length - 1].getBoundingClientRect();
-    const viewport = scroller ? scroller.getBoundingClientRect() : host;
-    // 底板是滚动容器外的兄弟节点，必须主动裁到可视区，不能滚到搜索框后面。
-    const top = Math.max(first.top, viewport.top);
-    const bottom = Math.min(last.bottom, viewport.bottom);
-    if (bottom <= top) {
-      if (surface.style.display !== 'none') surface.style.display = 'none';
-      return;
-    }
-    const roundTop = realFirst && first.top >= viewport.top;
-    const roundBottom = (completeRun || opts.collapsed) && last.bottom <= viewport.bottom;
-    const radius = (roundTop ? '12px 12px ' : '0 0 ') + (roundBottom ? '12px 12px' : '0 0');
-    const css = 'display:block;left:' + (first.left - host.left) + 'px;top:' + (top - host.top) +
-      'px;width:' + first.width + 'px;height:' + (bottom - top) + 'px;border-radius:' + radius + ';';
-    if (surface.style.cssText !== css) surface.style.cssText = css;
   }
 
   function schedule() {
@@ -258,9 +225,17 @@
   function bindScroll() {
     const next = root.querySelector('.q-scroll-view') || root;
     if (scroller === next) return;
-    if (scroller) scroller.removeEventListener('scroll', schedule);
+    if (scroller) scroller.removeEventListener('scroll', onScroll);
     scroller = next;
-    if (scroller) scroller.addEventListener('scroll', schedule, { passive: true });
+    wasAtTop = null;
+    if (scroller) scroller.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  function onScroll() {
+    const atTop = !!scroller && scroller.scrollTop < 2;
+    if (atTop === wasAtTop) return;
+    wasAtTop = atTop;
+    schedule();
   }
 
   function reflectAttrs() {
@@ -305,8 +280,9 @@
       observer = null;
     }
     if (scroller) {
-      scroller.removeEventListener('scroll', schedule);
+      scroller.removeEventListener('scroll', onScroll);
       scroller = null;
+      wasAtTop = null;
     }
     if (frame) {
       cancelAnimationFrame(frame);

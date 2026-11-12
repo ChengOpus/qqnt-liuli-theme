@@ -496,7 +496,7 @@
 /* 对方：深色亚克力，0.36 → 0.86，亮壁纸上也能读。
  * 配色里把「对方的气泡」换成颜色时，renderer 写 --ll-bubble-other / -fg / -link（color-roles.js） */
 .message-container .msg-content-container.container--others {
-  background: var(--ll-bubble-other, rgba(var(--ll-acrylic), 0.86)) !important;
+  background: var(--ll-bubble-other, rgba(var(--ll-acrylic), 0.70)) !important;
   color: var(--ll-bubble-other-fg, var(--ll-on-glass)) !important;
 }
 
@@ -917,15 +917,22 @@ body .message-container .msg-content-container .text-normal {
 }
 body .message-container .msg-content-container > .user-name {
   box-sizing: border-box !important;
-  contain: inline-size;
+  /* Size the bubble from the sender row as well as the message body. Inline-size
+   * containment made a short message shrink a long title to a few glyphs. */
+  contain: none !important;
+  width: max-content !important;
   min-width: 0 !important;
   max-width: 100% !important;
   font-size: var(--ll-name-font-size, 12px) !important;
   line-height: 1.4 !important;
   gap: 5px !important;
+  display: flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
 }
 body .message-container .msg-content-container > .user-name > .text-ellipsis {
   min-width: 0 !important;
+  flex: 0 1 auto !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   font-size: inherit !important;
@@ -938,9 +945,17 @@ body .message-container .msg-content-container > .user-name .q-tag * {
 body .message-container .msg-content-container > .user-name .q-tag {
   height: auto !important;
   min-height: 15px;
-  max-width: 45%;
+  flex: 0 0 auto !important;
+  max-width: min(45vw, 240px);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Text bubbles retain a modest blur; media, cards and QQ bubble skins keep
+ * their own rendering path. The separate cap prevents large chat histories
+ * from creating dozens of full-strength backdrop layers. */
+body[data-liuli-chat-style='tg'] .message-container .msg-content-container.container--others:not(.mix-message__container--pic):not(.ark-msg-content-container):not(.container--personalization) {
+  backdrop-filter: var(--ll-bubble-blur, none) !important;
+  -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
 }
 /* 经典式每条独立，TIM 连续分组；头像上下位置由独立选项决定。 */
 body[data-liuli-chat-style='classic'] .message-container .msg-content-container,

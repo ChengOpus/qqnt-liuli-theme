@@ -50,8 +50,8 @@
  * ════════════════════════════════════════════════════════════ */
 .forward-msg {
   background: rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.14)) !important;
-  backdrop-filter: blur(14px) saturate(1.4) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.4) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 1px solid rgba(var(--ll-tint-rgb), 0.1) !important;
   border-radius: var(--ll-radius-sm) !important;
   padding: 10px 12px !important;

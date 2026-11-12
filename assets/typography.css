@@ -43,70 +43,29 @@
   border-radius: var(--ll-radius-xs) !important;
 }
 
-/* ════════════════════════════════════════════════════════════
- * 2. 新消息分隔线：胶囊标签 + 两侧渐隐细线
- * ------------------------------------------------------------
- * 原设计是一条贯穿整个聊天区的实线 + 中间文字，非常抢眼。
- * 改成 M3 的做法：中间一个 pill 标签，两侧用渐变淡出的细线，
- * 视觉上"指向"而不是"切断"对话流。
- * ════════════════════════════════════════════════════════════ */
-
-/* 容器：横向 flex，两侧线 + 中间 pill */
-[class*='new-msg'],
-[class*='newMsg'],
-[class*='newmsg'],
-.chat-msg-area__tip,
-[class*='msg-divider'],
-[class*='unread-divider'] {
+/* 新消息提示只用文字。QQ 的两侧占位子节点不是线，给所有子节点
+ * 加 padding/border 会把它们画成录屏里的两个空矩形。 */
+.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
+  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider']) {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  height: auto !important;
+  justify-content: center !important;
+  gap: 8px !important;
   min-height: 28px !important;
-  padding: 6px 18px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   color: var(--ll-brand) !important;
   font-size: 12px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.4px !important;
 }
-
-/* 两侧细线 */
-[class*='new-msg']::before,
-[class*='new-msg']::after,
-[class*='msg-divider']::before,
-[class*='msg-divider']::after,
-[class*='unread-divider']::before,
-[class*='unread-divider']::after {
-  content: '' !important;
-  flex: 1 1 auto !important;
-  height: 1px !important;
-  border: none !important;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(var(--ll-brand-rgb), 0.42) 35%,
-    rgba(var(--ll-brand-rgb), 0.42) 65%,
-    transparent 100%
-  ) !important;
-}
-
-/* 中间胶囊：把文字本身做成 pill（若结构里文字是独立元素） */
-[class*='new-msg'] > *,
-[class*='msg-divider'] > *,
-[class*='unread-divider'] > * {
-  flex: 0 0 auto !important;
-  padding: 3px 12px !important;
-  border-radius: 999px !important;
-  background: rgba(var(--ll-brand-rgb), 0.14) !important;
-  border: 1px solid rgba(var(--ll-brand-rgb), 0.28) !important;
-  color: var(--ll-brand) !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-  line-height: 18px !important;
-  white-space: nowrap !important;
+.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
+  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider']) > :empty,
+.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
+  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider'])::before,
+.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
+  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider'])::after {
+  display: none !important;
+  content: none !important;
 }
 
 /* ════════════════════════════════════════════════════════════

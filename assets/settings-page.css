@@ -10,6 +10,9 @@
  * ============================================================ */
 
 /* 1. 整层：唯一一层模糊 */
+body[data-liuli-scope='setting'] #app::after {
+  content: none !important;
+}
 .setting-layout {
   /* 底色必须跟随 --ll-material-opacity，否则设置面板里的"不透明度"滑条
    * 改不到设置页（之前这里写死 0.66，拖动滑条这个页面纹丝不动）。

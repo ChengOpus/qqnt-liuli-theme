@@ -47,9 +47,9 @@
   overflow: auto !important;
   padding: 8px 10px !important;
   border-radius: 16px !important;
-  background: rgba(var(--ll-acrylic-high), 0.96) !important;
-  backdrop-filter: blur(28px) saturate(1.8) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+  background: var(--ll-popup-surface) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 1px solid rgba(var(--ll-tint-rgb), 0.12) !important;
   box-shadow: var(--ll-shadow-float) !important;
   flex-wrap: wrap !important;

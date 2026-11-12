@@ -135,7 +135,7 @@
     host.appendChild(box);
     box.appendChild(el('div', 'liuli-panel__group', '配色'));
     box.appendChild(
-      el('div', 'liuli-field__hint', '颜色都从壁纸取色派生，这里决定每个位置用哪一种颜色。')
+      el('div', 'liuli-field__hint', '颜色由当前主题基色派生，这里决定每个位置用哪一种颜色。')
     );
     const pv = el('div', 'liuli-roles-preview');
     const other = el('div', 'liuli-roles-bubble liuli-roles-bubble--other', '对方的消息');

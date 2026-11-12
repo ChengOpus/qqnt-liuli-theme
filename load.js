@@ -2,7 +2,7 @@ const require = process.getBuiltinModule('module').createRequire(snowlora.script
 const path = require('node:path');
 const loadResources = require('./resources.cjs');
 const { randomUUID } = require('node:crypto');
-const { BrowserWindow, app, shell } = require('electron');
+const { BrowserWindow, app, shell, screen } = require('electron');
 
 const root = path.dirname(snowlora.script);
 // One registry per QQ process. SnowLora runs this script once per matching
@@ -232,6 +232,25 @@ function attach(browserWindow) {
   wc.on('did-navigate-in-page', (event, url, isMainFrame) =>
     onRoute(state, event, url, isMainFrame)
   );
+  wc.on('page-title-updated', (_event, title) => {
+    if (state.searchSized || !/综合搜索/.test(String(title)) || browserWindow.isDestroyed()) return;
+    state.searchSized = true;
+    try {
+      const old = browserWindow.getBounds();
+      if (old.width <= 1000 && old.height <= 880) return;
+      const work = screen.getDisplayMatching(old).workArea;
+      const width = Math.min(920, work.width - 32);
+      const height = Math.min(740, work.height - 32);
+      browserWindow.setBounds({
+        x: Math.round(Math.max(work.x, Math.min(work.x + work.width - width, old.x + (old.width - width) / 2))),
+        y: Math.round(Math.max(work.y, Math.min(work.y + work.height - height, old.y + (old.height - height) / 2))),
+        width,
+        height
+      });
+    } catch (error) {
+      diagnostics?.log({ event: 'search-window-size', error: error.message });
+    }
+  });
   wc.once('destroyed', () => windows.delete(wc.id));
   const url = stateUrl(state);
   if (eligible(url)) {

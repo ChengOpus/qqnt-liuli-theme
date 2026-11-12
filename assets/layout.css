@@ -162,7 +162,7 @@ body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
   background-repeat: no-repeat !important;
   background-position: left center !important;
   background-size: 3px 18px !important;
-  box-shadow: var(--ll-card-shadow) !important;
+  box-shadow: none !important;
   color: var(--ll-on-primary-container) !important;
 }
 .recent-contact-item--selected .item__content * {
@@ -395,9 +395,8 @@ body[data-hash^="#/chat"]:not([data-liuli-tb="native"]) .window-title-bar > .win
  * 在元素自身改写变量即可，不用和内联 !important 抢。 */
 .global-container .container-content > .container-sidebar:hover,
 .global-container .container-content > .container-sidebar:has(:focus-visible) {
-  --ll-material-opacity: 0.92;
-  backdrop-filter: blur(24px) saturate(1.6) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -516,6 +515,14 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container > 
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .container-content {
   padding-top: var(--ll-dock-gap) !important;
+  transition: padding-left var(--ll-ui-duration) var(--ll-ui-ease),
+    padding-top var(--ll-ui-duration) var(--ll-ui-ease) !important;
+}
+body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content {
+  padding-left: calc(var(--ll-dock-gap) + var(--ll-nav-claim, 0px)) !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]):is([data-liuli-r-l], [data-liuli-r-r]) .global-container .container-content {
+  padding-top: 44px !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .container-content > .container-sidebar {
   top: var(--ll-dock-gap) !important;
@@ -539,7 +546,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   opacity: 0 !important;
   visibility: visible !important;
   transform: translateY(-3px) !important;
-  transition: opacity 180ms ease 120ms, transform 200ms cubic-bezier(0.22, 1, 0.36, 1) 120ms !important;
+  transition: opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .user-profile-card.topbar-profile {
   /* 让出左侧导航条（约 56px），展开时不压住导航顶部（2026-10-30） */
@@ -567,7 +574,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   opacity: 1 !important;
   pointer-events: auto !important;
   transform: none !important;
-  transition: opacity 140ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+  transition: opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 
 /* ── 标题栏控件「常驻（原版）」：data-liuli-tb="native"（设置 → 窗口按钮）──
@@ -633,8 +640,8 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])[data-liuli-r-r] #liu
 /* ── 左侧导航：完全收起，入口是左边缘的把手 ── */
 body[data-liuli-scope="main"] .global-container .container-content > .container-sidebar {
   transform: translateX(calc(-100% - var(--ll-dock-gap) - 4px)) !important;
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1) 180ms,
-    box-shadow 220ms ease 180ms !important;
+  transition: transform var(--ll-ui-duration) var(--ll-ui-ease),
+    box-shadow var(--ll-ui-duration) var(--ll-ui-ease) !important;
   -webkit-app-region: no-drag !important;
 }
 body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content > .container-sidebar,
@@ -643,11 +650,10 @@ body[data-liuli-scope="main"] .global-container .container-content > .container-
   transform: translateX(0) !important;
   transition-delay: 0s !important;
   box-shadow: var(--ll-card-shadow), var(--ll-shadow-float) !important;
-  --ll-material-opacity: 0.92;
 }
 body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content > .container-sidebar {
-  backdrop-filter: blur(24px) saturate(1.6) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
 }
 /* 旧的 6px 露边提示条不要了 */
 body[data-liuli-scope="main"] .global-container .container-content > .container-sidebar::after {
@@ -713,9 +719,9 @@ body {
   /* 浮层统一用界面同款材质（2026-11-02，用户确认）：右键菜单、三横菜单、表情面板、输入框「更多」、
    * 搜索结果、资料卡、展开的侧栏，都和会话列表 / 输入框一样是「亚克力 × 不透明度滑条 + 材质模糊滑条」，
    * 跟着设置里的「不透明度」「材质模糊」一起变。之前是固定 92% + 28px 模糊，几乎是实底，和界面不是一种东西。 */
-  --ll-float-bg: rgba(var(--ll-acrylic), var(--ll-material-opacity));
+  --ll-float-bg: var(--ll-popup-surface);
   --ll-float-blur: var(--ll-material-blur);
-  --ll-float-shadow: var(--ll-glow-brand), var(--ll-shadow-float);
+  --ll-float-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
   --ll-menu-bg: var(--ll-float-bg);
 }
 
@@ -733,9 +739,9 @@ body[data-liuli-scope="main"] .chat-input-area > .chat-func-bar.liuli-expanded {
 }
 /* 展开的导航盖在会话列表正上方，跟着 0.4 这类低不透明度会看不清下面的字，保持原来的 90% + 28px 模糊 */
 body[data-liuli-r-nav] .global-container .container-content > .container-sidebar.container-sidebar {
-  background: var(--ll-noise), rgba(var(--ll-acrylic), 0.9) !important;
-  backdrop-filter: blur(28px) saturate(1.6) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(1.6) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
   box-shadow: var(--ll-float-shadow) !important;
 }
 
@@ -771,7 +777,7 @@ body .bot-panel-wrapper,
 body .handoff-menu,
 body .q-float-card,
 body .main-search .search-result,
-body .aio .panel-container {
+body .aio .panel-container:not(:has(.side-panel)) {
   background: var(--ll-noise), var(--ll-menu-bg, var(--ll-float-bg)) !important;
   backdrop-filter: var(--ll-float-blur) !important;
   -webkit-backdrop-filter: var(--ll-float-blur) !important;
@@ -790,7 +796,7 @@ body .q-context-menu:not(.is-pure) {
   -webkit-backdrop-filter: none !important;
   transform: none !important;
   border: none !important;
-  border-radius: var(--ll-radius) !important;
+  border-radius: var(--ll-menu-radius) !important;
   box-shadow: var(--ll-float-shadow) !important;
   color: var(--ll-on-glass) !important;
 }
@@ -831,7 +837,7 @@ body .q-context-menu.is-pure:has(> .q-context-menu-item):not(#ll) {
   -webkit-backdrop-filter: none !important;
   transform: none !important;
   border: none !important;
-  border-radius: var(--ll-radius) !important;
+  border-radius: var(--ll-menu-radius) !important;
   box-shadow: var(--ll-float-shadow) !important;
   color: var(--ll-on-glass) !important;
 }
@@ -893,11 +899,21 @@ body :is(.q-context-menu, .q-menu, .q-popup__main, .q-dialog-main, .q-dialog, .m
 }
 /* 菜单项：DSH 菜单的 8px 圆角 + 品牌悬停 */
 body .q-context-menu-item {
-  border-radius: 8px !important;
+  min-height: var(--ll-menu-item-height) !important;
+  border-radius: var(--ll-radius-xs) !important;
   color: var(--ll-on-glass) !important;
+}
+body .q-context-menu-item__icon,
+body .q-context-menu-item__icon svg {
+  width: 16px !important;
+  height: 16px !important;
 }
 body .q-context-menu-item:hover {
   background: rgba(var(--ll-brand-rgb), 0.14) !important;
+}
+body .q-context-menu-item:focus-visible {
+  outline: 2px solid var(--ll-brand) !important;
+  outline-offset: -2px;
 }
 /* @ 成员面板的当前项（键盘上下选中的那一行）：QQ 只在 q-theme=dark 下写了 rgba(255,255,255,0.2)，
  * 琉璃亮色时白底叠白看不见，暗色时浅灰底上字只有 4:1。按 M3 选中态用 primaryContainer + onPrimaryContainer，
@@ -1110,7 +1126,7 @@ body .contact-layout .sys-notify .sys-notify-card:not(#ll):hover {
  * material-blur-strong 档（盖在别的内容上时，下面的字要糊掉才读得清）。 */
 body {
   --ll-card-bg: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity));
-  --ll-card-blur-strong: blur(40px) saturate(1.6);
+  --ll-card-blur-strong: var(--ll-material-blur);
 }
 body[data-liuli-r-nav] .global-container .container-content > .container-sidebar.container-sidebar {
   --ll-material-opacity: inherit;
@@ -1138,10 +1154,16 @@ body[data-liuli-scope="main"] .aio .chat-input-area::before {
   inset: 0 !important;
   z-index: -1 !important;
   border-radius: inherit !important;
-  background: var(--ll-card-bg) !important;
+  background: var(--ll-noise), var(--ll-composer-surface) !important;
   backdrop-filter: var(--ll-card-blur-strong) !important;
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
+  box-shadow: var(--ll-popup-edge) !important;
   pointer-events: none !important;
+}
+body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* ── 独立聊天窗（#/chat）输入卡：和主窗同一套玻璃材质（#52） ──
@@ -1168,9 +1190,10 @@ body[data-hash^="#/chat"] .chat-input-area::before {
   inset: 0 !important;
   z-index: -1 !important;
   border-radius: inherit !important;
-  background: var(--ll-card-bg) !important;
+  background: var(--ll-noise), var(--ll-composer-surface) !important;
   backdrop-filter: var(--ll-card-blur-strong) !important;
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
+  box-shadow: var(--ll-popup-edge) !important;
   pointer-events: none !important;
 }
 body[data-hash^="#/chat"] .chat-input-area > .msg-input {
@@ -1246,7 +1269,7 @@ body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll) {
   flex-wrap: nowrap !important;
   align-items: stretch !important;
   gap: 2px !important;
-  padding: 6px !important;
+  padding: var(--ll-menu-pad) !important;
   border: none !important;
   border-radius: var(--ll-radius) !important;
   background: transparent !important;
@@ -1460,7 +1483,7 @@ body .chat-input-area > .chat-func-bar.liuli-expanded:not(#ll):not(#ll):not(#ll)
   grid-template-columns: repeat(4, 38px) !important;
   grid-auto-rows: 38px !important;
   gap: 4px !important;
-  padding: 6px !important;
+  padding: var(--ll-menu-pad) !important;
   /* 面板本身不做淡入：材质画在 ::before 上，面板透明度 < 1 时模糊失效，动画结束才突然出现（见 motion.css 右键菜单那段）。
    * 淡入放到 ::before 上，按钮有自己的 liuli-tool-in 入场。 */
   animation: none !important;
@@ -1581,7 +1604,7 @@ body .bar-more-menu.q-float-card:not(#ll) {
  * 抽屉整体挂浮层材质，里面的分组卡改成浅一档的表面，避免玻璃叠玻璃。
  * ════════════════════════════════════════════════════════════ */
 body .aio .side-panel:not(#ll) {
-  border-radius: var(--ll-radius) !important;
+  border-radius: var(--ll-panel-radius) !important;
   overflow: hidden auto !important;
   isolation: isolate !important;
   box-shadow: var(--ll-float-shadow, var(--ll-shadow-float)) !important;
@@ -1593,24 +1616,25 @@ body .aio .side-panel:not(#ll)::before {
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), 0.9);
-  backdrop-filter: blur(28px) saturate(1.6);
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  background: var(--ll-noise), var(--ll-popup-surface);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
 }
 body .aio .side-panel .group-profile-card:not(#ll),
 body .aio .side-panel .group-member-card:not(#ll),
 body .aio .side-panel .pulldown-menu:not(#ll),
 body .aio .side-panel .q-pulldown-menu:not(#ll) {
-  background: rgba(var(--ll-on-glass-rgb), 0.06) !important;
+  background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+  border: none !important;
 }
 body .aio .side-panel .field-body:not(#ll),
 body .aio .side-panel .input-container:not(#ll),
 body .aio .side-panel .q-pulldown-menu-button:not(#ll) {
-  background: rgba(var(--ll-on-glass-rgb), 0.06) !important;
-  border-color: rgba(var(--ll-on-glass-rgb), 0.14) !important;
+  background: rgba(var(--ll-on-glass-rgb), 0.04) !important;
+  border-color: transparent !important;
   border-radius: 10px !important;
 }
 body .aio .side-panel .field-body:not(#ll):hover,
@@ -1646,7 +1670,7 @@ body .q-dialog .q-dialog-modal:not(#ll) {
   background: rgba(var(--ll-scrim-rgb), 0.36) !important;
 }
 body .q-dialog > .q-dialog-main:not(#ll):not(#ll) {
-  background: var(--ll-noise), rgba(var(--ll-acrylic), 0.9) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-float-blur, blur(28px) saturate(1.6)) !important;
   -webkit-backdrop-filter: var(--ll-float-blur, blur(28px) saturate(1.6)) !important;
   border-radius: var(--ll-radius) !important;
