@@ -91,8 +91,8 @@ body {
   --overlay_pressed_brand: rgba(var(--ll-brand-rgb), 0.24) !important;
   --overlay_allblack_hover: rgba(var(--ll-tint-rgb), 0.06) !important;
   --overlay_allblack_pressed: rgba(var(--ll-tint-rgb), 0.1) !important;
-  --overlay_mask_standard: rgba(var(--ll-scrim-rgb), 0.5) !important;
-  --overlay_mask_dark: rgba(var(--ll-scrim-rgb), 0.6) !important;
+  --overlay_mask_standard: rgba(var(--ll-scrim-rgb), var(--ll-overlay-dim)) !important;
+  --overlay_mask_dark: rgba(var(--ll-scrim-rgb), 0.28) !important;
   --overlay_mask_aio: transparent !important;
 
   /* ── 列表悬停 ── */
@@ -206,7 +206,7 @@ body[data-liuli-dark='1'] {
   --bubble_host: rgba(var(--ll-brand-rgb), 0.22) !important;
   --bubble_host_text: var(--ll-on-glass) !important;
   --on_bubble_host_text: var(--ll-on-glass) !important;
-  --overlay_mask_standard: rgba(var(--ll-scrim-rgb), 0.55) !important;
+  --overlay_mask_standard: rgba(var(--ll-scrim-rgb), var(--ll-overlay-dim)) !important;
 }
 
 /* ── QQ 旧版 token（连字符 / 下划线数字写法）──

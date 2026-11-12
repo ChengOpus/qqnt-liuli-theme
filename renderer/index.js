@@ -45,9 +45,7 @@
     'layout-custom.css',
     'integration.css',
     'search.css',
-    // 置顶会话分组（#55）：排在最后，才能在 typography.css 的
-    // .recent-contact-item::before/after { display:none !important } 之后接管
-    // 行的两个伪元素。
+    // 置顶行用 QQ 原生 class 标记；末尾覆写会话行视觉。
     'pin-groups.css'
   ];
   const STYLE_ID = 'liuli-dsh-theme';
@@ -60,17 +58,17 @@
       const saved = JSON.parse(localStorage.getItem(COLOR_SOURCE_KEY) || '{}');
       const hex = typeof saved.hex === 'string' ? saved.hex.trim() : '';
       if (saved.mode === 'manual' && /^#[0-9a-f]{6}$/i.test(hex))
-        return { mode: 'manual', hex: hex.toLowerCase() };
+        return { mode: 'manual', hex: hex.toLowerCase(), exact: saved.exact === true };
       if (saved.mode === 'wallpaper' && /^#[0-9a-f]{6}$/i.test(hex))
-        return { mode: 'wallpaper', hex: hex.toLowerCase() };
+        return { mode: 'wallpaper', hex: hex.toLowerCase(), exact: saved.exact === true };
     } catch (e) {}
-    return { mode: 'wallpaper', hex: '' };
+    return { mode: 'wallpaper', hex: '', exact: false };
   }
-  function saveColorSource(mode, hex) {
+  function saveColorSource(mode, hex, exact = colorSourceConfig().exact) {
     const manualHex = /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : colorSourceConfig().hex;
     const value = mode === 'manual' && manualHex
-      ? { mode: 'manual', hex: manualHex }
-      : { mode: 'wallpaper', hex: manualHex };
+      ? { mode: 'manual', hex: manualHex, exact: !!exact }
+      : { mode: 'wallpaper', hex: manualHex, exact: !!exact };
     try { localStorage.setItem(COLOR_SOURCE_KEY, JSON.stringify(value)); }
     catch (error) { toast('主题色保存失败：' + error.message); }
     window.__liuliPaletteApplied = false;
@@ -236,6 +234,12 @@
     const h = hex.replace('#', '');
     return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ');
   }
+  function readableOn(hex) {
+    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const linear = rgb.map(n => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4);
+    const light = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+    return light > 0.179 ? '#000000' : '#ffffff';
+  }
   function alphaComposite(fg, bg, a) {
     const ph = fg.replace('#', ''),
       bh = bg.replace('#', '');
@@ -277,6 +281,9 @@
       '--ll-on-brand': onPrimary,
       '--ll-on-brand-rgb': rgbTriplet(onPrimary),
       '--ll-secondary': mcu.hexFromArgb(s.secondary),
+      '--ll-role-primary': mcu.hexFromArgb(s.primary),
+      '--ll-role-secondary': mcu.hexFromArgb(s.secondary),
+      '--ll-role-tertiary': mcu.hexFromArgb(s.tertiary),
       '--ll-tertiary': mcu.hexFromArgb(s.tertiary),
       '--ll-tertiary-container': mcu.hexFromArgb(s.tertiaryContainer),
       '--ll-on-tertiary-container': mcu.hexFromArgb(s.onTertiaryContainer),
@@ -341,6 +348,26 @@
     try {
       Object.assign(vars, roleVars(mcu, theme, isDark, roles));
     } catch (e) {}
+    if (selection.mode === 'manual' && selection.exact) {
+      const onSource = readableOn(source);
+      vars['--ll-role-primary'] = source;
+      if (roles.accent === 'primary') {
+        vars['--ll-brand'] = source;
+        vars['--ll-brand-rgb'] = rgbTriplet(source);
+        vars['--ll-on-brand'] = onSource;
+        vars['--ll-on-brand-rgb'] = rgbTriplet(onSource);
+        vars['--ll-brand-hover'] = `color-mix(in srgb, ${source} 88%, ${onSource})`;
+        vars['--ll-brand-pressed'] = `color-mix(in srgb, ${source} 78%, ${onSource})`;
+      }
+      if (roles.selected === 'primary') {
+        vars['--ll-selected'] = source;
+        vars['--ll-selected-rgb'] = rgbTriplet(source);
+        vars['--ll-on-selected'] = onSource;
+        vars['--ll-on-selected-rgb'] = rgbTriplet(onSource);
+        vars['--ll-primary-container'] = source;
+        vars['--ll-on-primary-container'] = onSource;
+      }
+    }
     const body = document.body;
     for (const k in vars) {
       if (vars[k] === null) body.style.removeProperty(k);
@@ -348,6 +375,7 @@
     }
     body.dataset.liuliSource = source;
     body.dataset.liuliColorMode = selection.mode;
+    body.dataset.liuliColorExact = String(selection.mode === 'manual' && selection.exact);
     body.toggleAttribute('data-liuli-other-solid', vars['--ll-bubble-other'] != null);
     llApplyModeSettings();
     refreshPaletteInfo();
@@ -356,13 +384,13 @@
     );
   }
   const GLASS = [
-    ['.container-sidebar', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
-    ['.recent-contact', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
-    ['.right-sidebar:not(:has(.group-box))', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
-    ['.group-box', 'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'],
+    ['.container-sidebar', 'var(--ll-noise), var(--ll-popup-surface)'],
+    ['.recent-contact', 'var(--ll-noise), var(--ll-popup-surface)'],
+    ['.right-sidebar:not(:has(.group-box))', 'var(--ll-noise), var(--ll-popup-surface)'],
+    ['.group-box', 'var(--ll-noise), var(--ll-popup-surface)'],
     [
       '.user-profile-card:not(.topbar-profile)',
-      'var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity))'
+      'var(--ll-noise), var(--ll-popup-surface)'
     ]
   ];
   const CLEAR = [
@@ -509,7 +537,7 @@
     // 置顶会话分组（#55）
     pinGroup: true,
     pinColor: false,
-    pinCollapsed: false,
+    pinCollapsed: false, // Legacy setting, no longer used by the list.
     hideImageNames: false,
     hideEmptyLogo: true,
     chatStyle: 'tg',
@@ -550,11 +578,7 @@
       toast('保存失败：' + error.message);
     }
   }
-  /* 置顶会话分组（#55）：DOM 标记全部交给 renderer/pin-groups.js，
-   * 这里只做三件事——把设置翻译成 options、在设置变化时重新调用、
-   * 把「点了小标题」写回 pinCollapsed。
-   * 只在主窗口生效：设置窗（#/setting）和独立聊天窗里没有会话列表，
-   * 挂监听没有意义，还会和主窗口抢同一个 .recent-contact。 */
+  /* Only the main window owns the conversation list. */
   function llApplyPinGroups() {
     const api = window.__liuliPinGroups;
     if (!api || !document.body) return;
@@ -566,18 +590,9 @@
       const cfg = llNormalizeSettings(llModeCfg || {});
       api.apply({
         group: cfg.pinGroup !== false,
-        color: cfg.pinColor === true,
-        collapsed: cfg.pinCollapsed === true,
-        onToggleCollapsed: next => llSetPinCollapsed(next)
+        color: cfg.pinColor === true
       });
     } catch (e) {}
-  }
-  function llSetPinCollapsed(next) {
-    const cfg = llNormalizeSettings(llModeCfg || {});
-    cfg.pinCollapsed = !!next;
-    // 走 applySettings 而不是直接 saveSettings：它会同步 llModeCfg、
-    // 写 localStorage（广播给设置窗）并重新 apply，一处收口。
-    applySettings(cfg, true);
   }
   async function llResetAll() {
     try {
@@ -2152,9 +2167,6 @@
           if (!t || typeof t.closest !== 'function') return;
           const item = t.closest('.recent-contact-item');
           if (!item) return;
-          // 分组标题只折叠列表，不应触发当前聊天的退出动画。
-          const pinHeading = item.querySelector(':scope > .liuli-pin-heading');
-          if (pinHeading && e.clientY - item.getBoundingClientRect().top <= 28) return;
           if (item.closest('.viewport-list__measure')) return;
           if (item.classList.contains('recent-contact-item--selected')) return;
           swStart();
@@ -2182,7 +2194,7 @@
     const work = new Set();
     const addedMessages = new Set();
     const themeUi =
-      '#liuli-settings-dialog, #liuli-settings-entry, #liuli-input-overlay, #liuli-toast, .liuli-top-hint, #liuli-nav-handle, #liuli-ctl-shield, .liuli-pin-heading, .liuli-pin-surface, #liuli-video-layer';
+      '#liuli-settings-dialog, #liuli-settings-entry, #liuli-input-overlay, #liuli-toast, .liuli-top-hint, #liuli-nav-handle, #liuli-ctl-shield, #liuli-video-layer';
     const structure =
       '#app, .global-container, .window-title-bar, .window-control-area, .chat-input-area, .msg-input, .chat-msg-area, .recent-contact, .container-sidebar';
     let frame = 0;
@@ -2444,7 +2456,7 @@
       if (intent[k]) clearTimeout(intent[k].timer);
       intent[k] = null;
     }
-    function armIntent(k, delay) {
+    function armIntent(k, delay, tolerance = 28) {
       const due = performance.now() + delay;
       if (intent[k] && intent[k].due <= due) return;
       cancelIntent(k);
@@ -2454,12 +2466,18 @@
         timer: setTimeout(() => {
           intent[k] = null;
           if (!childWindowFocused && !nativeBar() && topZone(k, last.x, last.y) &&
-              Math.abs(last.x - startX) < 28) set(k, true);
+              Math.abs(last.x - startX) < tolerance) set(k, true);
         }, delay)
       };
     }
     function updateTopIntent(k, dx, dy) {
       if (state[k] || !topZone(k, last.x, last.y)) { cancelIntent(k); return; }
+      // The close corner is an explicit target: respond before the normal
+      // predictive dwell, including during a fast horizontal approach.
+      if (k === 'r' && last.x >= innerWidth - 76 && last.y <= 44) {
+        armIntent(k, 22, 96);
+        return;
+      }
       const upward = dy < -1.5 && Math.abs(dx) < Math.abs(dy) * 2 + 12;
       if (upward) armIntent(k, 60);
       else if (last.y <= TOP_EDGE) armIntent(k, 130);
@@ -4233,16 +4251,22 @@
     const resetSource = document.createElement('button');
     resetSource.type = 'button';
     resetSource.textContent = '恢复默认';
-    sourceRow.append(auto, manual, picker, hexInput, resetSource);
+    const exact = document.createElement('button');
+    exact.type = 'button';
+    exact.textContent = '直接使用输入色';
+    exact.setAttribute('aria-pressed', 'false');
+    sourceRow.append(auto, manual, picker, hexInput, exact, resetSource);
     pageColor.appendChild(sourceRow);
     const sourceHint = document.createElement('div');
     sourceHint.className = 'liuli-field__hint';
-    sourceHint.textContent = '手动颜色会保持不变；切回自动后才从壁纸重新取色。';
+    sourceHint.textContent = '手动颜色会保持不变；开启「直接使用输入色」后，主色与主色选中项使用输入的 HEX，其余颜色仍从它派生。';
     pageColor.appendChild(sourceHint);
     function syncSourceControls() {
       const cfg = colorSourceConfig();
       auto.classList.toggle('is-active', cfg.mode === 'wallpaper');
       manual.classList.toggle('is-active', cfg.mode === 'manual');
+      exact.classList.toggle('is-active', cfg.mode === 'manual' && cfg.exact);
+      exact.setAttribute('aria-pressed', String(cfg.mode === 'manual' && cfg.exact));
       picker.value = cfg.hex || DEFAULT_SOURCE;
       hexInput.value = cfg.hex || '';
       hexInput.setCustomValidity('');
@@ -4250,6 +4274,11 @@
     auto.addEventListener('click', () => { saveColorSource('wallpaper', ''); syncSourceControls(); });
     manual.addEventListener('click', () => {
       saveColorSource('manual', colorSourceConfig().hex || document.body.dataset.liuliSource || DEFAULT_SOURCE);
+      syncSourceControls();
+    });
+    exact.addEventListener('click', () => {
+      const cfg = colorSourceConfig();
+      saveColorSource('manual', cfg.hex || document.body.dataset.liuliSource || DEFAULT_SOURCE, !cfg.exact);
       syncSourceControls();
     });
     picker.addEventListener('change', () => { saveColorSource('manual', picker.value); syncSourceControls(); });
@@ -4286,7 +4315,9 @@
       const src = document.body.dataset.liuliSource || DEFAULT_SOURCE;
       const brand = getComputedStyle(document.body).getPropertyValue('--ll-brand').trim();
       swatch.style.background = brand || src;
-      infoText.textContent = (colorSourceConfig().mode === 'manual' ? '手动基色 ' : '壁纸取色 ') + src + ' → 主题色 ' + brand;
+      const cfg = colorSourceConfig();
+      infoText.textContent = (cfg.mode === 'manual' ? '手动基色 ' : '壁纸取色 ') + src +
+        (cfg.mode === 'manual' && cfg.exact ? ' → 直接使用的主色 ' : ' → 派生主题色 ') + brand;
     };
     refreshInfo();
     refreshPaletteInfo = refreshInfo;
@@ -4548,18 +4579,11 @@
         button.dataset.settingValue = String(i === 0);
       });
     }
-    settingSwitch('置顶会话单独成组', 'pinGroup', settings.pinGroup !== false, function (on) {
-      if (!on) settings.pinCollapsed = false;
-      persist('pinGroup', on);
-    });
-    const hint = document.createElement('div');
-    hint.className = 'liuli-field__hint';
-    hint.textContent = '列表顶部显示「置顶 · N」小标题，点小标题可以折叠';
-    host.appendChild(hint);
-    settingSwitch('置顶分组使用强调色', 'pinColor', settings.pinColor === true);
+    settingSwitch('轻量标识置顶会话', 'pinGroup', settings.pinGroup !== false);
+    settingSwitch('置顶行增加主题色', 'pinColor', settings.pinColor === true);
     const colorHint = document.createElement('div');
     colorHint.className = 'liuli-field__hint';
-    colorHint.textContent = '用主题强调色的容器底色和容器文字色，和默认的淡品牌色区分。';
+    colorHint.textContent = '置顶行使用淡主题色和图钉标识，不显示数量与折叠按钮。';
     host.appendChild(colorHint);
     settingSwitch('隐藏空会话的 QQ 图标', 'hideEmptyLogo', settings.hideEmptyLogo !== false);
     const messageGroup = document.createElement('div');

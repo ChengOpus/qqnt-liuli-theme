@@ -20,8 +20,6 @@
 
 body {
   --ll-dock-gap: 8px;
-  /* 悬浮胶囊需要比承载层更实，壁纸亮时才看得清 */
-  --ll-pill-opacity: clamp(0.34, calc(var(--ll-material-opacity) + 0.22), 0.68);
   /* 卡片描边：按用户要求关闭（2026-10-28）。想恢复就改回
    * 1px solid var(--ll-stroke-3, rgba(var(--ll-tint-rgb), 0.08)) */
   --ll-card-border: none;
@@ -211,7 +209,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .use
   margin: 5px 0 0 var(--ll-dock-gap) !important;
   padding: 0 12px 0 4px !important;
   border-radius: 12px !important;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-pill-opacity)) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   box-shadow: var(--ll-shadow) !important;
@@ -262,7 +260,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   gap: 0 !important;
   align-items: center !important;
   border-radius: 12px !important;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-pill-opacity)) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   box-shadow: var(--ll-shadow) !important;
@@ -301,7 +299,7 @@ body[data-hash^="#/chat"]:not([data-liuli-tb="native"]) .window-title-bar > .win
   gap: 0 !important;
   align-items: center !important;
   border-radius: 12px !important;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-pill-opacity)) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   box-shadow: var(--ll-shadow) !important;
@@ -462,7 +460,7 @@ body .contact-layout .contact .contact-notify {
 body .contact-layout .contact-profile .profile__body {
   padding: 20px !important;
   border-radius: var(--ll-radius) !important;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-pill-opacity)) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   box-shadow: var(--ll-card-shadow) !important;
@@ -514,10 +512,12 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container > 
   overflow: visible !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .container-content {
-  /* Reserve the title row once. Animating padding-top reflowed the full chat
-   * and its backdrop layers on every frame of a hover reveal. */
-  padding-top: 44px !important;
+  /* Reclaim the title row when hidden. Change layout once per reveal state. */
+  padding-top: var(--ll-dock-gap) !important;
   transition: padding-left var(--ll-ui-duration) var(--ll-ui-ease) !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]):is([data-liuli-r-l], [data-liuli-r-r]) .global-container .container-content {
+  padding-top: 44px !important;
 }
 body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content {
   padding-left: calc(var(--ll-dock-gap) + var(--ll-nav-claim, 0px)) !important;
@@ -547,7 +547,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar .w
   transition: opacity var(--ll-ui-duration) var(--ll-ui-ease), transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .user-profile-card.topbar-profile {
-  left: var(--ll-dock-gap) !important;
+  left: 0 !important;
   transition: left var(--ll-ui-duration) var(--ll-ui-ease),
     opacity var(--ll-ui-duration) var(--ll-ui-ease),
     transform var(--ll-ui-duration) var(--ll-ui-ease) !important;
@@ -617,7 +617,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .liuli-top-hint {
   -webkit-app-region: no-drag;
   cursor: default;
 }
-body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-l { left: var(--ll-dock-gap); }
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-l { left: 0; }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) #liuli-top-hint-r { right: 0; }
 /* 提示短横：告诉用户这里能唤出东西（DSH WindowControls 的 .hint 同款） */
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .liuli-top-hint::after {
@@ -788,6 +788,15 @@ body .aio .panel-container:not(:has(.side-panel)) {
   box-shadow: var(--ll-float-shadow) !important;
   color: var(--ll-on-glass) !important;
 }
+/* The floating wrapper and its profile card may both match the material
+ * list. Let the inner card own the sole backdrop layer. */
+body .q-float-card:has(.group-profile-card, .group-member-card):not(#ll),
+body .q-popup__main:has(.group-profile-card, .group-member-card):not(#ll) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
 /* Search suggestions live inside the already blurred conversation pane.
  * Only a light tint is needed there; a second backdrop layer made the list
  * look opaque and painted a conspicuous rectangle over the pane. */
@@ -899,7 +908,7 @@ body .bar-more-menu-inner:not(.q-context-menu):not(#ll) {
 }
 /* 遮罩层：保留轻微压暗，不要磨砂 */
 body .q-popup__modal {
-  background: rgba(var(--ll-scrim-rgb), 0.32) !important;
+  background: rgba(var(--ll-scrim-rgb), var(--ll-overlay-dim)) !important;
 }
 
 /* 弹层里的文字/图标：统一走 onSurface 体系，次要文字不低于 on-glass-2 */
@@ -1165,7 +1174,7 @@ body[data-liuli-scope="main"] .chat-input-area > .chat-func-bar.liuli-expanded {
 body[data-liuli-scope="main"] .aio .chat-input-area {
   background: transparent !important;
   isolation: isolate !important;
-  box-shadow: var(--ll-card-shadow) !important;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
 }
 body[data-liuli-scope="main"] .aio .chat-input-area::before {
   content: "" !important;
@@ -1173,7 +1182,7 @@ body[data-liuli-scope="main"] .aio .chat-input-area::before {
   inset: 0 !important;
   z-index: -1 !important;
   border-radius: inherit !important;
-  background: var(--ll-noise), var(--ll-composer-surface) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-card-blur-strong) !important;
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
   box-shadow: var(--ll-popup-edge) !important;
@@ -1191,15 +1200,15 @@ body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
 body[data-hash^="#/chat"] .chat-input-area {
   /* 底边和主窗一致：贴住正文卡底（0），只有左右上 10px；
    * 原来 10px 四周，底部多出 10px，输入卡和右侧群成员卡不在同一条底线上（2026-11-10） */
-  margin: 10px 10px 0 !important;
+  margin: 10px 14px 12px !important;
   width: auto !important;
   align-self: stretch !important;
   padding: 0 !important;
-  border: var(--ll-card-border) !important;
-  border-radius: var(--ll-radius) !important;
+  border: none !important;
+  border-radius: var(--ll-panel-radius) !important;
   background: transparent !important;
   isolation: isolate !important;
-  box-shadow: var(--ll-card-shadow) !important;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
   height: auto !important;
   max-height: 50vh !important;
 }
@@ -1209,7 +1218,7 @@ body[data-hash^="#/chat"] .chat-input-area::before {
   inset: 0 !important;
   z-index: -1 !important;
   border-radius: inherit !important;
-  background: var(--ll-noise), var(--ll-composer-surface) !important;
+  background: var(--ll-noise), var(--ll-popup-surface) !important;
   backdrop-filter: var(--ll-card-blur-strong) !important;
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
   box-shadow: var(--ll-popup-edge) !important;
@@ -1259,7 +1268,9 @@ body .sys-status-editor .entrance-btn {
 /* ── 输入卡底边与左侧会话列表卡、右侧群成员卡对齐（2026-10-29）──
  * 原来 margin-bottom:10px，输入卡底边在 863，两侧卡片底边在 873。 */
 body[data-liuli-scope="main"] .aio .chat-input-area:not(#ll) {
-  margin-bottom: 0 !important;
+  margin: 10px 14px 12px !important;
+  border: none !important;
+  border-radius: var(--ll-panel-radius) !important;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1686,7 +1697,7 @@ body .q-dialog:not(#ll):not(#ll) {
   animation: none !important;
 }
 body .q-dialog .q-dialog-modal:not(#ll) {
-  background: rgba(var(--ll-scrim-rgb), 0.36) !important;
+  background: rgba(var(--ll-scrim-rgb), var(--ll-overlay-dim)) !important;
 }
 body .q-dialog > .q-dialog-main:not(#ll):not(#ll) {
   background: var(--ll-noise), var(--ll-popup-surface) !important;
