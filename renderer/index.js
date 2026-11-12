@@ -33,6 +33,7 @@
     'liuli.css',
     'typography.css',
     'panel.css',
+    'color-picker.css',
     'settings-page.css',
     'details.css',
     'no-dividers.css',
@@ -46,7 +47,8 @@
     'integration.css',
     'search.css',
     // 置顶行用 QQ 原生 class 标记；末尾覆写会话行视觉。
-    'pin-groups.css'
+    'pin-groups.css',
+    'surfaces.css'
   ];
   const STYLE_ID = 'liuli-dsh-theme';
   const WALLPAPER = window.LiuliHost.wallpaper;
@@ -351,7 +353,7 @@
     if (selection.mode === 'manual' && selection.exact) {
       const onSource = readableOn(source);
       vars['--ll-role-primary'] = source;
-      if (roles.accent === 'primary') {
+      if (!roles.custom?.accent) {
         vars['--ll-brand'] = source;
         vars['--ll-brand-rgb'] = rgbTriplet(source);
         vars['--ll-on-brand'] = onSource;
@@ -359,7 +361,7 @@
         vars['--ll-brand-hover'] = `color-mix(in srgb, ${source} 88%, ${onSource})`;
         vars['--ll-brand-pressed'] = `color-mix(in srgb, ${source} 78%, ${onSource})`;
       }
-      if (roles.selected === 'primary') {
+      if (!roles.custom?.selected) {
         vars['--ll-selected'] = source;
         vars['--ll-selected-rgb'] = rgbTriplet(source);
         vars['--ll-on-selected'] = onSource;
@@ -379,20 +381,11 @@
     body.toggleAttribute('data-liuli-other-solid', vars['--ll-bubble-other'] != null);
     llApplyModeSettings();
     refreshPaletteInfo();
+    window.LiuliRoles.refreshControls();
     console.log(
       '[theme] wallpaper source = ' + source + ' (accent ' + vars['--ll-brand'] + ')'
     );
   }
-  const GLASS = [
-    ['.container-sidebar', 'var(--ll-noise), var(--ll-popup-surface)'],
-    ['.recent-contact', 'var(--ll-noise), var(--ll-popup-surface)'],
-    ['.right-sidebar:not(:has(.group-box))', 'var(--ll-noise), var(--ll-popup-surface)'],
-    ['.group-box', 'var(--ll-noise), var(--ll-popup-surface)'],
-    [
-      '.user-profile-card:not(.topbar-profile)',
-      'var(--ll-noise), var(--ll-popup-surface)'
-    ]
-  ];
   const CLEAR = [
     '.message-panel',
     '.container-content-view',
@@ -404,7 +397,6 @@
     '.chat-msg-area',
     '.sidebar-nav',
     '.sidebar-wrapper',
-    '.group-panel',
     '.group-box__container',
     '.group-box__wrapper',
     '.group-notice',
@@ -490,16 +482,6 @@
   }
   function applyOverrides(root = document.body) {
     try {
-      for (const [sel, bg] of GLASS) {
-        elementsWithin(root, sel).forEach(el => {
-          if (el.dataset.liuliGlass) return;
-          el.dataset.liuliGlass = '1';
-          el.style.setProperty('background', bg, 'important');
-          el.style.setProperty('backdrop-filter', 'var(--ll-material-blur)', 'important');
-          el.style.setProperty('-webkit-backdrop-filter', 'var(--ll-material-blur)', 'important');
-          el.style.setProperty('border-radius', 'var(--ll-radius)', 'important');
-        });
-      }
       for (const sel of CLEAR) {
         elementsWithin(root, sel).forEach(el => {
           if (el.dataset.liuliClear) return;
@@ -509,6 +491,7 @@
           el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
         });
       }
+      window.LiuliSurfaces.apply(root);
     } catch (e) {}
   }
   async function loadText(name) {
@@ -850,6 +833,7 @@
     overlay.appendChild(pins);
     document.body.appendChild(overlay);
     var hoverTimer = 0;
+    let barExit = null;
     function setExpanded(open) {
       var bar = document.querySelector('.chat-func-bar');
       if (!bar) return;
@@ -859,8 +843,22 @@
         llLabelFuncBar(bar);
         applyBar();
       }
-      if (bar.classList.contains('liuli-expanded') === open) return;
-      bar.classList.toggle('liuli-expanded', open);
+      const reopening = !!barExit && open;
+      if (barExit) {barExit.cancel();barExit=null;}
+      bar.style.removeProperty('pointer-events');
+      if (bar.classList.contains('liuli-expanded') === open) {
+        if (reopening) document.querySelector('.chat-input-area')?.style.setProperty('z-index','40','important');
+        return;
+      }
+      if (!open && !motion.reduced && !document.hidden) {
+        bar.style.setProperty('pointer-events','none','important');
+        const exit=bar.animate([{opacity:1,translate:'0 0'},{opacity:0,translate:'0 4px'}],{duration:150,easing:'ease-out'});
+        barExit=exit;
+        exit.finished.then(()=>{
+          if(barExit!==exit)return;
+          barExit=null;bar.classList.remove('liuli-expanded');bar.style.removeProperty('pointer-events');
+        },()=>{});
+      } else bar.classList.toggle('liuli-expanded', open);
       var area = document.querySelector('.chat-input-area');
       if (area) {
         if (open) area.style.setProperty('z-index', '40', 'important');
@@ -899,9 +897,7 @@
         var bar = document.querySelector('.chat-func-bar');
         if (!bar || !bar.classList.contains('liuli-expanded')) return;
         if (bar.contains(e.target) || more.contains(e.target) || emoji.contains(e.target)) return;
-        bar.classList.remove('liuli-expanded');
-        more.dataset.open = '0';
-        more.title = '更多';
+        setExpanded(false);
         var area = document.querySelector('.chat-input-area');
         if (area) area.style.removeProperty('z-index');
       },
@@ -2194,7 +2190,7 @@
     const work = new Set();
     const addedMessages = new Set();
     const themeUi =
-      '#liuli-settings-dialog, #liuli-settings-entry, #liuli-input-overlay, #liuli-toast, .liuli-top-hint, #liuli-nav-handle, #liuli-ctl-shield, #liuli-video-layer';
+      '#liuli-settings-dialog, #liuli-settings-entry, #liuli-input-overlay, #liuli-toast, .liuli-top-hint, .liuli-pin-label, .liuli-picker, #liuli-nav-handle, #liuli-ctl-shield, #liuli-video-layer';
     const structure =
       '#app, .global-container, .window-title-bar, .window-control-area, .chat-input-area, .msg-input, .chat-msg-area, .recent-contact, .container-sidebar';
     let frame = 0;
@@ -2344,9 +2340,13 @@
         }
         if (pending.has('side') || pending.has('messages')) {
           llGroupMembersPass();
-          if (pending.has('side')) window.dispatchEvent(new Event('liuli-side-change'));
+          if (pending.has('side')) {
+            window.__liuliPinGroups.sync();
+            window.dispatchEvent(new Event('liuli-side-change'));
+          }
         }
         if (pending.has('geometry') || pending.has('layout')) {
+          window.LiuliSurfaces.syncComposer();
           mountInputBar();
           scheduleStick();
         }
@@ -2493,6 +2493,7 @@
       const right = document.querySelector('.group-box');
       const navWidth = nav?.getBoundingClientRect().width || 56;
       const asideWidth = aside?.getBoundingClientRect().width || 240;
+      document.body.style.setProperty('--ll-aside-width', Math.max(150, asideWidth - 8) + 'px');
       const rightWidth = right?.getBoundingClientRect().width || 0;
       const free = innerWidth - asideWidth - rightWidth - 380 - 32;
       const claim = Math.max(0, Math.min(navWidth + 12, free));
@@ -2513,6 +2514,16 @@
       state.nav = false;
       delete document.body.dataset.liuliRNav;
     }
+    function writeReveal(k,on) {
+      const target=k==='l'?document.querySelector('.two-col-layout__aside > .recent-contact'):
+        k==='r'?document.querySelector('.aio > .chat-header'):null;
+      const oldTop=target?.getBoundingClientRect().top;
+      if(on)document.body.dataset[KEYS[k]]='1';else delete document.body.dataset[KEYS[k]];
+      if(target&&Number.isFinite(oldTop)){
+        const delta=oldTop-target.getBoundingClientRect().top;
+        if(Math.abs(delta)>.5)window.LiuliMotion?.play(target,[{transform:`translateY(${delta}px)`},{transform:'none'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
+      }
+    }
     function set(k, on, hold) {
       if (k === 'nav' && navPinned()) {
         dropNav();
@@ -2525,7 +2536,7 @@
         }
         if (!state[k]) {
           state[k] = true;
-          document.body.dataset[KEYS[k]] = '1';
+          writeReveal(k,true);
           if (k === 'nav') syncRevealSpace();
         }
       } else if (state[k] && !timers[k]) {
@@ -2534,7 +2545,7 @@
           if (childWindowFocused || visibleDialog()) { timers[k] = 0; return; }
           timers[k] = 0;
           state[k] = false;
-          delete document.body.dataset[KEYS[k]];
+          writeReveal(k,false);
           if (k === 'nav') releaseNavFocus();
         }, hold || HOLD[k]);
       }
@@ -4240,14 +4251,7 @@
     const manual = document.createElement('button');
     manual.type = 'button';
     manual.textContent = '手动颜色';
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.setAttribute('aria-label', '选择主题色');
-    const hexInput = document.createElement('input');
-    hexInput.type = 'text';
-    hexInput.maxLength = 7;
-    hexInput.setAttribute('aria-label', 'HEX 主题色');
-    hexInput.placeholder = '#1d9bf0';
+    const picker = window.LiuliColorPicker.create({label:'主题基色',value:colorSourceConfig().hex || DEFAULT_SOURCE,onChange:color=>{saveColorSource('manual',color,true);syncSourceControls();}});
     const resetSource = document.createElement('button');
     resetSource.type = 'button';
     resetSource.textContent = '恢复默认';
@@ -4255,11 +4259,11 @@
     exact.type = 'button';
     exact.textContent = '直接使用输入色';
     exact.setAttribute('aria-pressed', 'false');
-    sourceRow.append(auto, manual, picker, hexInput, exact, resetSource);
+    sourceRow.append(auto, manual, picker.element, exact, resetSource);
     pageColor.appendChild(sourceRow);
     const sourceHint = document.createElement('div');
     sourceHint.className = 'liuli-field__hint';
-    sourceHint.textContent = '手动颜色会保持不变；开启「直接使用输入色」后，主色与主色选中项使用输入的 HEX，其余颜色仍从它派生。';
+    sourceHint.textContent = '手动颜色会保持不变；下方每个区域都可单独打开调色盘选色。' ;
     pageColor.appendChild(sourceHint);
     function syncSourceControls() {
       const cfg = colorSourceConfig();
@@ -4267,9 +4271,7 @@
       manual.classList.toggle('is-active', cfg.mode === 'manual');
       exact.classList.toggle('is-active', cfg.mode === 'manual' && cfg.exact);
       exact.setAttribute('aria-pressed', String(cfg.mode === 'manual' && cfg.exact));
-      picker.value = cfg.hex || DEFAULT_SOURCE;
-      hexInput.value = cfg.hex || '';
-      hexInput.setCustomValidity('');
+      picker.setValue(cfg.hex || document.body.dataset.liuliSource || DEFAULT_SOURCE);
     }
     auto.addEventListener('click', () => { saveColorSource('wallpaper', ''); syncSourceControls(); });
     manual.addEventListener('click', () => {
@@ -4279,17 +4281,6 @@
     exact.addEventListener('click', () => {
       const cfg = colorSourceConfig();
       saveColorSource('manual', cfg.hex || document.body.dataset.liuliSource || DEFAULT_SOURCE, !cfg.exact);
-      syncSourceControls();
-    });
-    picker.addEventListener('change', () => { saveColorSource('manual', picker.value); syncSourceControls(); });
-    hexInput.addEventListener('change', () => {
-      const value = hexInput.value.trim();
-      if (!/^#[0-9a-f]{6}$/i.test(value)) {
-        hexInput.setCustomValidity('请输入 #RRGGBB 格式的颜色');
-        hexInput.reportValidity();
-        return;
-      }
-      saveColorSource('manual', value);
       syncSourceControls();
     });
     resetSource.addEventListener('click', () => {
@@ -4317,7 +4308,7 @@
       swatch.style.background = brand || src;
       const cfg = colorSourceConfig();
       infoText.textContent = (cfg.mode === 'manual' ? '手动基色 ' : '壁纸取色 ') + src +
-        (cfg.mode === 'manual' && cfg.exact ? ' → 直接使用的主色 ' : ' → 派生主题色 ') + brand;
+        ' · 当前界面强调色 ' + brand;
     };
     refreshInfo();
     refreshPaletteInfo = refreshInfo;

@@ -1,0 +1,420 @@
+<!doctype html><meta charset="utf-8" /><title>琉璃匿名测试界面</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    font: 14px system-ui;
+  }
+  body {
+    background: linear-gradient(115deg, #f9deec, #e6edff 50%, #b9e6f5);
+  }
+  #app,
+  .global-container {
+    height: 100%;
+  }
+  .global-container {
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    height: 40px;
+  }
+  .topbar-content {
+    display: flex;
+  }
+  .user-profile-card {
+    width: 250px;
+  }
+  .user-profile-card__content {
+    display: flex;
+    gap: 8px;
+  }
+  .window-title-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+  }
+  .window-control-area {
+    display: flex;
+    position: absolute;
+    right: 0;
+  }
+  .window-control-area button {
+    border: 0;
+    background: transparent;
+  }
+  .container-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .container-sidebar {
+    width: 56px;
+    flex: none;
+  }
+  .container-content-view {
+    flex: 1;
+    min-width: 0;
+  }
+  .two-col-layout {
+    display: flex;
+    height: 100%;
+  }
+  .two-col-layout__aside {
+    width: 280px;
+    flex: none;
+    min-height: 0;
+  }
+  .two-col-layout__main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+  .recent-contact {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-search {
+    height: 52px;
+    padding: 8px;
+    position: relative;
+    flex: none;
+  }
+  .main-search input {
+    height: 36px;
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    background: #ffffff55;
+  }
+  .list-toggler {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  .q-scroll-view {
+    height: 100%;
+    overflow: auto;
+  }
+  .viewport-list__placeholder {
+    height: 0;
+  }
+  .recent-contact-item {
+    height: auto;
+    min-height: 72px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .item__avatar {
+    width: 40px;
+    flex: none;
+    height: 40px;
+    border-radius: 50%;
+    background: #bed9e8;
+  }
+  .item__content {
+    flex: 1;
+    min-width: 0;
+  }
+  .secondary-info {
+    font-size: 11px;
+  }
+  .item__summary {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .aio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .chat-header {
+    height: 48px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+  }
+  .message-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  .group-chat {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .chat-msg-area {
+    flex: 1;
+    min-height: 0;
+  }
+  .chat-msg-area__vlist {
+    height: 100%;
+    overflow: auto;
+    padding: 18px;
+  }
+  .ml-item {
+    padding: 8px 12px;
+  }
+  .message-container {
+    display: flex;
+    gap: 10px;
+  }
+  .avatar-span {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 50%;
+    background: #dcaebf;
+  }
+  .msg-content-container {
+    padding: 12px;
+    min-width: 100px;
+  }
+  .user-name {
+    font-size: 12px;
+  }
+  .message-content {
+    margin-top: 6px;
+  }
+  .chat-input-area {
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    background: #dce2ee;
+  }
+  .msg-input {
+    padding: 6px;
+  }
+  .ProseMirror {
+    min-height: 44px;
+    outline: 0;
+    padding: 10px;
+  }
+  .operation {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .send-btn-wrap {
+    width: 30px;
+    height: 30px;
+  }
+  .group-box {
+    width: 196px;
+    flex: none;
+    padding: 14px;
+  }
+  .group-user {
+    padding: 10px 0;
+    display: flex;
+    gap: 8px;
+  }
+  .group-member-search {
+    width: 28px;
+  }
+  .group-member-title {
+    font-weight: 600;
+  }
+  .search-result {
+    position: absolute;
+    left: 8px;
+    top: 54px;
+    width: calc(100% - 16px);
+    padding: 12px;
+    background: transparent;
+  }
+  .search-result-item {
+    padding: 15px 8px;
+  }
+  .q-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .q-dialog-modal {
+    position: absolute;
+    inset: 0;
+    background: #0008;
+  }
+  .q-dialog-main {
+    width: 430px;
+    height: 400px;
+    padding: 28px;
+    background: #eee;
+    position: relative;
+  }
+  .group-info {
+    position: absolute;
+    left: 330px;
+    top: 90px;
+    width: 340px;
+    padding: 24px;
+    background: #dfe6ee;
+    border: 1px solid #a3a6af;
+    z-index: 1300;
+  }
+  .group-info__content {
+    background: #dfe6ee;
+  }
+  .group-info .q-button--primary {
+    background: #09f;
+    color: white;
+    border: 0;
+    padding: 10px 16px;
+  }
+  .native-profile-tags span {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #c4c7d0;
+  }
+  .group-info p {
+    padding: 8px 0;
+  }
+  .group-info h2 {
+    margin: 0 0 12px;
+  }
+  .chat-func-bar {
+    display: none;
+  }
+  .test-pattern {
+    height: 170px;
+    border-radius: 12px;
+    background: repeating-linear-gradient(
+      120deg,
+      #e2b1a7 0 12px,
+      #f3deca 12px 24px,
+      #a1c8e8 24px 36px
+    );
+    margin-bottom: 12px;
+  }
+</style>
+<div id="app">
+  <div class="global-container">
+    <div class="topbar">
+      <div class="topbar-content">
+        <div class="user-profile-card topbar-profile">
+          <div class="user-profile-card__content">
+            <span>◉ 示例用户</span
+            ><span class="profile_signature">资料与状态</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="window-title-bar">
+      <div class="window-control-area">
+        <button>—</button><button>□</button><button class="close">×</button>
+      </div>
+    </div>
+    <div class="container-content">
+      <div class="container-sidebar"><div class="sidebar-nav">导航</div></div>
+      <div class="container-content-view">
+        <div class="two-col-layout">
+          <aside class="two-col-layout__aside">
+            <div class="recent-contact">
+              <div class="main-search">
+                <input placeholder="搜索" aria-label="搜索" />
+              </div>
+              <div class="list-toggler">
+                <div class="q-scroll-view">
+                  <div class="viewport-list__placeholder"></div>
+                  <div class="viewport-list__inner"></div>
+                </div>
+              </div>
+            </div>
+          </aside>
+          <main class="two-col-layout__main">
+            <div class="aio">
+              <div class="chat-header">
+                <b>示例群聊</b
+                ><span class="panel-header__action">⌕　＋　⋯</span>
+              </div>
+              <div class="message-panel">
+                <div class="group-chat">
+                  <div class="chat-msg-area">
+                    <div class="chat-msg-area__vlist"></div>
+                  </div>
+                  <div class="chat-input-area">
+                    <div class="chat-func-bar"></div>
+                    <div class="msg-input">
+                      <div class="qq-msg-editor">
+                        <div class="ProseMirror" contenteditable="true">
+                          在这里输入
+                        </div>
+                      </div>
+                    </div>
+                    <div class="operation">
+                      <div class="send-btn-wrap">
+                        <button class="send-msg">发送</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="group-box">
+                  <h3>群公告</h3>
+                  <p>这是一段匿名示例公告。</p>
+                  <div class="group-member">
+                    <div class="group-member-title">群聊成员 24</div>
+                    <div>管理 3</div>
+                    <button class="group-member-search">⌕</button>
+                    <div class="group-user">
+                      <span class="group-user__name">匿名成员</span
+                      ><span class="q-tag q-tag--blue">管理员</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const rows = document.querySelector(".viewport-list__inner");
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement("div");
+    row.className =
+      "recent-contact-item" +
+      (i < 3 ? " recent-contact-item--top" : "") +
+      (i === 0 ? " recent-contact-item--selected" : "");
+    row.dataset.contactId = "fixture-" + i;
+    row.innerHTML =
+      '<div class="item__avatar"></div><div class="item__content"><div class="contact-name__text">' +
+      (i < 3 ? "置顶" : "普通") +
+      "会话 " +
+      (i + 1) +
+      '</div><div class="item__summary">一段匿名消息预览</div></div><div class="secondary-info">12:00</div>';
+    rows.append(row);
+  }
+  const chat = document.querySelector(".chat-msg-area__vlist");
+  for (let i = 0; i < 8; i++) {
+    const row = document.createElement("div");
+    row.className = "ml-item";
+    row.id = "fixture-message-" + i;
+    row.innerHTML =
+      '<div class="message"><div class="message-container"><div class="avatar-span"></div><div class="message-content__wrapper"><div class="msg-content-container container--others"><div class="user-name"><span class="q-tag">LV100 示例头衔</span><span class="text-ellipsis">匿名用户</span></div><div class="message-content"><span class="text-element">' +
+      (i === 0 ? "签到" : "这是一段用于检验玻璃与滚动的示例消息 " + i) +
+      "</span></div></div></div></div></div>";
+    chat.append(row);
+  }
+</script>

@@ -163,16 +163,6 @@ body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .chat-input-area > .op
   transition-duration: 80ms !important;
 }
 
-/* ── 4. 输入卡聚焦：品牌色光晕缓缓亮起 ── */
-body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .aio .chat-input-area {
-  transition: box-shadow var(--ll-dur) var(--ll-ease) !important;
-}
-body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .aio .chat-input-area:focus-within {
-  box-shadow: 0 0 0 1px rgba(var(--ll-brand-rgb), 0.28),
-    0 0 18px rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0.15) * 0.9 + 0.08)),
-    var(--ll-shadow) !important;
-}
-
 /* ── 5. 列表项悬停：底色淡入，不再生硬切换 ── */
 body .recent-contact-item,
 body .group-user,

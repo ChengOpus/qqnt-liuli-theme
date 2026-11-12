@@ -5,6 +5,7 @@ const SCRIPTS = [
   'renderer/host.js',
   'renderer/qq.js',
   'assets/mcu.js',
+  'renderer/color-picker.js',
   'renderer/color-roles.js',
   'renderer/layout-custom.js',
   'renderer/ark-external.js',
@@ -14,6 +15,7 @@ const SCRIPTS = [
   // window.__liuliPinGroups.apply。
   'renderer/pin-groups.js',
   'renderer/video-wallpaper.js',
+  'renderer/surfaces.js',
   'renderer/index.js'
 ];
 const roots = new Map();

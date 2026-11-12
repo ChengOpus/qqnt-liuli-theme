@@ -55,12 +55,7 @@
  * --ll-on-glass-rgb 由 JS 内联写在 body 上，同一元素上的 var() 能取到。 */
 body {
   --ll-tint-rgb: 255, 255, 255;
-  /* These depend on the live slider value, which renderer writes on body.
-   * Defining them on :root resolves the old root opacity before inheritance. */
-  --ll-popup-alpha: clamp(0.30, calc(var(--ll-material-opacity) + 0.18), 0.62);
-  --ll-popup-surface: rgba(var(--ll-acrylic), var(--ll-popup-alpha));
-  --ll-composer-surface: var(--ll-popup-surface);
-  --ll-overlay-dim: 0.12;
+
 }
 body[data-liuli-scope] ::selection {
   background: rgba(var(--ll-brand-rgb), 0.32);
@@ -80,7 +75,6 @@ body[data-liuli-dark='1'] {
   --ll-scrim-alpha: 0.28;
   --ll-shadow: 0 2px 10px rgba(var(--ll-shadow-rgb), 0.45);
   --ll-shadow-float: 0 10px 32px rgba(var(--ll-shadow-rgb), 0.38);
-  --ll-overlay-dim: 0.22;
 }
 
 /* ════════════════════════════════════════════════════════════

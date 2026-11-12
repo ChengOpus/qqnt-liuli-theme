@@ -443,26 +443,6 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.liuli-roles-seg .liuli-seg__item[data-v='primary'] { --ll-choice-ink: var(--ll-role-primary); }
-.liuli-roles-seg .liuli-seg__item[data-v='secondary'] { --ll-choice-ink: var(--ll-role-secondary); }
-.liuli-roles-seg .liuli-seg__item[data-v='tertiary'] { --ll-choice-ink: var(--ll-role-tertiary); }
-.liuli-roles-seg .liuli-seg__item[data-v='primary']::before,
-.liuli-roles-seg .liuli-seg__item[data-v='secondary']::before,
-.liuli-roles-seg .liuli-seg__item[data-v='tertiary']::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: var(--ll-choice-ink);
-  vertical-align: 1px;
-}
-.liuli-roles-seg .liuli-seg__item.is-active:where([data-v='primary'], [data-v='secondary'], [data-v='tertiary']) {
-  background: color-mix(in srgb, var(--ll-choice-ink) 18%, transparent);
-  color: var(--ll-on-glass);
-  box-shadow: inset 0 -2px var(--ll-choice-ink);
-}
 .liuli-roles-preview {
   display: flex;
   flex-direction: column;

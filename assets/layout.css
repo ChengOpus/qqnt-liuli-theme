@@ -47,7 +47,7 @@ body[data-hash^="#/chat"] .chat-container > .container-content {
   border-radius: 0 !important;
 }
 
-/* ── 卡片通用外观（底色/模糊由 renderer 的 GLASS 内联写入，这里补描边与阴影） ── */
+/* ── 面板基础布局（材质由 surfaces.css 与 surfaces.js 统一管理） ── */
 .container-sidebar,
 .two-col-layout__aside > .recent-contact,
 .group-box {
@@ -99,30 +99,6 @@ body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .aio *:has(> .chat-inp
   margin-left: var(--ll-dock-gap) !important;
 }
 
-/* ── 浮动输入卡：不再是贴底的整条，而是正文卡里四周留白的卡片。
- * ⚠️ 仍然不加 backdrop-filter（会让 ProseMirror 不绘制），
- * 下面是正文卡的磨砂，这里只给更实的底色。 ── */
-body[data-liuli-scope="main"] .aio .chat-input-area {
-  /* 上边 10px：聊天记录最后一条不贴输入框（2026-10-30） */
-  margin: 10px 10px 10px !important;
-  width: auto !important;
-  align-self: stretch !important;
-  padding: 0 !important;
-  border: var(--ll-card-border) !important;
-  border-radius: var(--ll-radius) !important;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), calc(var(--ll-material-opacity) + 0.36)) !important;
-  box-shadow: var(--ll-shadow) !important;
-}
-
-/* 输入卡本身就是框，里面不再套第二层框 */
-body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
-  background: transparent !important;
-  border: none !important;
-  border-radius: var(--ll-radius) !important;
-  box-shadow: none !important;
-  min-height: 44px !important;
-}
-
 /* ── 侧栏导航选中：primaryContainer 实底 ── */
 .tab-item-mask.is-active {
   background: var(--ll-primary-container, rgba(var(--ll-brand-rgb), 0.32)) !important;
@@ -145,24 +121,7 @@ body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
 .recent-contact-item:hover {
   background: rgba(var(--ll-brand-rgb), 0.08) !important;
 }
-.recent-contact-item.recent-contact-item--selected,
-.recent-contact-item.recent-contact-item--selected:hover {
-  /* renderer 的 normalizeColors/fixContrast 会把文字内联成 var(--ll-on-glass*)，
-   * 在这里改写变量本身，选中项里的文字就跟着变成 onPrimaryContainer */
-  --ll-on-glass: var(--ll-on-primary-container);
-  /* 选中项底色是 primaryContainer，上面的字统一用 onPrimaryContainer，层级靠字号区分。
-   * 以前次要 / 弱化文字是 78% / 62% 透明，暗色下只有约 4.2 / 3.2:1（无壁纸基准实测）。
-   * 按 M3：container 上的文字一律用对应的 onContainer，不打透明。 */
-  --ll-on-glass-2: var(--ll-on-primary-container);
-  --ll-on-glass-3: var(--ll-on-primary-container);
-  background-color: var(--ll-primary-container, rgba(var(--ll-brand-rgb), 0.16)) !important;
-  background-image: linear-gradient(var(--ll-on-primary-container), var(--ll-on-primary-container)) !important;
-  background-repeat: no-repeat !important;
-  background-position: left center !important;
-  background-size: 3px 18px !important;
-  box-shadow: none !important;
-  color: var(--ll-on-primary-container) !important;
-}
+/* Selection is painted once by lists.css. */
 .recent-contact-item--selected .item__content * {
   color: inherit;
 }
@@ -204,7 +163,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content .use
   /* QQ 自己写了 width:0 + flex:1，flex 改成 auto 后宽度会塌到 0，必须显式给宽 */
   width: max-content !important;
   /* 左侧起点 64px，右侧控件 144px，两者之间保留间距。 */
-  max-width: min(50vw, max(40px, calc(100vw - 240px))) !important;
+  max-width: min(48vw, var(--ll-aside-width, 260px)) !important;
   height: 30px !important;
   margin: 5px 0 0 var(--ll-dock-gap) !important;
   padding: 0 12px 0 4px !important;
@@ -406,7 +365,7 @@ body[data-hash^="#/chat"]:not([data-liuli-tb="native"]) .window-title-bar > .win
 /* :not(#ll) 计入 ID 优先级：QQ 的 body[is-base-theme][q-theme] .contact[data-v-…]
  * 是 (0,4,1) 且带 !important，普通类选择器压不过它。 */
 .contact-layout .contact-layout__left-area > .contact:not(#ll) {
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity)) !important;
+  background: var(--ll-glass-paint) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: var(--ll-card-border) !important;
@@ -516,8 +475,14 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .global-container .c
   padding-top: var(--ll-dock-gap) !important;
   transition: padding-left var(--ll-ui-duration) var(--ll-ui-ease) !important;
 }
-body[data-liuli-scope="main"]:not([data-liuli-tb="native"]):is([data-liuli-r-l], [data-liuli-r-r]) .global-container .container-content {
-  padding-top: 44px !important;
+/* Profile and window controls reserve space in their own columns. */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])[data-liuli-r-l] .two-col-layout__aside {
+  padding-top: 36px !important;
+  box-sizing: border-box !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])[data-liuli-r-r] .two-col-layout__main {
+  padding-top: 36px !important;
+  box-sizing: border-box !important;
 }
 body[data-liuli-scope="main"][data-liuli-r-nav] .global-container .container-content {
   padding-left: calc(var(--ll-dock-gap) + var(--ll-nav-claim, 0px)) !important;
@@ -748,72 +713,8 @@ body[data-liuli-r-nav] .global-container .container-content > .container-sidebar
   box-shadow: var(--ll-float-shadow) !important;
 }
 
-/* 2. 点击弹出的各种面板：根节点统一上材质
- * 右键菜单不在这里：它里面嵌着 position:fixed 的子菜单，
- * 父级一旦有 backdrop-filter / transform，子菜单就会相对父级定位而错位（见下方单独处理）。 */
-body .q-context-sub-menu__container,
-body .q-menu,
-body .q-popup__main:not(.lucky-money-dialog):not(.send-lucky-money-dialog),
-body .q-dialog-main,
-body .q-dialog,
-body .form-modal,
-body .q-tooltips__content,
-body .q-tooltips-v2,
-body .sidebar-tooltips__content,
-body .q-notification,
-body .q-color-picker,
-body .q-pulldown-menu .q-pulldown-menu-wrapper,
-body .pulldown-menu,
-body .mini-buddy,
-body .mini-group,
-body .buddy-profile,
-body .group-profile-card,
-body .group-member-card,
-body .finger-memo-dialog,
-body .menu-stickers-panel,
-body .menu-stickers-wrapper .menu-stickers,
-body .editor-at-panel,
-body .editor-qqface-short-panel,
-body .expression-panel .sticker-panel,
-body .expression-panel > *:not(:empty),
-body .bot-panel-wrapper,
-body .handoff-menu,
-body .q-float-card,
-body .aio .panel-container:not(:has(.side-panel)) {
-  background: var(--ll-noise), var(--ll-menu-bg, var(--ll-float-bg)) !important;
-  backdrop-filter: var(--ll-float-blur) !important;
-  -webkit-backdrop-filter: var(--ll-float-blur) !important;
-  border: none !important;
-  border-radius: var(--ll-radius) !important;
-  box-shadow: var(--ll-float-shadow) !important;
-  color: var(--ll-on-glass) !important;
-}
-/* The floating wrapper and its profile card may both match the material
- * list. Let the inner card own the sole backdrop layer. */
-body .q-float-card:has(.group-profile-card, .group-member-card):not(#ll),
-body .q-popup__main:has(.group-profile-card, .group-member-card):not(#ll) {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-/* Search suggestions live inside the already blurred conversation pane.
- * Only a light tint is needed there; a second backdrop layer made the list
- * look opaque and painted a conspicuous rectangle over the pane. */
-body .main-search .search-result:not(#ll) {
-  background: var(--ll-noise), var(--ll-popup-surface) !important;
-  backdrop-filter: var(--ll-material-blur) !important;
-  -webkit-backdrop-filter: var(--ll-material-blur) !important;
-  border: none !important;
-  border-radius: var(--ll-panel-radius) !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
-}
-body .recent-contact .main-search .search-result:not(#ll):not(#ll) {
-  background: rgba(var(--ll-acrylic), 0.12) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: var(--ll-popup-edge), 0 6px 16px rgba(var(--ll-shadow-rgb), 0.10) !important;
-}
+
+
 /* 右键菜单：模糊放到 ::before 上。
  * 实测（ll-probe）：「输入"/"时唤起」的子菜单 .q-context-sub-menu__container 是 position:fixed，
  * 却嵌在父菜单里面。父菜单自身带 backdrop-filter 或 transform 时会变成子菜单的定位参照，
@@ -842,7 +743,6 @@ body .q-context-menu:not(.is-pure)::before {
 /* 弹层内部不要再叠一层材质（玻璃叠玻璃会深浅不一） */
 body .q-context-menu .q-context-menu,
 body .q-dialog-main .q-dialog-main,
-body .q-dialog .q-dialog-main,
 body .mini-buddy .buddy-profile,
 body .expression-panel .sticker-panel .sticker-panel {
   background: transparent !important;
@@ -1058,7 +958,7 @@ body:not([data-liuli-scope="main"]) #app::after {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-aux-opacity, 0.72));
+  background: var(--ll-glass-paint);
   /* 跟随设置里的「材质模糊」（#52：独立聊天窗以前固定 24px，滑条怎么拉都没反应） */
   backdrop-filter: var(--ll-material-blur, blur(18px) saturate(1.6));
   -webkit-backdrop-filter: var(--ll-material-blur, blur(18px) saturate(1.6));
@@ -1135,7 +1035,7 @@ body[data-liuli-dark="0"] .contact-layout .sys-notify .panel-header:not(#ll) {
 body .contact-layout .sys-notify .notify-list:not(#ll),
 body .contact-layout .sys-notify .recommend-list:not(#ll),
 body .contact-layout .sys-notify .wrap:not(#ll) {
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity)) !important;
+  background: var(--ll-glass-paint) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border-radius: var(--ll-radius) !important;
@@ -1153,11 +1053,10 @@ body .contact-layout .sys-notify .sys-notify-card:not(#ll):hover {
  * 同色同不透明度（--ll-material-opacity），只把模糊加强到 DSH 的
  * material-blur-strong 档（盖在别的内容上时，下面的字要糊掉才读得清）。 */
 body {
-  --ll-card-bg: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity));
+  --ll-card-bg: var(--ll-glass-paint);
   --ll-card-blur-strong: var(--ll-material-blur);
 }
 body[data-liuli-r-nav] .global-container .container-content > .container-sidebar.container-sidebar {
-  --ll-material-opacity: inherit;
   background: var(--ll-card-bg) !important;
   backdrop-filter: var(--ll-card-blur-strong) !important;
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
@@ -1169,69 +1068,6 @@ body[data-liuli-scope="main"] .chat-input-area > .chat-func-bar.liuli-expanded {
   -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
   box-shadow: var(--ll-card-shadow) !important;
 }
-/* 输入区自身不能挂 backdrop-filter（会让 ProseMirror 不绘制），
- * 用 DSH composer-card 的做法：磨砂放在 ::before 上，内容在其上方。 */
-body[data-liuli-scope="main"] .aio .chat-input-area {
-  background: transparent !important;
-  isolation: isolate !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
-}
-body[data-liuli-scope="main"] .aio .chat-input-area::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  border-radius: inherit !important;
-  background: var(--ll-noise), var(--ll-popup-surface) !important;
-  backdrop-filter: var(--ll-card-blur-strong) !important;
-  -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
-  box-shadow: var(--ll-popup-edge) !important;
-  pointer-events: none !important;
-}
-body[data-liuli-scope="main"] .aio .chat-input-area > .msg-input {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* ── 独立聊天窗（#/chat）输入卡：和主窗同一套玻璃材质（#52） ──
- * 独立窗也走 TG 单行输入条，但 .aio 的承载规则是主窗专属，这里单独补齐；
- * 材质放在 ::before 上（理由同主窗：直接给输入区挂 backdrop-filter 会让编辑器不绘制）。 */
-body[data-hash^="#/chat"] .chat-input-area {
-  /* 底边和主窗一致：贴住正文卡底（0），只有左右上 10px；
-   * 原来 10px 四周，底部多出 10px，输入卡和右侧群成员卡不在同一条底线上（2026-11-10） */
-  margin: 10px 14px 12px !important;
-  width: auto !important;
-  align-self: stretch !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: var(--ll-panel-radius) !important;
-  background: transparent !important;
-  isolation: isolate !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
-  height: auto !important;
-  max-height: 50vh !important;
-}
-body[data-hash^="#/chat"] .chat-input-area::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  border-radius: inherit !important;
-  background: var(--ll-noise), var(--ll-popup-surface) !important;
-  backdrop-filter: var(--ll-card-blur-strong) !important;
-  -webkit-backdrop-filter: var(--ll-card-blur-strong) !important;
-  box-shadow: var(--ll-popup-edge) !important;
-  pointer-events: none !important;
-}
-body[data-hash^="#/chat"] .chat-input-area > .msg-input {
-  background: transparent !important;
-  border: none !important;
-  border-radius: var(--ll-radius) !important;
-  box-shadow: none !important;
-  min-height: 44px !important;
-}
-
 /* ── 状态设置窗口（#/status-setting）──
  * 这个窗口固定按 q-theme=light 渲染，文字写死黑色 rgb(0,0,0)，
  * 压在我们的深色材质上就看不清；选中项是 QQ 蓝 rgb(0,153,255)。
@@ -1241,7 +1077,7 @@ body .sys-status-editor *:not(img):not(svg):not(use) {
   color: var(--ll-on-glass) !important;
 }
 body .sys-status-editor .select-area__content:not(#ll) {
-  background: var(--ll-noise), rgba(var(--ll-acrylic), var(--ll-material-opacity)) !important;
+  background: var(--ll-glass-paint) !important;
   border-radius: var(--ll-radius) !important;
   box-shadow: var(--ll-card-shadow) !important;
 }
@@ -1263,14 +1099,6 @@ body .sys-status-editor .sys-status-option--selected * {
 body .sys-status-editor .entrance-btn {
   background: rgba(var(--ll-acrylic), 0.72) !important;
   color: var(--ll-on-glass) !important;
-}
-
-/* ── 输入卡底边与左侧会话列表卡、右侧群成员卡对齐（2026-10-29）──
- * 原来 margin-bottom:10px，输入卡底边在 863，两侧卡片底边在 873。 */
-body[data-liuli-scope="main"] .aio .chat-input-area:not(#ll) {
-  margin: 10px 14px 12px !important;
-  border: none !important;
-  border-radius: var(--ll-panel-radius) !important;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1699,13 +1527,7 @@ body .q-dialog:not(#ll):not(#ll) {
 body .q-dialog .q-dialog-modal:not(#ll) {
   background: rgba(var(--ll-scrim-rgb), var(--ll-overlay-dim)) !important;
 }
-body .q-dialog > .q-dialog-main:not(#ll):not(#ll) {
-  background: var(--ll-noise), var(--ll-popup-surface) !important;
-  backdrop-filter: var(--ll-float-blur, blur(28px) saturate(1.6)) !important;
-  -webkit-backdrop-filter: var(--ll-float-blur, blur(28px) saturate(1.6)) !important;
-  border-radius: var(--ll-radius) !important;
-  box-shadow: var(--ll-float-shadow, var(--ll-shadow-float)) !important;
-}
+
 
 /* ── 开关（2026-10-29）──
  * QQ 的滑块统一用 --on_brand_primary（暗色主题下是深色），
@@ -1768,16 +1590,6 @@ body .q-toast-item:not(#ll) {
 }
 body .q-toast-item:not(#ll) * {
   color: var(--ll-inverse-on-surface) !important;
-}
-
-/* ── 输入卡底边的泛光（#17，2026-11-01）──
- * 输入卡底边和两侧卡片对齐，正好贴着 .aio / .message-panel 的底边，两者都是 overflow:hidden，
- * :focus-within 的泛光和 1px 描边在底下被裁掉，只剩上、左、右三边。
- * 改成 overflow:clip + overflow-clip-margin，往外多留 8px（= 窗口底部的空隙），裁剪范围之外的其它行为不变。 */
-body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .message-panel:has(.aio .chat-input-area),
-body:is([data-liuli-scope="main"], [data-hash^="#/chat"]) .aio:has(.chat-input-area) {
-  overflow: clip !important;
-  overflow-clip-margin: var(--ll-dock-gap, 8px) !important;
 }
 
 /* ── 右侧群资料栏收起后，展开按钮常驻（2026-11-01）──

@@ -1,0 +1,212 @@
+/* One palette UI for every user-selectable color. */
+.liuli-color-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 5px 10px;
+  border: 1px solid rgba(var(--ll-on-glass-rgb), 0.14);
+  border-radius: 10px;
+  color: var(--ll-on-glass);
+  background: transparent;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+.liuli-color-button:hover {
+  background: rgba(var(--ll-brand-rgb), 0.08);
+  border-color: rgba(var(--ll-brand-rgb), 0.45);
+}
+.liuli-color-button__swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(var(--ll-on-glass-rgb), 0.12);
+}
+.liuli-color-role {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 15px 0;
+}
+.liuli-color-role__label {
+  flex: 1;
+  min-width: 180px;
+  font-size: 14px;
+}
+.liuli-color-role .liuli-field__hint {
+  font-size: 12px;
+  margin-top: 5px;
+  max-width: 420px;
+}
+.liuli-color-reset {
+  border: 0;
+  background: transparent;
+  color: var(--ll-link);
+  padding: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.liuli-color-reset:hover {
+  background: rgba(var(--ll-brand-rgb), 0.08);
+  border-radius: 8px;
+}
+.liuli-picker {
+  position: fixed;
+  z-index: 12000;
+  box-sizing: border-box;
+  padding: 18px;
+  border-radius: 20px;
+  isolation: isolate;
+  color: var(--ll-on-glass);
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+  background: var(--ll-glass-paint, var(--ll-popup-surface));
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+}
+.liuli-picker__title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.liuli-picker__sv {
+  height: 160px;
+  position: relative;
+  border-radius: 12px;
+  touch-action: none;
+  cursor: crosshair;
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, transparent), hsl(var(--hue) 100% 50%);
+}
+.liuli-picker__cursor {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px #0008;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.liuli-picker__hue {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 12px;
+  border: none;
+  border-radius: 10px;
+  margin: 17px 0 12px;
+  background: linear-gradient(
+    to right,
+    #f00,
+    #ff0,
+    #0f0,
+    #0ff,
+    #00f,
+    #f0f,
+    #f00
+  );
+  cursor: pointer;
+}
+.liuli-picker__hue::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 1px 4px #0007;
+}
+.liuli-picker__fields {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+.liuli-picker__fields label {
+  font-size: 10px;
+  color: var(--ll-on-glass-2);
+}
+.liuli-picker__fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 6px 5px;
+  margin-top: 2px;
+  border: 1px solid rgba(var(--ll-on-glass-rgb), 0.18);
+  border-radius: 7px;
+  background: rgba(var(--ll-acrylic), 0.3);
+  color: var(--ll-on-glass);
+  font: 12px/1.5 system-ui;
+}
+.liuli-picker__presets {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.liuli-picker__presets button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(var(--ll-on-glass-rgb), 0.1);
+  transition: transform 160ms ease;
+}
+.liuli-picker__presets button:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+.liuli-picker__source {
+  color: var(--ll-on-glass-2);
+  font-size: 10px;
+  text-decoration: none;
+}
+.liuli-picker__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.liuli-picker__actions button {
+  padding: 7px 13px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(var(--ll-on-glass-rgb), 0.06);
+  color: var(--ll-on-glass);
+  font: inherit;
+  cursor: pointer;
+}
+.liuli-picker__actions .is-primary {
+  background: var(--choice);
+  color: var(--choice-fg);
+}
+.liuli-picker :focus-visible,
+.liuli-color-button:focus-visible {
+  outline: 2px solid var(--ll-link);
+  outline-offset: 3px;
+}
+.liuli-picker input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.liuli-roles-preview {
+  background: transparent;
+  padding: 8px 0;
+  min-height: 64px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .liuli-picker *,
+  .liuli-color-button {
+    transition: none !important;
+  }
+}
