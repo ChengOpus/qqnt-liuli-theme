@@ -103,11 +103,24 @@
   pointer-events: none;
   overflow: hidden;
 }
-/* opacity just below 1 keeps the video out of a hardware overlay plane: QQ's
- * main window is transparent, and on Windows an overlay-promoted video in a
- * transparent window can play without ever being shown (user diagnostics,
- * 2026-11-13: video "playing", poster removed, nothing on screen). */
-#liuli-video-wallpaper { width: 100%; height: 100%; display: block; opacity: 0.999; }
+/* What is seen is the canvas: video-wallpaper.js copies each frame onto it.
+ * On Windows a playing <video> gets its own hardware layer, and in QQ's
+ * translucent window that layer is never shown (user diagnostics,
+ * 2026-11-13, twice). The video plays underneath, covered. */
+#liuli-video-wallpaper,
+#liuli-video-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* The settings page (and any non-main window that plays it): behind the
+ * window sheet and the content, above the picture layer (#app::before at
+ * -2 in the isolated #app, auxiliary.css), in the same order as the picture. */
+body:not([data-liuli-scope="main"]) #liuli-video-layer {
+  z-index: -2;
+}
 #liuli-video-layer::after {
   content: '';
   position: absolute;

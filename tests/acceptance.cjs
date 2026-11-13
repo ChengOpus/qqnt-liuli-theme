@@ -150,7 +150,12 @@ async function run() {
       const topPaint = await page.evaluate(() =>
         [".panel-header__title", ".panel-header__action"].map((s) => {
           const cs = getComputedStyle(__qa.q(s), "::before");
-          return { image: cs.backgroundImage, shadow: cs.boxShadow };
+          // QQ's own shading of the icons/title inside the panel
+          const inner = [...__qa.q(s).querySelectorAll("*")]
+            .map((n) => getComputedStyle(n))
+            .filter((c) => c.filter !== "none" || c.textShadow !== "none" || c.boxShadow !== "none")
+            .map((c) => [c.filter, c.textShadow, c.boxShadow].join(" | "));
+          return { image: cs.backgroundImage, shadow: cs.boxShadow, inner };
         }),
       );
       expect(
@@ -158,6 +163,7 @@ async function run() {
         topPaint.every(
           (p) =>
             !/radial-gradient/.test(p.image) &&
+            p.inner.length === 0 &&
             p.shadow !== "none" &&
             p.shadow.split(/,(?![^(]*\))/).every((x) => /inset/.test(x)),
         ),
@@ -1108,6 +1114,16 @@ async function run() {
       const probeText = JSON.stringify(probe || {});
       expect("diag.probe-present", !!probe?.inputChain && !!probe?.navEdge && !!probe?.fileRows?.length, Object.keys(probe || {}));
       expect("diag.probe-has-no-text", !/示例|匿名|会话|公告|\.zip/.test(probeText));
+      expect("diag.probe-header-effects", Array.isArray(probe?.headerEffects), probe?.headerEffects);
+      // QQ's own telemetry warnings stay out of 「最近错误」; the theme's do not.
+      const noise = await page.evaluate(() => {
+        const before = window.LiuliDiag.getErrorCount();
+        console.warn('[UniversalReport warn] Beacon report fail: [{"eventCode":"x"}]');
+        console.warn("[theme] qa warning");
+        const list = window.LiuliDiag.getErrors();
+        return { added: window.LiuliDiag.getErrorCount() - before, last: list[list.length - 1]?.msg };
+      });
+      expect("diag.qq-telemetry-not-an-error", noise.added === 1 && /qa warning/.test(noise.last), noise);
       checks.probeBytes = probeText.length;
 
       // ── Idle and errors ──
@@ -1261,36 +1277,87 @@ async function run() {
       await context.close();
     }
 
-    // ── Video wallpaper in the main window, also with reduced motion on ──
-    for (const reduced of [false, true]) {
+    // ── Video wallpaper: main window (also with reduced motion), the settings
+    // page, and a pooled standalone chat window (first frame only) ──
+    const clip = fs.readFileSync(path.join(__dirname, "clip.webm")).toString("base64");
+    for (const variant of ["main", "main-reduced-motion", "setting", "chat-window", "main-contain", "main-no-frame-callbacks"]) {
       const failures = [];
-      const { page, context, errors } = await h.open({});
-      if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
-      const clip = fs.readFileSync(path.join(__dirname, "clip.webm")).toString("base64");
-      const v = await page.evaluate(async (b64) => {
+      const hash = variant === "setting" ? "#/setting/settings/common" : variant === "chat-window" ? "#/chat" : "#/main/message";
+      // A compositor that never reports frames: drawing must fall back to
+      // animation frames on its own.
+      const before =
+        variant === "main-no-frame-callbacks"
+          ? () => {
+              HTMLVideoElement.prototype.requestVideoFrameCallback = () => 1;
+              HTMLVideoElement.prototype.cancelVideoFrameCallback = () => {};
+            }
+          : null;
+      const { page, context, errors } = await h.open({ hash, before });
+      if (variant === "main-reduced-motion") await page.emulateMedia({ reducedMotion: "reduce" });
+      const v = await page.evaluate(async ({ b64, fit, wait }) => {
         const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
         const res = await window.LiuliVideoWallpaper.importFile(new File([bytes], "clip.webm", { type: "video/webm" }));
-        localStorage.setItem("liuli-dsh-wallpaper", JSON.stringify({ kind: "video", videoId: res.id, src: res.poster, fit: "cover" }));
+        localStorage.setItem("liuli-dsh-wallpaper", JSON.stringify({ kind: "video", videoId: res.id, src: res.poster, fit }));
         window.dispatchEvent(new StorageEvent("storage", { key: "liuli-dsh-wallpaper" }));
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, wait));
         const video = document.getElementById("liuli-video-wallpaper");
         const layer = document.getElementById("liuli-video-layer");
+        const canvas = document.getElementById("liuli-video-canvas");
         const r = layer?.getBoundingClientRect();
+        const cr = canvas?.getBoundingClientRect();
+        // what is on the canvas, twice, half a second apart
+        const sample = () => {
+          if (!canvas) return null;
+          const c = canvas.getContext("2d");
+          const d = c.getImageData(0, 0, canvas.width, canvas.height).data;
+          let sum = 0, lit = 0;
+          for (let i = 0; i < d.length; i += 4 * 97) {
+            sum += d[i] + d[i + 1] + d[i + 2];
+            if (d[i] + d[i + 1] + d[i + 2] > 30) lit++;
+          }
+          return { sum, lit };
+        };
+        const first = sample();
+        await new Promise((r) => setTimeout(r, 500));
+        const second = sample();
+        const dpr = devicePixelRatio;
         return {
           playing: !!video && !video.paused && video.currentTime > 0,
           shown: document.body.hasAttribute("data-liuli-video-wallpaper"),
           covers: !!r && r.width >= innerWidth - 1 && r.height >= innerHeight - 1,
-          container: getComputedStyle(document.querySelector(".global-container")).position,
+          canvas: !!canvas,
+          canvasCovers: !!cr && cr.width >= innerWidth - 1 && cr.height >= innerHeight - 1,
+          canvasSharp: !!canvas && Math.abs(canvas.width - Math.round(innerWidth * dpr)) <= 1,
+          canvasAbove: !!canvas && !!video && video.compareDocumentPosition(canvas) === Node.DOCUMENT_POSITION_FOLLOWING && canvas.parentElement === video.parentElement,
+          opaque: canvas ? canvas.getContext("2d").getContextAttributes().alpha === false : null,
+          drawn: !!first && first.lit > 10,
+          moving: !!first && !!second && first.sum !== second.sum,
+          state: window.LiuliVideoWallpaper.state(),
+          layerZ: layer ? getComputedStyle(layer).zIndex : null,
+          appIsolated: getComputedStyle(document.getElementById("app")).isolation,
+          container: document.querySelector(".global-container") ? getComputedStyle(document.querySelector(".global-container")).position : null,
           posterHidden: getComputedStyle(document.getElementById("app"), "::before").backgroundImage === "none",
+          scope: document.body.dataset.liuliScope,
         };
-      }, clip);
+      }, { b64: clip, fit: variant === "main-contain" ? "contain" : "cover", wait: variant === "main-no-frame-callbacks" ? 2600 : 1500 });
       const want = (name, ok) => ok || failures.push(name + ": " + JSON.stringify(v));
-      want("video.playing", v.playing);
-      want("video.layer-covers-window", v.shown && v.covers);
-      want("video.native-container-position-kept", v.container === "fixed");
-      want("video.poster-dropped-only-when-shown", v.posterHidden === v.shown);
+      if (variant === "chat-window") {
+        want("video.pooled-window-keeps-first-frame", !v.playing && !v.canvas && !v.shown && !v.posterHidden);
+      } else {
+        want("video.playing", v.playing);
+        want("video.layer-covers-window", v.shown && v.covers);
+        // the picture is a canvas copy, not the <video> layer itself
+        want("video.canvas-covers-window", v.canvas && v.canvasCovers && v.canvasSharp && v.canvasAbove);
+        want("video.canvas-opaque", v.opaque === true);
+        want("video.frames-drawn", v.drawn && v.state.painted);
+        want("video.frames-keep-coming", v.moving);
+        want("video.poster-dropped-only-when-shown", v.posterHidden === v.shown);
+        if (variant === "main-no-frame-callbacks") want("video.falls-back-to-animation-frames", v.state.painting === "raf");
+        if (variant === "setting") want("video.setting-behind-content", v.layerZ === "-2" && v.appIsolated === "isolate");
+        else want("video.native-container-position-kept", v.container === "fixed");
+      }
       if (errors.length) failures.push("video.errors: " + errors.join("|"));
-      results.push({ variant: "video-wallpaper" + (reduced ? "-reduced-motion" : ""), failures });
+      results.push({ variant: "video-wallpaper-" + variant, failures, v });
       failed += failures.length;
       await context.close();
     }

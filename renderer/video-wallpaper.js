@@ -99,8 +99,132 @@
     dispose();
     await transact('readwrite', store => store.clear());
   }
+  // ── Drawing ─────────────────────────────────────────────────────────────
+  // Windows hands a playing <video> to its own hardware layer. In QQ's
+  // translucent main window that layer is never shown: two user diagnostics
+  // (2026-11-13) had the video playing at full window size with the first
+  // frame already removed, and nothing on screen, also with opacity 0.999.
+  // Each frame is therefore copied onto a canvas, which is composited with
+  // the page like any picture. The <video> keeps playing underneath it.
+  let canvas = null;
+  let context = null;
+  let request = 0;
+  let painting = 'none'; // 'frame' (requestVideoFrameCallback) | 'raf' | 'none'
+  let lastTime = -1;
+  let base = '#ffffff'; // letterbox colour for "contain": the window's own base
+  const MAX_PIXELS = 2560 * 1600;
+  function fitMode() {
+    const fit = current && current.fit;
+    return fit === 'stretch' ? 'fill' : fit === 'contain' ? 'contain' : 'cover';
+  }
+  function sizeCanvas() {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    let w = Math.max(1, Math.round(window.innerWidth * dpr));
+    let h = Math.max(1, Math.round(window.innerHeight * dpr));
+    const k = Math.min(1, Math.sqrt(MAX_PIXELS / (w * h)));
+    w = Math.max(1, Math.round(w * k));
+    h = Math.max(1, Math.round(h * k));
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+  }
+  // object-fit for a canvas: cover crops the source, contain letterboxes.
+  function paint(video) {
+    if (!context || !video.videoWidth || !video.videoHeight) return false;
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const mode = fitMode();
+    if (mode === 'fill') {
+      context.drawImage(video, 0, 0, cw, ch);
+    } else if (mode === 'contain') {
+      const k = Math.min(cw / vw, ch / vh);
+      const dw = vw * k;
+      const dh = vh * k;
+      context.fillStyle = base;
+      context.fillRect(0, 0, cw, ch);
+      context.drawImage(video, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    } else {
+      const k = Math.max(cw / vw, ch / vh);
+      const sw = cw / k;
+      const sh = ch / k;
+      context.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, cw, ch);
+    }
+    return true;
+  }
+  function stopPainting() {
+    if (layer && painting === 'frame' && request && layer.cancelVideoFrameCallback) layer.cancelVideoFrameCallback(request);
+    if (painting === 'raf' && request) cancelAnimationFrame(request);
+    request = 0;
+    painting = 'none';
+  }
+  // Without a canvas (no 2D context, or drawing refused) the <video> itself
+  // is the wallpaper again, as before.
+  function dropCanvas() {
+    stopPainting();
+    canvas?.remove();
+    canvas = null;
+    context = null;
+  }
+  function frame(video) {
+    if (layer !== video) return;
+    let ok = false;
+    try {
+      ok = paint(video);
+    } catch (error) {
+      console.warn('[theme] video wallpaper canvas:', error && error.message);
+      dropCanvas();
+      return;
+    }
+    if (ok) {
+      lastTime = video.currentTime;
+      if (video.currentTime > 0) document.body.setAttribute('data-liuli-video-wallpaper', '');
+    }
+    schedule(video);
+  }
+  function schedule(video) {
+    if (layer !== video || !canvas) return;
+    if (painting === 'frame') {
+      request = video.requestVideoFrameCallback(() => frame(video));
+    } else if (painting === 'raf') {
+      request = requestAnimationFrame(() => {
+        // a new picture only when the media time moved
+        if (layer !== video) return;
+        if (video.currentTime !== lastTime || !document.body.hasAttribute('data-liuli-video-wallpaper')) frame(video);
+        else schedule(video);
+      });
+    }
+  }
+  function startPainting(video) {
+    if (!canvas || painting !== 'none') return;
+    painting = typeof video.requestVideoFrameCallback === 'function' ? 'frame' : 'raf';
+    schedule(video);
+  }
+  // Frame callbacks follow the compositor. If they stop arriving while the
+  // media clock runs (checked on timeupdate, ~4 times a second), draw on
+  // animation frames instead.
+  function stalled(video) {
+    if (painting !== 'frame' || video.paused || document.hidden) return false;
+    return lastTime >= 0 ? video.currentTime - lastTime > 0.6 : video.currentTime > 1;
+  }
+  function toAnimationFrames(video) {
+    if (request && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(request);
+    request = 0;
+    painting = 'raf';
+    schedule(video);
+  }
+  function onResize() {
+    if (!canvas || !layer) return;
+    sizeCanvas();
+    try {
+      paint(layer);
+    } catch (error) {}
+  }
+
   function dispose() {
     serial++;
+    stopPainting();
     if (layer) {
       layer.pause();
       layer.removeAttribute('src');
@@ -110,6 +234,9 @@
       if (host && host.id === 'liuli-video-layer') host.remove();
       layer = null;
     }
+    canvas = null;
+    context = null;
+    lastTime = -1;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = '';
     activeId = '';
@@ -122,15 +249,25 @@
     if (document.hidden) layer.pause();
     else layer.play().catch(() => { /* 自动播放被拒绝时保留首帧，用户操作后重试。 */ });
   }
+  // The main window and the settings page play the video. Standalone chat
+  // windows are pooled: QQ keeps them alive off screen while reporting them
+  // visible (user diagnostics), so a video there would decode for nobody;
+  // they, like other small windows, keep the first frame as a picture.
+  function playsHere() {
+    const scope = document.body.dataset.liuliScope;
+    if (document.body.dataset.liuliAv === '1') return false;
+    if ((location.hash || '').indexOf('#/mini-fishing') === 0) return false;
+    return scope === 'main' || scope === 'setting';
+  }
   async function apply(state) {
     current = state;
-    const main = document.body.dataset.liuliScope === 'main';
-    if (!main || !state || state.kind !== 'video' || !state.videoId) {
+    if (!playsHere() || !state || state.kind !== 'video' || !state.videoId) {
       dispose();
       return;
     }
     if (layer && activeId === state.videoId) {
-      layer.style.objectFit = state.fit === 'stretch' ? 'fill' : state.fit === 'contain' ? 'contain' : 'cover';
+      layer.style.objectFit = fitMode();
+      onResize();
       playback();
       return;
     }
@@ -154,40 +291,59 @@
     video.playsInline = true;
     video.preload = 'auto';
     video.poster = state.src || '';
-    video.style.objectFit = state.fit === 'stretch' ? 'fill' : state.fit === 'contain' ? 'contain' : 'cover';
+    video.style.objectFit = fitMode();
     objectUrl = URL.createObjectURL(blob);
     video.src = objectUrl;
     layer = video;
     activeId = id;
+    canvas = document.createElement('canvas');
+    canvas.id = 'liuli-video-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    // Opaque: the compositor can then skip the <video> underneath.
+    context = canvas.getContext('2d', { alpha: false });
+    if (!context) canvas = null;
+    else sizeCanvas();
+    try {
+      const fill = getComputedStyle(app).backgroundColor;
+      if (fill && fill !== 'rgba(0, 0, 0, 0)' && fill !== 'transparent') base = fill;
+      else base = document.body.dataset.liuliDark === '1' ? '#000000' : '#ffffff';
+    } catch (e) {}
     // 播放失败仍用现有的图片壁纸层作为首帧兜底，不留下空白。
-    // 只有确认画面真的出来了（有尺寸、时间在走）才撤掉首帧图：'playing' 事件
-    // 先于第一帧上屏，解码慢或解不了时以前会撤掉首帧却没有画面，整片空白。
+    // 只有画面真的画出来了（画布上有了一帧、时间在走）才撤掉首帧图。
+    video.addEventListener('playing', () => startPainting(video));
+    // No canvas: the old rule — the <video> itself must have shown a frame.
     const shown = () => {
-      if (layer !== video || !video.videoWidth || video.currentTime <= 0) return false;
+      if (canvas || layer !== video || !video.videoWidth || video.currentTime <= 0) return false;
       document.body.setAttribute('data-liuli-video-wallpaper', '');
       return true;
     };
-    if (typeof video.requestVideoFrameCallback === 'function') {
-      const frame = () => {
-        if (layer === video && !shown()) video.requestVideoFrameCallback(frame);
-      };
-      video.requestVideoFrameCallback(frame);
-    } else {
-      const tick = () => {
+    const tick = () => {
+      if (layer !== video) return video.removeEventListener('timeupdate', tick);
+      if (!canvas) {
         if (shown()) video.removeEventListener('timeupdate', tick);
-      };
-      video.addEventListener('timeupdate', tick);
-    }
+      } else if (stalled(video)) toAnimationFrames(video);
+    };
+    video.addEventListener('timeupdate', tick);
     video.addEventListener('error', () => {
       if (layer === video) document.body.removeAttribute('data-liuli-video-wallpaper');
     });
     host.appendChild(video);
+    if (canvas) host.appendChild(canvas);
     app.prepend(host);
     playback();
   }
+  window.addEventListener('resize', onResize);
+  // Pooled windows change route (and so scope) without reloading.
+  window.addEventListener('liuli-scope', () => {
+    if (current) apply(current).catch(() => {});
+  });
   document.addEventListener('visibilitychange', playback);
   document.addEventListener('pointerdown', playback, { passive: true });
 
   window.addEventListener('pagehide', dispose);
-  window.LiuliVideoWallpaper = { importFile, remove, clearAll, apply, clear: () => { current = null; dispose(); } };
+  // for diagnostics and tests
+  function state() {
+    return { painting, painted: lastTime >= 0, canvas: !!canvas };
+  }
+  window.LiuliVideoWallpaper = { importFile, remove, clearAll, apply, state, clear: () => { current = null; dispose(); } };
 })();

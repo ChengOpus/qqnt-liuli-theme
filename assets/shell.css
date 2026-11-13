@@ -245,6 +245,20 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header 
    * messages read as a grey band across the top of the chat. */
   box-shadow: var(--ll-top-edge);
 }
+/* QQ gives the header's own icons and title a soft drop shadow so they stay
+ * readable over a chat background picture. On the glass it read as a dark
+ * band under the icon row (user recording, 2026-11-13: ~8 levels darker,
+ * 7-11px below each icon, inside the panel). The glass is the contrast now. */
+.aio > .chat-header :is(.panel-header__title, .panel-header__action) *,
+.aio > .chat-header :is(.panel-header__title, .panel-header__action) *::before,
+.aio > .chat-header :is(.panel-header__title, .panel-header__action) *::after {
+  text-shadow: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+.aio > .chat-header .func-bar-top {
+  background: transparent !important;
+}
 .chat-header
   :is(
     button,

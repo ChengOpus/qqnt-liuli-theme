@@ -246,6 +246,13 @@
     }
     return '';
   }
+  // QQ's own telemetry warns whenever a report cannot be sent (blocked or
+  // offline). It says nothing about the theme and used to fill 「最近错误」.
+  const QQ_NOISE = /^\[UniversalReport\b|Beacon report fail/;
+  function qqNoise(args) {
+    const first = args && args[0];
+    return typeof first === 'string' && QQ_NOISE.test(first);
+  }
   function installConsoleHooks() {
     if (consoleHooksInstalled) return;
     const w = win();
@@ -255,7 +262,7 @@
       const orig = w.console[level];
       if (typeof orig !== 'function' || orig.__liuliDiagHooked) return;
       const wrapped = function () {
-        if (hookDepth === 0) {
+        if (hookDepth === 0 && !qqNoise(arguments)) {
           hookDepth++;
           try {
             pushError(
@@ -1161,6 +1168,8 @@
       if (cs.backgroundImage !== 'none') out.bgImage = cs.backgroundImage.indexOf('url(') >= 0 ? 'url' : 'gradient';
       if (cs.backdropFilter && cs.backdropFilter !== 'none') out.backdrop = cs.backdropFilter;
       if (cs.boxShadow !== 'none') out.shadow = cs.boxShadow.slice(0, 80);
+      if (cs.filter && cs.filter !== 'none') out.filter = cs.filter.slice(0, 80);
+      if (cs.textShadow && cs.textShadow !== 'none') out.textShadow = cs.textShadow.slice(0, 80);
       if (parseFloat(cs.borderLeftWidth) || parseFloat(cs.borderRightWidth) || parseFloat(cs.borderTopWidth))
         out.border = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].join(' ');
       if (pseudo) out.size = cs.width + ' x ' + cs.height;
@@ -1224,6 +1233,30 @@
       if (item) probe.messageChain = safe(() => chain(item, '.aio,.chat-container', 12), null);
       const header = safe(() => input.closest('.aio').querySelector(':scope > .chat-header'), null);
       if (header) probe.header = safe(() => tree(header, 2, { left: 24 }), null);
+      // Anything inside the two header panels that paints a shadow or a filter
+      // (the "top shadow" reports): class, size and the effect values only.
+      if (header)
+        probe.headerEffects = safe(() => {
+          const out = [];
+          for (const el of header.querySelectorAll('.panel-header__title *, .panel-header__action *')) {
+            if (out.length >= 30) break;
+            const own = paint(el),
+              before = paint(el, '::before'),
+              after = paint(el, '::after');
+            const hit = p => p && (p.shadow || p.filter || p.textShadow || p.bgImage || p.backdrop);
+            if (!hit(own) && !hit(before) && !hit(after)) continue;
+            const r = el.getBoundingClientRect();
+            out.push({
+              tag: el.tagName.toLowerCase(),
+              cls: cls(el),
+              rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+              paint: own,
+              before,
+              after
+            });
+          }
+          return out;
+        }, null);
     }
     // 4：导航与会话列之间那条边上的结构盒。
     probe.navEdge = safe(
@@ -1272,6 +1305,12 @@
         paused: v.paused, time: v.currentTime, w: v.videoWidth, h: v.videoHeight, ready: v.readyState,
         error: v.error ? v.error.code : 0, rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
         shown: d.body.hasAttribute('data-liuli-video-wallpaper'),
+        canvas: safe(() => {
+          const c = d.getElementById('liuli-video-canvas');
+          if (!c) return null;
+          const cr = c.getBoundingClientRect();
+          return { size: [c.width, c.height], rect: [Math.round(cr.width), Math.round(cr.height)], z: w.getComputedStyle(c.parentElement).zIndex, state: w.LiuliVideoWallpaper && w.LiuliVideoWallpaper.state ? w.LiuliVideoWallpaper.state() : null };
+        }, null),
         stack: (d.elementsFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)) || []).slice(0, 12).map(n => n.tagName.toLowerCase() + '.' + cls(n).slice(0, 40))
       };
     }, null);
