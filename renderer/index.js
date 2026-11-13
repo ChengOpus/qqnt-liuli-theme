@@ -71,7 +71,7 @@
        * 壁纸 / 材质 / isolation / 入场动画。除了已知的 #/av 和带 screen/share 的路由，
        * QQ 的屏幕共享壳窗口是 about:blank（hash 为空、没有 #/av），也要一并排除。 */
       const isAv =
-        /^#\/av(\/|$)/.test(hash) || /screen|share/i.test(hash) || location.protocol === 'about:';
+        /^#\/av([/?]|$)/.test(hash) || /screen|share/i.test(hash.split('?')[0]) || location.protocol === 'about:';
       if ((body.dataset.liuliAv === '1') !== isAv) {
         if (isAv) body.dataset.liuliAv = '1';
         else delete body.dataset.liuliAv;
@@ -3004,7 +3004,7 @@
         button.dataset.settingValue = String(i === 0);
       });
     }
-    settingSwitch('轻量标识置顶会话', 'pinGroup', settings.pinGroup !== false);
+    settingSwitch('置顶会话左侧短竖线', 'pinGroup', settings.pinGroup !== false);
     settingSwitch('置顶行增加主题色', 'pinColor', settings.pinColor === true);
     const colorHint = document.createElement('div');
     colorHint.className = 'liuli-field__hint';

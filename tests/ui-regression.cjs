@@ -182,7 +182,7 @@ const readResources = require("../resources.cjs");
       }));
       assert.equal(result.rightReveal.right, true);
       assert.equal(result.rightReveal.asidePad, "0px");
-      assert.equal(result.rightReveal.mainPad, "36px");
+      assert.equal(result.rightReveal.mainPad, "0px");
       await page.mouse.move(600, 160);
       await page.waitForTimeout(750);
       result.pin = await page.evaluate(async () => {
@@ -230,7 +230,7 @@ const readResources = require("../resources.cjs");
       await page.waitForTimeout(300);
       result.search = await page.evaluate(() => ({
         surface: document.querySelector(".search-result").dataset.liuliSurface,
-        filter: getComputedStyle(document.querySelector(".search-result"))
+        filter: getComputedStyle(document.querySelector(".search-result"), "::before")
           .backdropFilter,
         list: getComputedStyle(document.querySelector(".list-toggler"))
           .visibility,
@@ -265,13 +265,13 @@ const readResources = require("../resources.cjs");
       assert.match(
         await page
           .locator(".q-dialog-main")
-          .evaluate((n) => getComputedStyle(n).backdropFilter),
+          .evaluate((n) => getComputedStyle(n, "::before").backdropFilter),
         /blur\(18px\)/,
       );
       assert.notEqual(
         await page
           .locator(".q-dialog-main")
-          .evaluate((n) => getComputedStyle(n).backgroundColor),
+          .evaluate((n) => getComputedStyle(n, "::before").backgroundColor),
         "rgba(0, 0, 0, 0)",
       );
       if (variant.scale === 1)
@@ -287,7 +287,7 @@ const readResources = require("../resources.cjs");
       await page.waitForTimeout(300);
       result.profile = await page.locator(".group-info").evaluate((n) => ({
         kind: n.dataset.liuliSurface,
-        filter: getComputedStyle(n).backdropFilter,
+        filter: getComputedStyle(n, "::before").backdropFilter,
         border: getComputedStyle(n).borderWidth,
         inner: getComputedStyle(n.querySelector(".group-info__content"))
           .backgroundColor,

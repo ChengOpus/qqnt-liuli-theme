@@ -33,12 +33,33 @@ body {
     rgba(var(--ll-brand-rgb), calc(var(--ll-glow-strength, 0) * 0.16));
 }
 [data-liuli-surface]:not([data-liuli-surface="context"]) {
+  isolation: isolate;
   border-radius: var(--ll-panel-radius);
-  box-shadow:
-    var(--ll-popup-edge), var(--ll-shadow-float), var(--ll-surface-halo);
   color: var(--ll-on-glass);
 }
+[data-liuli-surface-static] {
+  position: relative;
+}
+[data-liuli-surface]:not([data-liuli-surface="context"])::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  box-shadow:
+    var(--ll-popup-edge), var(--ll-shadow-float), var(--ll-surface-halo);
+}
+[data-liuli-surface="search"]::before {
+  background: var(--ll-search-paint) !important;
+}
 [data-liuli-surface="panel"] {
+  box-shadow: none;
+}
+[data-liuli-surface="panel"]::before {
   box-shadow: var(--ll-popup-edge);
 }
 [data-liuli-surface-inner] {
@@ -75,12 +96,35 @@ body[data-liuli-scope="main"]
   border-radius: 16px;
   z-index: 1200;
 }
-[data-liuli-surface="search"]::before,
 [data-liuli-surface="search"]::after {
   content: none !important;
 }
-body .main-search {
-  position: relative;
+/* Keep native search positioning and native open/close state. Only its list
+ * scrolls; its short input wrapper and the conversation column must not clip it. */
+body[data-liuli-scope="main"]
+  :is(.two-col-layout, .two-col-layout__aside, .recent-contact, .main-search) {
+  overflow: visible !important;
+}
+body[data-liuli-scope="main"] .main-search {
+  z-index: 1300;
+}
+body[data-liuli-scope="main"] .main-search .search-result {
+  z-index: 1301 !important;
+}
+/* Native profile rows are structural surfaces, not cards. Do not touch
+ * avatars, SVG/mask icons, q-tags, buttons or image backgrounds. */
+[data-liuli-surface="profile"] {
+  --bg_white: transparent !important;
+  --bg_top_light: transparent !important;
+  --bg_top_standard: transparent !important;
+  --bg_bottom_standard: transparent !important;
+  --bg_middle_standard: transparent !important;
+  --bg_grey_standard: transparent !important;
+}
+[data-liuli-surface-inner]::before {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 body
   :is(

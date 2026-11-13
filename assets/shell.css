@@ -97,11 +97,56 @@ body[data-liuli-r-nav]
   }
 }
 .aio > .chat-header {
-  margin: 0 0 8px 8px !important;
+  /* Preserve the author's header-menu stacking contract, above the floating
+   * composer (120) as well as the later announcement/member panel. */
+  position: relative !important;
+  z-index: 200 !important;
+  margin: 0 8px 8px !important;
+  padding: 4px 0 !important;
+  height: auto !important;
+  min-height: 48px;
+  display: flex;
+  align-items: flex-start !important;
+  gap: 12px;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   -webkit-app-region: drag;
+}
+/* Two native hit areas, two glass planes. Keep fixed profile/menu children in
+ * their native coordinate space: blur lives on the paint, not the container. */
+.aio > .chat-header :is(.panel-header__title, .panel-header__action) {
+  position: relative;
+  isolation: isolate;
+  min-height: 40px;
+  box-sizing: border-box;
+  margin-block: 0;
+  padding: 8px 12px;
+  border-radius: var(--ll-panel-radius);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.aio > .chat-header .panel-header__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.aio > .chat-header .panel-header__action {
+  flex: 0 0 auto;
+  margin-left: auto;
+  transition: margin-top 200ms var(--ll-ui-ease);
+}
+.aio > .chat-header :is(.panel-header__title, .panel-header__action)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
 }
 .chat-header
   :is(
@@ -109,6 +154,8 @@ body[data-liuli-r-nav]
     input,
     [role="button"],
     .icon-item,
+    .panel-header__title,
+    .panel-header__title *,
     .panel-header__action,
     .panel-header__action *
   ) {
@@ -290,15 +337,22 @@ body[data-liuli-scope="main"][data-liuli-r-r]:not([data-liuli-tb="native"])
   pointer-events: auto !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
-  :is(.two-col-layout__aside, .two-col-layout__main) {
+  .two-col-layout__aside {
   padding-top: 0;
   transition: padding-top 200ms var(--ll-ui-ease);
 }
 body[data-liuli-r-l]:not([data-liuli-tb="native"]) .two-col-layout__aside {
   padding-top: 36px;
 }
-body[data-liuli-r-r]:not([data-liuli-tb="native"]) .two-col-layout__main {
-  padding-top: 36px;
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .two-col-layout__main {
+  padding-top: 0 !important;
+}
+body[data-liuli-r-r]:not([data-liuli-tb="native"])
+  .aio
+  > .chat-header
+  .panel-header__action {
+  margin-top: 36px;
 }
 #liuli-ctl-shield {
   position: fixed;
@@ -347,19 +401,7 @@ body[data-liuli-r-r]:not([data-liuli-tb="native"]) .two-col-layout__main {
   -webkit-app-region: no-drag !important;
 }
 #liuli-nav-handle::after {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: calc(50% - 18px);
-  width: 3px;
-  height: 36px;
-  border-radius: 2px;
-  background: var(--ll-on-glass);
-  opacity: 0.55;
-  pointer-events: none;
-}
-body[data-liuli-r-nav] #liuli-nav-handle::after {
-  opacity: 0;
+  content: none !important;
 }
 body[data-liuli-tb="native"] :is(.liuli-top-hint, #liuli-ctl-shield),
 body:not([data-liuli-scope="main"])
@@ -391,8 +433,8 @@ body[data-liuli-hide-edge-hints]
 }
 .resize-handler:hover,
 [class*="resize-handler"]:hover {
-  opacity: 1 !important;
-  background: rgba(var(--ll-brand-rgb), 0.25) !important;
+  opacity: 0 !important;
+  background: transparent !important;
 }
 .two-col-layout,
 .two-col-layout__aside,

@@ -141,6 +141,7 @@ const output = path.join(current, "out", "ui-qa");
           );
           await page.waitForTimeout(90);
         }
+        const afterSwitches = await metrics();
         const geometry = [];
         for (let i = 0; i < 4; i++) {
           await page.mouse.move(1, 240, { steps: 4 });
@@ -162,12 +163,28 @@ const output = path.join(current, "out", "ui-qa");
           await page.mouse.move(650, 220, { steps: 4 });
           await page.waitForTimeout(480);
         }
+        const afterNavigation = await metrics();
         await page.mouse.move(120, 4);
         await page.waitForTimeout(300);
         await page.mouse.move(650, 220);
         await page.waitForTimeout(600);
         await page.waitForTimeout(300);
         const end = await metrics();
+        const phases = {};
+        for (const [name, a, b] of [
+          ["switches", start, afterSwitches],
+          ["navigation", afterSwitches, afterNavigation],
+          ["top", afterNavigation, end],
+        ]) {
+          phases[name] = Object.fromEntries(
+            [
+              "ScriptDuration",
+              "LayoutDuration",
+              "RecalcStyleDuration",
+              "TaskDuration",
+            ].map((key) => [key, +(1000 * (b[key] - a[key])).toFixed(2)]),
+          );
+        }
         const beforeIdle = await page.evaluate(() => ({ ...__bench }));
         await page.waitForTimeout(700);
         const idle = await page.evaluate(
@@ -196,6 +213,7 @@ const output = path.join(current, "out", "ui-qa");
           };
         });
         results.push({
+          checkout: repo,
           version: require(path.join(repo, "snowlora-plugin.json")).version,
           run: run + 1,
           sourceBytes: Buffer.byteLength(bundle.source),
@@ -211,6 +229,7 @@ const output = path.join(current, "out", "ui-qa");
               "TaskDuration",
             ].map((k) => [k, +(1000 * (end[k] - start[k])).toFixed(2)]),
           ),
+          phases,
           observers: {
             mutation: beforeIdle.mutationCreated,
             resize: beforeIdle.resizeCreated,
@@ -231,11 +250,12 @@ const output = path.join(current, "out", "ui-qa");
     }
     const median = (list) =>
       list.sort((a, b) => a - b)[Math.floor(list.length / 2)];
-    const versions = [...new Set(results.map((r) => r.version))];
-    const medians = versions.map((version) => {
-      const rows = results.filter((r) => r.version === version);
+    const checkoutsMeasured = [...new Set(results.map((r) => r.checkout))];
+    const medians = checkoutsMeasured.map((checkout) => {
+      const rows = results.filter((r) => r.checkout === checkout);
       return {
-        version,
+        version: rows[0].version,
+        checkout,
         cpuMs: Object.fromEntries(
           Object.keys(rows[0].cpuMs).map((k) => [
             k,

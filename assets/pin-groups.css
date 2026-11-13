@@ -1,4 +1,17 @@
-/* Pinned rows use an icon and an optional soft tint. No added divisions. */
+/* Requested row-local pin marker. No group divider, heading, count or fold. */
+body[data-liuli-pin-group] .recent-contact-item[data-liuli-pinned]::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  left: 2px;
+  top: calc(50% - 11px);
+  width: 2px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--ll-link, var(--ll-brand));
+  opacity: 0.8;
+  pointer-events: none;
+}
 body[data-liuli-pin-color]
   .recent-contact-item[data-liuli-pinned]:not(.recent-contact-item--selected) {
   background: rgba(var(--ll-brand-rgb), 0.085) !important;

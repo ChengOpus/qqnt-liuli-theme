@@ -49,7 +49,7 @@
 | **磨砂玻璃**          | 输入栏、详情栏、资料弹层、搜索和右键菜单共用单层磨砂；连续会话列去掉重复外框                                                                  |
 | **聊天布局**          | TG / 经典 / TIM 三种布局；可选头像位于消息开头或末尾；纯图片消息可以隐藏昵称和头衔                                                            |
 | **消息文字**          | 正文、昵称、头衔字号分别设置；昵称不超过正文大小，长昵称在消息范围内省略                                                                      |
-| **置顶标识**          | 标记原生置顶会话，提供图钉和可选淡底色；不新增分组标题、分隔线、数量或折叠控件                                                                |
+| **置顶标识**          | 标记原生置顶会话，提供左侧短竖线、图钉和可选淡底色；不新增分组标题、组间分隔线、数量或折叠控件                                                                |
 | **简洁布局**          | 导航使用真实布局列，左右顶部独立让位；悬浮输入栏跟随当前可见会话，兼容缓存页面复用                                                            |
 | **视频壁纸**          | 本地 H.264 MP4 / WebM，静音循环，首帧取色；窗口隐藏时暂停，减少动态效果时显示首帧                                                             |
 | **Markdown 行内渲染** | `` `代码` ``、`**粗体**`、`*斜体*`、`~~删除线~~`、`\|\|剧透\|\|`（移植自 BetterQQNT）                                                         |
@@ -72,7 +72,7 @@
 
 在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
-本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.10`**。PR 附带的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
+本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.11`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
 
 ### 方式三：在线安装
 
@@ -90,7 +90,7 @@ QQ 设置 → **琉璃**。
 
 - **宿主接口**：读资源、开外部链接、导诊断包走 SnowLora 的宿主通道（`window.LiuliHost`），不再用 LiteLoader 的 preload / `contextBridge`；设置项存在 localStorage。
 - **设置面板**：挂在 QQ 设置窗的「琉璃」导航页里，不再使用 LiteLoader 的设置窗口组件；标题栏也不放主题齿轮。
-- **多窗口**：`load.js` 在 JS 侧接管窗口选择——主窗、独立聊天窗（`#/chat`）、聊天记录（`#/forward`）、设置（`#/setting`）、图片查看器等都会注入；`#/mini` 等迷你窗不注入。
+- **多窗口**：`load.js` 在 JS 侧接管窗口选择——主窗、独立聊天窗（`#/chat`）、聊天记录（`#/forward`）、设置（`#/setting`）、图片查看器等都会注入；独立资料视图经过同一 UI 路由检查；登录、截图、通话和屏幕共享不注入。
 - **日志与诊断**：SnowLora 没有 LiteLoader 的 `plugin.log` 机制，主进程日志轮转不适用；诊断包由 SnowLora 侧的 `diagnostics.cjs` 生成，格式与 LiteLoader 版 main/diag.js 不同。
 - **壁纸比例**：沿用 SnowLora 适配版的 `primeImageRatio` + boot 前解码，未重复移植 LiteLoader 版的对应修复。
 - **版本号**：形如 `<LiteLoader 版版本>+snowlora.N`（如 `1.3.5+snowlora.2`），前半段对应 LiteLoader 版的功能基线。

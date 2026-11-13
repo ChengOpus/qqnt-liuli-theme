@@ -2,7 +2,7 @@ const require = process.getBuiltinModule('module').createRequire(snowlora.script
 const path = require('node:path');
 const loadResources = require('./resources.cjs');
 const { randomUUID } = require('node:crypto');
-const { BrowserWindow, app, shell, screen } = require('electron');
+const { BrowserWindow, webContents, app, shell, screen } = require('electron');
 
 const root = path.dirname(snowlora.script);
 // One registry per QQ process. SnowLora runs this script once per matching
@@ -31,7 +31,7 @@ function eligible(url) {
   // JSON in their route, and decoding would let quoted message text trip the
   // screen/share filter below. chatPoolWin=1 lives in the query, so it is not
   // treated as a reason to skip.
-  const route = hash.slice(1).toLowerCase();
+  const route = hash.slice(1).split('?')[0].toLowerCase();
   if (route.includes('screen') || route.includes('share')) return false;
   if (/^\/(?:blank|tray-menu|av)(?:[/?]|$)/.test(route)) return false;
   return true;
@@ -206,7 +206,14 @@ function attach(browserWindow) {
   } catch {
     return null;
   }
-  if (!wc || wc.isDestroyed()) return null;
+  return attachContents(wc, browserWindow);
+}
+
+// QQ can host auxiliary UI in a WebContentsView rather than a BrowserWindow.
+// The same URL guard applies. Never inject a webview, screenshot/login document,
+// external page or the native AV/screen-sharing surfaces.
+function attachContents(wc, browserWindow = null) {
+  if (!wc || wc.isDestroyed() || wc.getType?.() === 'webview') return null;
   const existing = windows.get(wc.id);
   if (existing) {
     if (existing.managed) return existing;
@@ -233,7 +240,8 @@ function attach(browserWindow) {
     onRoute(state, event, url, isMainFrame)
   );
   wc.on('page-title-updated', (_event, title) => {
-    if (state.searchSized || !/综合搜索/.test(String(title)) || browserWindow.isDestroyed()) return;
+    browserWindow ??= BrowserWindow.fromWebContents(wc);
+    if (state.searchSized || !/综合搜索/.test(String(title)) || !browserWindow || browserWindow.isDestroyed()) return;
     state.searchSized = true;
     try {
       const old = browserWindow.getBounds();
@@ -265,10 +273,12 @@ function attach(browserWindow) {
 
 function createManager() {
   initDiagnostics();
-  const instance = { windows, diagnostics, eligible, attach };
+  const instance = { windows, diagnostics, eligible, attach, attachContents };
   // One listener registration per process, on purpose.
   app.on('browser-window-created', (_event, browserWindow) => attach(browserWindow));
+  app.on('web-contents-created', (_event, wc) => attachContents(wc));
   for (const browserWindow of BrowserWindow.getAllWindows()) attach(browserWindow);
+  for (const wc of webContents.getAllWebContents()) attachContents(wc);
   return instance;
 }
 

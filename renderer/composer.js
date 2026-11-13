@@ -5,6 +5,7 @@
   const D = window.LiuliDOM;
   let active = null,
     host = null,
+    region = null,
     scroll = null,
     bridges = [],
     overlay = null,
@@ -32,12 +33,14 @@
     }
     active?.removeAttribute("data-liuli-composer");
     host?.removeAttribute("data-liuli-composer-host");
+    host?.style.removeProperty("--ll-composer-clearance");
+    region?.removeAttribute("data-liuli-message-region");
     scroll?.removeAttribute("data-liuli-composer-scroll");
     bridges.forEach((n) => n.removeAttribute("data-liuli-composer-bridge"));
     bridges = [];
     overlay?.remove();
     overlay = null;
-    active = host = scroll = null;
+    active = host = scroll = region = null;
   }
   function select() {
     if (!D.mainLike()) return null;
@@ -155,10 +158,31 @@
     const pane =
       next.closest(".aio,.chat-container,.two-col-layout__main") ||
       document.body;
+    // Select the message region, not a virtual-list row translated during scroll.
+    // A focused native editor can temporarily leave its viewport at zero height;
+    // that is not a reason to abandon its floating layout.
+    let nextRegion = null;
+    for (
+      let parent = next.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      const candidates = [...parent.querySelectorAll(".chat-msg-area")].filter(
+        (node) =>
+          !node.closest(
+            '[hidden],[aria-hidden="true"],.viewport-list__measure',
+          ) && getComputedStyle(node).display !== "none",
+      );
+      nextRegion =
+        candidates.find(D.visible) ||
+        // Accept a temporarily collapsed region only in the editor's closest
+        // shared branch, never an earlier hidden cached conversation.
+        (candidates.length === 1 ? candidates[0] : null);
+      if (nextRegion || parent === pane) break;
+    }
+    if (!nextRegion) return [];
     const view =
-      D.visibleQuery(".chat-msg-area__vlist", pane) ||
-      D.visibleQuery(".chat-msg-area", pane);
-    if (!view) return [];
+      nextRegion.querySelector(".chat-msg-area__vlist") || nextRegion;
     let nextHost = next.parentElement;
     while (nextHost && !nextHost.contains(view))
       nextHost = nextHost.parentElement;
@@ -173,6 +197,12 @@
       active.dataset.liuliComposer = "float";
     if (!host.hasAttribute("data-liuli-composer-host"))
       host.dataset.liuliComposerHost = "";
+    if (region !== nextRegion) {
+      region?.removeAttribute("data-liuli-message-region");
+      region = nextRegion;
+    }
+    if (!region.hasAttribute("data-liuli-message-region"))
+      region.dataset.liuliMessageRegion = "";
     const nextBridges = [];
     for (
       let node = active.parentElement;
@@ -202,7 +232,7 @@
       clearance + "px"
     )
       host.style.setProperty("--ll-composer-clearance", clearance + "px");
-    return [active, active.querySelector(".msg-input"), host, view].filter(
+    return [active, active.querySelector(".msg-input"), host, region].filter(
       Boolean,
     );
   }

@@ -2,6 +2,18 @@
 [data-liuli-composer-host] {
   position: relative !important;
   min-height: 0;
+  /* Native focus/resize code uses this to subtract a flow editor. Our editor
+   * is out of flow, so no input-sized hole should remain in the message pane. */
+  --inputAreaHeight: 0px !important;
+}
+[data-liuli-message-region] {
+  --inputAreaHeight: 0px !important;
+  flex: 1 1 0% !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 [data-liuli-composer-bridge] {
   display: contents !important;
@@ -20,7 +32,7 @@
   box-sizing: border-box;
   isolation: isolate;
   overflow: visible !important;
-  z-index: 120;
+  z-index: 120 !important;
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -30,7 +42,7 @@
     var(--ll-popup-edge),
     0 6px 20px -8px rgba(var(--ll-shadow-rgb), 0.2),
     var(--ll-surface-halo);
-  transform: none;
+  transform: none !important;
 }
 .chat-input-area[data-liuli-composer="float"]::before {
   content: "";
@@ -259,24 +271,47 @@ body .chat-func-bar.liuli-expanded .bar-icon > .arrow {
   bottom: 2px !important;
   width: 14px !important;
   height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border: 0 !important;
+  filter: none !important;
   margin: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   transform: none !important;
-  border-radius: 5px;
-  background: rgba(var(--ll-on-glass-rgb), 0.1);
-  color: var(--ll-on-glass-2);
+  border-radius: 5px !important;
+  background: rgba(var(--ll-on-glass-rgb), 0.1) !important;
+  color: var(--ll-on-glass-2) !important;
   box-shadow: none !important;
+  z-index: 2 !important;
 }
 body .chat-func-bar.liuli-expanded .bar-icon > .arrow:hover {
-  background: rgba(var(--ll-brand-rgb), 0.2);
-  color: var(--ll-link);
+  background: rgba(var(--ll-brand-rgb), 0.2) !important;
+  color: var(--ll-link) !important;
+}
+/* Native arrow paint must occupy the same box as its hit target. */
+body .chat-func-bar.liuli-expanded .bar-icon > .arrow::before,
+body .chat-func-bar.liuli-expanded .bar-icon > .arrow::after {
+  content: none !important;
+  box-shadow: none !important;
 }
 body .chat-func-bar.liuli-expanded .bar-icon > .arrow :is(svg, i) {
   width: 12px !important;
   height: 12px !important;
-  fill: currentColor;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  transform: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  fill: currentColor !important;
+  color: inherit !important;
 }
 body
   .chat-func-bar.liuli-expanded
@@ -359,4 +394,25 @@ body
   backdrop-filter: var(--ll-material-blur);
   -webkit-backdrop-filter: var(--ll-material-blur);
   box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+}
+
+/* QQ's v-show selection toolbar belongs to this editor. Never let a cached
+ * conversation or an arbitrary inline style change invalidate the whole body. */
+.chat-input-area[data-liuli-composer]:has(
+    > .msg-input
+      ~ .forward-ops:not([hidden]):not([aria-hidden="true"]):not(
+        [style*="display: none"]
+      ):not([style*="display:none"])
+  )
+  > :is(.msg-input, .chat-func-bar, #liuli-input-overlay) {
+  display: none !important;
+}
+.chat-input-area[data-liuli-composer]:has(
+    > .msg-input
+      ~ .forward-ops:not([hidden]):not([aria-hidden="true"]):not(
+        [style*="display: none"]
+      ):not([style*="display:none"])
+  ) {
+  justify-content: center !important;
+  padding: 10px 0 !important;
 }

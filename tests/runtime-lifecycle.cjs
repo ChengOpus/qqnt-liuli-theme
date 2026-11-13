@@ -345,10 +345,10 @@ const root = path.resolve(__dirname, "..");
       await page.evaluate(() =>
         document.querySelector(".main-search .q-float-card").remove(),
       );
-      // Profile variant not named in the class registry: UI action identifies it.
+      // Author-supported member profile card shares the same material as group details.
       await page.evaluate(() => {
         const card = document.createElement("section");
-        card.className = "unlisted-native-profile";
+        card.className = "group-member-card";
         card.style.cssText =
           "position:fixed;left:330px;top:90px;width:330px;height:260px;background:#dfe6ee;border:1px solid #aab";
         card.innerHTML =
@@ -357,7 +357,7 @@ const root = path.resolve(__dirname, "..");
       });
       await page.waitForFunction(
         () =>
-          document.querySelector(".unlisted-native-profile").dataset
+          document.querySelector(".group-member-card").dataset
             .liuliSurface === "profile",
       );
       assert.equal(
@@ -367,7 +367,7 @@ const root = path.resolve(__dirname, "..");
         "rgba(0, 0, 0, 0)",
       );
       await page.evaluate(() =>
-        document.querySelector(".unlisted-native-profile").remove(),
+        document.querySelector(".group-member-card").remove(),
       );
       // Native protected popup descendants never become a material owner.
       await page.evaluate(() => {
