@@ -352,6 +352,7 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
             icon = i.getBoundingClientRect(),
             box = n.getBoundingClientRect();
           return {
+            pinned: n.classList.contains("liuli-pinned"),
             width: r.width,
             height: r.height,
             right: box.right - r.right,
@@ -366,8 +367,12 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
       check("arrow paint box", () => {
         assert.equal(checks.arrow.width, 14);
         assert.equal(checks.arrow.height, 14);
-        assert.equal(checks.arrow.right, 2);
-        assert.equal(checks.arrow.bottom, 2);
+        // 截图 now sits beside "+" as a 28px round icon (moved out of the menu
+        // on request); its arrow is a corner badge. Inside the grid it keeps
+        // the author's 2px inset.
+        const inset = checks.arrow.pinned ? -3 : 2;
+        assert.equal(checks.arrow.right, inset);
+        assert.equal(checks.arrow.bottom, inset);
         assert.equal(checks.arrow.aligned, true);
         assert.equal(checks.arrow.shadow, "none");
         assert.equal(checks.arrow.filter, "none");

@@ -82,7 +82,10 @@ const root = path.resolve(__dirname, "..");
           .querySelector('[aria-label="表情"]')
           .addEventListener("click", () => window.__nativeEmojiClicks++);
       });
-      await page.locator("#liuli-emoji-btn").click();
+      // 表情 is QQ's own icon, moved beside "+"; its click stays QQ's.
+      await page
+        .locator('.chat-func-bar .bar-icon.liuli-pinned [aria-label="表情"]')
+        .click();
       assert.equal(await page.evaluate(() => window.__nativeEmojiClicks), 1);
       await page.evaluate(() => LiuliComposer.expand(true));
       assert.equal(
@@ -91,8 +94,38 @@ const root = path.resolve(__dirname, "..");
           .evaluate((n) => getComputedStyle(n).display),
         "none",
       );
-      assert.equal(await page.locator("#liuli-bar-pins button").count(), 1);
+      assert.equal(
+        await page
+          .locator('.chat-func-bar .bar-icon.liuli-pinned:has([aria-label="表情"])')
+          .evaluate((n) => getComputedStyle(n).display),
+        "flex",
+        "the moved 表情 icon stays beside \"+\" while the grid is open",
+      );
       await page.evaluate(() => LiuliComposer.expand(false));
+      // QQ hiding a moved item again wins over the pin.
+      await page.evaluate(() => {
+        LiuliComposer.bar()
+          .querySelector('[aria-label="表情"]')
+          .closest(".bar-icon").style.display = "none";
+      });
+      await page.waitForFunction(
+        () =>
+          !LiuliComposer.bar()
+            .querySelector('[aria-label="表情"]')
+            .closest(".bar-icon")
+            .classList.contains("liuli-pinned"),
+      );
+      assert.equal(
+        await page
+          .locator('.chat-func-bar .bar-icon:has([aria-label="表情"])')
+          .evaluate((n) => getComputedStyle(n).display),
+        "none",
+      );
+      await page.evaluate(() => {
+        LiuliComposer.bar()
+          .querySelector('[aria-label="表情"]')
+          .closest(".bar-icon").style.display = "";
+      });
       // Same editor node moves under a new native wrapper after first initialization.
       await page.evaluate(() => {
         const area = LiuliComposer.area(),

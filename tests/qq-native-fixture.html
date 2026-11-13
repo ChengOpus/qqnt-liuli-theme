@@ -781,7 +781,11 @@
           (label) =>
             '<div class="bar-icon"><button class="icon-item" aria-label="' +
             label +
-            '"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor"/></svg></button></div>',
+            '"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor"/></svg></button>' +
+            (label === "截图" || label === "文件"
+              ? '<div class="arrow"><svg viewBox="0 0 24 24"><path d="m5 8 7 7 7-7" fill="none" stroke="currentColor"/></svg></div>'
+              : "") +
+            "</div>",
         )
         .join("") +
       "</div></div>";

@@ -8,6 +8,13 @@ body {
    * same line (the 8px dock gap), so they read as one set. */
   --ll-top-h: 36px;
   --ll-top-radius: 14px;
+  /* The top-row glass is lit evenly. The panel glass elsewhere carries a
+   * corner wash of the theme colour; on these short strips it sat along the
+   * bottom edge and read as a shadow (user screenshot, 2026-11-13). */
+  --ll-top-paint:
+    linear-gradient(rgba(var(--ll-specular), 0.08), rgba(var(--ll-specular), 0.08)),
+    var(--ll-glass-surface);
+  --ll-top-edge: inset 0 1px rgba(var(--ll-specular), 0.22);
   --ll-nav-slot: 0px;
   --ll-card-border: none;
   --ll-card-shadow: var(--ll-shadow);
@@ -231,12 +238,12 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header 
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
-  background: var(--ll-glass-paint);
+  background: var(--ll-top-paint);
   backdrop-filter: var(--ll-material-blur);
   -webkit-backdrop-filter: var(--ll-material-blur);
   /* Edge light only. A drop shadow under panels that float over scrolling
    * messages read as a grey band across the top of the chat. */
-  box-shadow: var(--ll-popup-edge);
+  box-shadow: var(--ll-top-edge);
 }
 .chat-header
   :is(
@@ -302,12 +309,12 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   align-items: center !important;
   box-sizing: border-box;
   z-index: 3600 !important;
-  background: var(--ll-glass-paint) !important;
+  background: var(--ll-top-paint) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 0 !important;
   border-radius: var(--ll-top-radius) !important;
-  box-shadow: var(--ll-popup-edge);
+  box-shadow: var(--ll-top-edge);
   opacity: 0 !important;
   visibility: visible !important;
   pointer-events: none !important;
@@ -582,9 +589,10 @@ body[data-hash^="#/chat"]:not([data-liuli-tb="native"])
   flex: 0 0 auto !important;
   align-self: flex-start !important;
   align-items: center !important;
-  border-radius: 12px;
-  background: var(--ll-glass-paint);
+  border-radius: var(--ll-top-radius);
+  background: var(--ll-top-paint);
   backdrop-filter: var(--ll-material-blur);
+  box-shadow: var(--ll-top-edge);
 }
 body[data-liuli-scope="main"][data-liuli-tb="native"]
   .window-title-bar

@@ -1,8 +1,8 @@
 /* Small chat-pane behaviours that are not layout:
  *   · the file-transfer strip QQ pins under the chat title when someone sends a
  *     file or video ("xx.gif 39 MB · 待下载  [下载] [另存为] [取消]") is hidden;
- *   · a sticker button beside the composer opens the expression panel on the
- *     sticker tab instead of the emoji tab;
+ *   · QQ's own 表情 icon (moved beside "+") opens the expression panel on a
+ *     sticker tab, on hover or click, instead of the emoji tab;
  *   · clicking a sticker sends it at once when the editor was empty.
  * None of these changes a message, a file or QQ's own download state: the strip
  * is only not displayed, and the message itself still carries its native
@@ -71,54 +71,101 @@
   function panel() {
     return [...document.querySelectorAll(PANEL)].find(shown) || null;
   }
-  // The tab row: the strip at the bottom of the panel with several small,
-  // equally sized items in one line. Found by geometry once per opening.
+  // The tab row. QQ 9.9.36 (user diagnostics): .sticker-panel__bar >
+  // .tabs-container > .tabs-container-item × n — search, emoji, favourites,
+  // GIF, then sticker packs. Geometry is only a fallback for other builds.
+  const EMOJI_TAB = 1,
+    SEARCH_TAB = 0,
+    FAVOURITES_TAB = 2;
   function tabs(root) {
+    const items = [...root.querySelectorAll(".sticker-panel__bar .tabs-container-item")];
+    if (items.length >= 3) return { row: items[0].parentElement, items };
     let best = null;
     for (const row of root.querySelectorAll("div, ul, nav")) {
-      const items = [...row.children].filter((c) => c.getBoundingClientRect().width > 0);
-      if (items.length < 4 || items.length > 30) continue;
-      const rects = items.map((c) => c.getBoundingClientRect());
+      const kids = [...row.children].filter((c) => c.getBoundingClientRect().width > 0);
+      if (kids.length < 4 || kids.length > 30) continue;
+      const rects = kids.map((c) => c.getBoundingClientRect());
       const h = rects[0].height;
       if (h < 20 || h > 64) continue;
       if (!rects.every((r) => Math.abs(r.top - rects[0].top) < 3 && Math.abs(r.height - h) < 3)) continue;
-      if (!best || rects[0].top > best.top) best = { row, items, top: rects[0].top };
+      if (!best || rects[0].top > best.top) best = { row, items: kids, top: rects[0].top };
     }
     return best;
   }
+  let choosing = false;
+  // The reader's own choice of a sticker tab is remembered; search and the
+  // emoji tab never become the default (stickers open, not emoji).
   function remember(event) {
+    if (choosing) return;
     const root = event.target.closest?.(PANEL);
-    if (!root) return;
-    const strip = tabs(root);
+    const strip = root && tabs(root);
     if (!strip) return;
     const index = strip.items.findIndex((item) => item.contains(event.target));
-    if (index < 0) return;
+    if (index < 0 || index === EMOJI_TAB || index === SEARCH_TAB) return;
     stickerTab = index;
     try {
       localStorage.setItem("liuli-sticker-tab", JSON.stringify(index));
     } catch (e) {}
   }
-  // Opens the native expression panel (through the native toolbar item) and
-  // switches it to the sticker tab: the one last used, else the first tab after
-  // search and emoji (favourites, in QQ 9.9.36).
+  function chooseStickerTab() {
+    const root = panel();
+    const strip = root && tabs(root);
+    if (!strip) return false;
+    let index = stickerTab ?? FAVOURITES_TAB;
+    if (index === EMOJI_TAB || index === SEARCH_TAB || index >= strip.items.length)
+      index = Math.min(FAVOURITES_TAB, strip.items.length - 1);
+    const target = strip.items[index];
+    if (target.classList.contains("tabs-container-item-active")) return true;
+    choosing = true;
+    try {
+      target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    } finally {
+      choosing = false;
+    }
+    return true;
+  }
+  function whenOpen(then) {
+    let tries = 0;
+    const step = () => {
+      if (panel() && tabs(panel())) then();
+      else if (++tries < 40) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  // Opens QQ's expression panel through its own toolbar item and switches it
+  // to the sticker tab. An already open panel is never toggled shut.
   function openStickers(nativeItem) {
     if (!panel()) nativeItem?.click();
-    let tries = 0;
-    const pick = () => {
-      const root = panel();
-      if (!root) {
-        if (++tries < 40) requestAnimationFrame(pick);
-        return;
-      }
-      const strip = tabs(root);
-      if (!strip) return;
-      const index = Math.min(strip.items.length - 1, stickerTab ?? 2);
-      const target = strip.items[index];
-      (target.querySelector('button, [role="button"], [class*="tab"], img, svg') || target).dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
-      );
-    };
-    requestAnimationFrame(pick);
+    whenOpen(chooseStickerTab);
+  }
+  // QQ's own 表情 icon (placed beside "+"): hover opens the sticker panel,
+  // a click opens it too — it never closes it or lands on emoji.
+  const EMOJI_ICON = '.chat-input-area .chat-func-bar .bar-icon:has(> .icon-item[aria-label="表情"])';
+  let intent = 0;
+  function emojiIcon(target) {
+    return target instanceof Element ? target.closest(EMOJI_ICON) : null;
+  }
+  function onOver(event) {
+    const icon = emojiIcon(event.target);
+    if (!icon || icon.contains(event.relatedTarget)) return;
+    clearTimeout(intent);
+    const item = icon.querySelector(":scope > .icon-item");
+    intent = setTimeout(() => openStickers(item), 140);
+  }
+  function onOut(event) {
+    const icon = emojiIcon(event.target);
+    if (icon && !icon.contains(event.relatedTarget)) clearTimeout(intent);
+  }
+  function onEmojiClick(event) {
+    const icon = emojiIcon(event.target);
+    if (!icon || event.target.closest(".arrow")) return;
+    clearTimeout(intent);
+    if (panel()) {
+      // QQ would toggle it shut; keep it open and on stickers instead.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      chooseStickerTab();
+    } else whenOpen(chooseStickerTab);
   }
 
   // Click on a sticker → once it lands in an empty editor, press QQ's own send.
@@ -133,11 +180,11 @@
     );
   }
   function onClick(event) {
-    if (!settings.stickerSend) return;
     const root = event.target.closest?.(PANEL);
     if (!root) return;
     const strip = tabs(root);
     if (strip?.row.contains(event.target)) return remember(event);
+    if (!settings.stickerSend) return;
     const tile = event.target.closest("img, [class*='sticker'], [class*='item'], [class*='emoji']") || event.target;
     const r = tile.getBoundingClientRect();
     if (r.width < 44 || r.height < 44) return; // an emoji, not a sticker
@@ -172,7 +219,10 @@
     }
   }
   function install() {
+    document.addEventListener("click", onEmojiClick, true);
     document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerover", onOver, true);
+    document.addEventListener("pointerout", onOut, true);
   }
   function configure(next) {
     settings = { ...settings, ...next };

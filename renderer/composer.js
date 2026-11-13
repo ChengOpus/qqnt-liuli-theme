@@ -258,56 +258,20 @@
     more.addEventListener("click", () =>
       expand(!bar()?.classList.contains("liuli-expanded")),
     );
-    const pins = document.createElement("div");
-    pins.id = "liuli-bar-pins";
-    result.append(more, pins);
+    result.append(more);
     return result;
   }
+  // The pinned items are QQ's own toolbar icons (composer.css places them
+  // beside "+"); here they only get their slot index and the editor its
+  // left padding.
   function syncPins() {
     if (!active || !overlay) return;
-    // 表情 and 截图 sit right after "+" (requested); further pins follow.
-    const pinned = window.LiuliLayout.applyBar();
-    const labels = [
-      ...["表情", "截图"].filter((label) => window.LiuliLayout.nativeBarItem(label)),
-      ...pinned.filter((label) => label !== "表情" && label !== "截图"),
-    ];
-    const pins = overlay.querySelector("#liuli-bar-pins");
-    const key = labels.join("|");
-    if (pins.dataset.key !== key) {
-      pins.dataset.key = key;
-      pins.replaceChildren();
-      labels.forEach((label) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "liuli-bar-btn";
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.innerHTML = window.LiuliIcons.svg(label);
-        if (label === "表情") {
-          // Stickers first: hovering (or clicking) opens the expression panel
-          // on the sticker tab; emoji are one tab away inside the panel.
-          button.id = "liuli-emoji-btn";
-          const open = () =>
-            window.LiuliChatExtras?.openStickers(window.LiuliLayout.nativeBarItem("表情"));
-          let intent = 0;
-          button.addEventListener("pointerenter", () => {
-            clearTimeout(intent);
-            intent = setTimeout(open, 140);
-          });
-          button.addEventListener("pointerleave", () => clearTimeout(intent));
-          button.addEventListener("click", () => {
-            clearTimeout(intent);
-            open();
-          });
-        } else {
-          if (label === "截图") button.id = "liuli-shot-btn";
-          button.addEventListener("click", () =>
-            window.LiuliLayout.nativeBarItem(label)?.click(),
-          );
-        }
-        pins.append(button);
-      });
-    }
+    const labels = window.LiuliLayout.applyBar();
+    labels.forEach((label, i) => {
+      const icon = window.LiuliLayout.nativeBarItem(label)?.closest(".bar-icon");
+      if (icon && icon.style.getPropertyValue("--liuli-pin-i") !== String(i))
+        icon.style.setProperty("--liuli-pin-i", String(i));
+    });
     const pad = 12 + (labels.length + 1) * 32 + "px";
     if (active.style.getPropertyValue("--liuli-bar-pad") !== pad)
       active.style.setProperty("--liuli-bar-pad", pad);
@@ -494,6 +458,7 @@
     const height = active.getBoundingClientRect().height;
     const clearance = height >= 1 ? Math.ceil(height) + 28 : previous || 76;
     if (height >= 1) variable(pane, "--ll-composer-clearance", clearance + "px");
+    if (height >= 1) variable(active, "--ll-composer-h", Math.ceil(height) + "px");
     if (scroll) {
       const added = fresh ? clearance : Math.max(0, clearance - (previous || clearance));
       const settling =

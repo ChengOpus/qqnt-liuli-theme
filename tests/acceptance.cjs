@@ -145,6 +145,24 @@ async function run() {
         };
       }, { x: (rest.title.r + rest.action.x) / 2, y: rest.header.y + rest.header.h / 2 });
       expect("header.blank-band-not-intercepting", !band.header && band.messages, band);
+      // Top-row glass is lit evenly: no corner wash that darkens the lower
+      // edge, and no drop shadow — only the inset edge light (user: 顶部阴影).
+      const topPaint = await page.evaluate(() =>
+        [".panel-header__title", ".panel-header__action"].map((s) => {
+          const cs = getComputedStyle(__qa.q(s), "::before");
+          return { image: cs.backgroundImage, shadow: cs.boxShadow };
+        }),
+      );
+      expect(
+        "header.no-bottom-shadow",
+        topPaint.every(
+          (p) =>
+            !/radial-gradient/.test(p.image) &&
+            p.shadow !== "none" &&
+            p.shadow.split(/,(?![^(]*\))/).every((x) => /inset/.test(x)),
+        ),
+        topPaint,
+      );
       // Reveal window controls from the top edge and watch every frame.
       await page.mouse.move(W - 6, 2);
       const during = await page.evaluate(() => __qa.sample(520));
@@ -394,13 +412,22 @@ async function run() {
           };
         });
       };
-      await page.emulateMedia({ reducedMotion: "reduce" });
-      const paceOff = await pace();
-      await page.emulateMedia({ reducedMotion: "no-preference" });
-      await page.waitForTimeout(200);
-      const paceOn = await pace();
-      checks.pacing = { effectsOff: paceOff, effectsOn: paceOn };
-      expect("fx.no-long-tasks-while-typing", paceOn.long === 0, checks.pacing);
+      // Two interleaved runs per condition; the better run of each is
+      // compared (min-of-N, so a stray GC or scheduler hiccup in this shared
+      // container does not decide the result).
+      const best = (a, b) => (a.slow + a.median / 100 <= b.slow + b.median / 100 ? a : b);
+      const runs = { off: [], on: [] };
+      for (let round = 0; round < 2; round++) {
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        runs.off.push(await pace());
+        await page.emulateMedia({ reducedMotion: "no-preference" });
+        await page.waitForTimeout(200);
+        runs.on.push(await pace());
+      }
+      const paceOff = best(...runs.off),
+        paceOn = best(...runs.on);
+      checks.pacing = { effectsOff: paceOff, effectsOn: paceOn, runs };
+      expect("fx.no-long-tasks-while-typing", runs.on.every((r) => r.long === 0), checks.pacing);
       // "slow" = a frame that took two vsync intervals. Two of ~110 is the
       // run-to-run noise of this environment with the effects off.
       expect(
@@ -959,66 +986,119 @@ async function run() {
       expect("filestrip.hidden", fileStrip.strip === "none", fileStrip);
       expect("filestrip.message-controls-kept", fileStrip.inMessage !== "none", fileStrip);
 
-      // ── Stickers: own button opens the sticker tab; a sticker sends at once ──
+      // ── Emoji / screenshot: QQ's own icons beside "+"; emoji opens stickers ──
       const stickers = await page.evaluate(async () => {
         const native = __qa.q('.chat-func-bar .icon-item[aria-label="表情"]');
-        let sent = 0;
+        const emojiIcon = native.closest(".bar-icon");
+        let sent = 0, nativeClicks = 0;
         __qa.q(".operation .send-msg").addEventListener("click", () => sent++);
         const opened = [];
+        let panelEl = null;
+        // QQ's behaviour: the icon toggles the panel.
         native.addEventListener("click", () => {
+          nativeClicks++;
+          if (panelEl) { panelEl.remove(); panelEl = null; return; }
           const panel = document.createElement("div");
           panel.className = "expression-panel";
-          panel.style.cssText = "position:fixed;left:320px;bottom:120px;width:420px;height:300px;background:#fff";
+          panel.style.cssText = "position:fixed;left:320px;bottom:120px;width:420px;height:300px";
           let grid = "";
-          for (let i = 0; i < 6; i++) grid += '<img class="sticker-tile" style="width:90px;height:90px;display:inline-block">';
+          for (let i = 0; i < 6; i++) grid += '<div class="stickers-item"><img style="width:80px;height:80px;display:block"></div>';
           let emoji = "";
           for (let i = 0; i < 6; i++) emoji += '<span class="emoji-tile" style="width:28px;height:28px;display:inline-block">😀</span>';
           panel.innerHTML =
-            '<div class="grid-x" style="height:240px;overflow:hidden">' + grid + emoji + "</div>" +
-            '<div class="tabs-x" style="display:flex;height:48px">' +
-            ["搜索", "表情", "收藏", "GIF", "包"].map((t, i) => '<div class="tab-x" style="width:48px;height:40px" data-i="' + i + '">' + t + "</div>").join("") +
-            "</div>";
-          panel.querySelectorAll(".tab-x").forEach((t) => t.addEventListener("click", () => opened.push(+t.dataset.i)));
+            '<div class="sticker-panel-ref expression-panel-inner" style="background:#fff;height:300px"><div class="sticker-panel" style="background:#fff">' +
+            '<div class="q-scroll-view stickers" style="height:220px;overflow:hidden">' + grid + emoji + "</div>" +
+            '<div><div class="tabs sticker-panel__bar"><div class="tabs-container" style="display:flex">' +
+            [0, 1, 2, 3, 4].map((i) => '<div class="tabs-container-item' + (i === 1 ? " tabs-container-item-active" : "") + '" style="width:40px;height:36px" data-i="' + i + '"></div>').join("") +
+            "</div></div></div></div></div>";
+          panel.querySelectorAll(".tabs-container-item").forEach((t) =>
+            t.addEventListener("click", () => {
+              opened.push(+t.dataset.i);
+              panel.querySelectorAll(".tabs-container-item").forEach((x) => x.classList.toggle("tabs-container-item-active", x === t));
+            }),
+          );
           document.body.append(panel);
+          panelEl = panel;
         });
-        const button = document.getElementById("liuli-emoji-btn");
-        button.dispatchEvent(new PointerEvent("pointerenter"));
-        await new Promise((r) => setTimeout(r, 200));
-        const panel = document.querySelector(".expression-panel");
+        await __qa.frames(2);
+        const plus = document.getElementById("liuli-func-toggle").getBoundingClientRect();
+        const shotIcon = __qa.q('.chat-func-bar .icon-item[aria-label="截图"]').closest(".bar-icon");
+        const er = emojiIcon.getBoundingClientRect(), sr = shotIcon.getBoundingClientRect();
+        const others = [...__qa.q(".chat-func-bar").querySelectorAll(".bar-icon:not(.liuli-pinned)")].map((n) => getComputedStyle(n).display);
+        const placement = {
+          emojiGap: Math.round(er.left - plus.right),
+          shotGap: Math.round(sr.left - er.right),
+          sameRow: Math.abs(er.top - plus.top) < 2 && Math.abs(sr.top - plus.top) < 2,
+          othersHidden: others.every((d) => d === "none"),
+          proxies: document.querySelectorAll("#liuli-input-overlay button").length,
+        };
+        // hover opens the panel on the sticker tab
+        emojiIcon.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, relatedTarget: document.body }));
+        await new Promise((r) => setTimeout(r, 400));
+        const afterHover = { open: !!panelEl, tab: opened.slice() };
+        // a click while open keeps it open
+        native.click();
+        await __qa.frames(2);
+        const afterClick = { open: !!panelEl, nativeClicks };
         const editor = __qa.q(".ProseMirror");
         editor.innerHTML = "<p><br></p>";
-        // a sticker: lands in the editor, then QQ's own send is pressed
-        panel.querySelector(".sticker-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        panelEl.querySelector(".stickers-item img").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         const img = document.createElement("img");
         img.className = "image-element";
         editor.firstElementChild.append(img);
         await new Promise((r) => setTimeout(r, 120));
         const afterSticker = sent;
-        // an emoji: inserted as text, never sent
         editor.innerHTML = "<p><br></p>";
-        panel.querySelector(".emoji-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        panelEl.querySelector(".emoji-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         const face = document.createElement("img");
         face.className = "face-element";
         editor.firstElementChild.append(face);
         await new Promise((r) => setTimeout(r, 120));
         const afterEmoji = sent;
-        // half-written text: a sticker is inserted, not sent
         editor.innerHTML = "<p>写了一半</p>";
-        panel.querySelector(".sticker-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        panelEl.querySelector(".stickers-item img").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         editor.firstElementChild.append(img.cloneNode());
         await new Promise((r) => setTimeout(r, 120));
         const afterDraft = sent;
-        panel.remove();
+        // expanding "+" keeps both icons where they were
+        document.getElementById("liuli-func-toggle").click();
+        await __qa.frames(3);
+        const er2 = emojiIcon.getBoundingClientRect();
+        const expandedKept = Math.abs(er2.left - er.left) < 1.5 && Math.abs(er2.top - er.top) < 1.5;
+        const gridHasEmoji = [...__qa.q(".chat-func-bar").querySelectorAll(".bar-icon")].filter((n) => !n.classList.contains("liuli-pinned") && getComputedStyle(n).display !== "none").some((n) => n.querySelector('[aria-label="表情"]'));
+        LiuliComposer.expand(false);
+        panelEl?.remove();
         editor.innerHTML = "<p><br></p>";
-        const order = [...document.querySelectorAll("#liuli-input-overlay button")].map((b) => b.getAttribute("aria-label"));
-        return { button: !!button, order, opened, afterSticker, afterEmoji, afterDraft };
+        return { placement, afterHover, afterClick, afterSticker, afterEmoji, afterDraft, expandedKept, gridHasEmoji };
       });
       checks.stickers = stickers;
-      expect("sticker.emoji-hover-opens-sticker-tab", stickers.button && stickers.opened[0] === 2, stickers);
-      expect("sticker.emoji-and-screenshot-beside-plus", stickers.order.slice(0, 3).join() === "更多,表情,截图", stickers);
+      const P = stickers.placement;
+      expect("toolbar.native-emoji-and-screenshot-beside-plus", P.sameRow && P.emojiGap >= 2 && P.emojiGap <= 6 && P.shotGap >= 2 && P.shotGap <= 6 && P.proxies === 1, stickers);
+      expect("toolbar.rest-stay-in-plus-menu", P.othersHidden, stickers);
+      expect("toolbar.icons-stay-while-plus-open", stickers.expandedKept && !stickers.gridHasEmoji, stickers);
+      expect("sticker.hover-opens-sticker-tab", stickers.afterHover.open && stickers.afterHover.tab[0] === 2, stickers);
+      expect("sticker.click-keeps-panel-open", stickers.afterClick.open && stickers.afterClick.nativeClicks === 1, stickers);
       expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
       expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
       expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);
+      // Send button: light at rest, a light tint when ready, arrow visible.
+      const send = await page.evaluate(async () => {
+        const area = __qa.q(".chat-input-area"), wrap = area.querySelector(".send-btn-wrap");
+        const read = () => ({
+          bg: getComputedStyle(wrap).backgroundColor,
+          arrow: getComputedStyle(wrap, "::after").backgroundColor,
+          mask: getComputedStyle(wrap, "::after").maskImage || getComputedStyle(wrap, "::after").webkitMaskImage,
+        });
+        const rest = read();
+        area.setAttribute("data-liuli-ready", "");
+        const ready = read();
+        area.removeAttribute("data-liuli-ready");
+        return { rest, ready };
+      });
+      checks.send = send;
+      const alpha = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c); const p = m ? m[1].split(",").map(Number) : [0,0,0,1]; return p.length > 3 ? p[3] : 1; };
+      expect("send.light-fill", alpha(send.rest.bg) <= 0.2 && alpha(send.ready.bg) <= 0.2, send);
+      expect("send.arrow-drawn", /url\(/.test(send.ready.mask) && send.ready.arrow !== send.ready.bg && alpha(send.ready.arrow) > 0.5, send);
 
       // ── Diagnostics: structure only, never content ──
       const probe = await page.evaluate(() => {

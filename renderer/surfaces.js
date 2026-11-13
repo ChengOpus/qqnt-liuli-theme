@@ -244,6 +244,12 @@
     };
     for (const node of D.within(root, popups)) {
       if (node.matches(".bar-more-menu")) continue;
+      // one glass per expression panel: the outer .expression-panel-inner
+      // (author layout.css:1761-1768)
+      if (node.matches(".sticker-panel") && node.parentElement?.closest(".expression-panel-inner")) {
+        if (node.hasAttribute("data-liuli-surface")) release(node);
+        continue;
+      }
       if (node.matches(".pulldown-menu") && nested(node)) {
         demote(node);
         continue;

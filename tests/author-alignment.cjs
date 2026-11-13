@@ -159,7 +159,8 @@ if (!author)
             ),
             width: bar.width,
             height: bar.height,
-            iconWidth: rect(".icon-item").width,
+            // a grid item: 表情/截图 sit beside "+" outside the grid now
+            iconWidth: rect(".bar-icon:not(.liuli-pinned) > .icon-item").width,
             label: getComputedStyle(
               document.querySelector(".icon-item"),
               "::after",
@@ -197,6 +198,10 @@ if (!author)
         });
         await page.evaluate(() => LiuliComposer.expand(false));
         // Finish the deliberately opened tool popup before testing independent edges.
+        // 截图 now stays beside "+" when the grid closes, so closing the grid no
+        // longer hides its submenu; QQ unmounts the float card when it closes,
+        // which this static fixture cannot do on its own.
+        await page.evaluate(() => document.querySelector(".bar-more-menu")?.remove());
         // The whole edge, including the former excluded top 42px, must reveal.
         for (const y of [2, 120, 820]) {
           await page.mouse.move(600, 200);

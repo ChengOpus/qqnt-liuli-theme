@@ -124,37 +124,51 @@
   height: 30px !important;
   z-index: 2;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .send-btn-wrap {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap {
+  /* QQ paints its own brand fill on the wrapper when there is text; on a
+   * strong theme colour that read as a heavy solid square, and QQ's inner
+   * label covered the arrow. The wrapper is now one light round button and
+   * the arrow is drawn on it; QQ's own controls stay inside, invisible but
+   * still the click target. */
+  position: relative !important;
   height: 30px !important;
   min-width: 30px !important;
   width: 30px !important;
   padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: rgba(var(--ll-on-glass-rgb), 0.07) !important;
   box-shadow: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation :is(.send, .send-msg) {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap > *,
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap :is(.send, .send-msg) {
   width: 30px !important;
   height: 30px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
-  border-radius: 50%;
-  background: rgba(var(--ll-brand-rgb), 0.15) !important;
-  color: var(--ll-link, var(--ll-on-glass)) !important;
+  background: transparent !important;
   box-shadow: none !important;
+  opacity: 0 !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-msg {
-  font-size: 0 !important;
-}
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-msg::after {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap::after {
   content: "";
-  display: block;
-  width: 18px;
-  height: 18px;
-  background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m22 2-7 20-4-9-9-4 20-7M22 2 11 13' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E")
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+  background: var(--ll-on-glass-3);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m22 2-7 20-4-9-9-4 20-7M22 2 11 13' fill='none' stroke='black' stroke-width='1.9' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E")
     center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m22 2-7 20-4-9-9-4 20-7M22 2 11 13' fill='none' stroke='black' stroke-width='1.9' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E")
+    center/contain no-repeat;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap:hover {
+  background: rgba(var(--ll-brand-rgb), 0.14) !important;
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)
   .operation
@@ -170,11 +184,6 @@
   align-items: center;
   gap: 4px;
   pointer-events: none;
-}
-#liuli-bar-pins {
-  display: flex;
-  gap: 4px;
-  align-items: center;
 }
 #liuli-input-overlay button {
   display: flex;
@@ -204,8 +213,126 @@
 #liuli-func-toggle svg {
   transition: rotate 180ms ease;
 }
+/* Collapsed: the native toolbar is a zero-size anchor at the bottom-left of
+ * the editor. Only the items moved out of the "+" menu (表情, 截图 —
+ * .liuli-pinned, set by layout-custom.js) are shown, beside the "+", as
+ * QQ's own icons with QQ's own behaviour (the screenshot arrow included). */
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar {
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  top: auto !important;
+  right: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  z-index: 3;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar:not(.liuli-expanded) :is(.chat-func-bar__left, .func-bar-native) {
+  display: contents !important;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar:not(.liuli-expanded) .bar-icon:not(.liuli-pinned) {
   display: none !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned {
+  display: flex !important;
+  position: absolute !important;
+  left: calc(40px + var(--liuli-pin-i, 0) * 32px) !important;
+  bottom: 8px !important;
+  top: auto !important;
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background: rgba(var(--ll-on-glass-rgb), 0.08) !important;
+  order: 0 !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:hover {
+  background: rgba(var(--ll-brand-rgb), 0.18) !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item {
+  position: static !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ll-on-glass-2) !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item::after {
+  content: none !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned :is(.q-icon, svg) {
+  width: 18px !important;
+  height: 18px !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .arrow {
+  position: absolute !important;
+  right: -3px !important;
+  bottom: -3px !important;
+  top: auto !important;
+  left: auto !important;
+  width: 14px !important;
+  height: 14px !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  transform: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  background: rgba(var(--ll-on-glass-rgb), 0.12) !important;
+  color: var(--ll-on-glass-2) !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .arrow :is(svg, i) {
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 0 !important;
+  position: static !important;
+  transform: none !important;
+  background: transparent !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .arrow::before,
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .arrow::after {
+  content: none !important;
+}
+/* While the "+" grid is open the pinned icons stay where they were: the bar
+ * is then the grid above the editor, so they are placed from its bottom edge
+ * (grid gap 8px + editor height − 8px − 28px). */
+body .chat-input-area > .chat-func-bar.liuli-expanded .bar-icon.liuli-pinned {
+  bottom: auto !important;
+  top: calc(100% + var(--ll-composer-h, 44px) - 28px) !important;
+  left: calc(38px + var(--liuli-pin-i, 0) * 32px) !important;
+}
+/* The screenshot submenu keeps the author's positioning contract wherever
+ * the screenshot icon is (layout.css:1525-1535, 1809-1812). */
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned .bar-more-menu {
+  animation: none !important;
+  transform: translateZ(0) !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 /* Author main @ 3d183f3 layout.css:1370-1535. Native wrappers are
  * .chat-func-bar__left and .func-bar-native, not the simplified test fixture. */
@@ -337,8 +464,7 @@ body .chat-func-bar.liuli-expanded .bar-icon > .arrow :is(svg, i) {
 }
 body
   .chat-func-bar.liuli-expanded
-  .bar-icon:is(
-    .liuli-pinned,
+  .bar-icon:not(.liuli-pinned):is(
     [hidden],
     [aria-hidden="true"],
     [style*="display: none"],
@@ -477,16 +603,14 @@ body
   outline: 1.5px solid rgba(var(--ll-brand-rgb), 0.6);
   outline-offset: -1.5px;
 }
-/* Send button: quiet while there is nothing to send, lit when there is.
- * A plain colour switch — even a colour transition measured as extra frames
- * here — and it stays clickable in both states. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input):not([data-liuli-ready]) .operation :is(.send, .send-msg) {
-  background: rgba(var(--ll-on-glass-rgb), 0.07) !important;
-  color: var(--ll-on-glass-3) !important;
+/* Send button: quiet while there is nothing to send, lit when there is —
+ * a light tint of the theme colour and a theme-coloured arrow, never a solid
+ * fill. A plain switch: even a colour transition measured as extra frames. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)[data-liuli-ready] .operation .send-btn-wrap {
+  background: rgba(var(--ll-brand-rgb), 0.16) !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)[data-liuli-ready] .operation :is(.send, .send-msg) {
-  background: rgba(var(--ll-brand-rgb), 0.24) !important;
-  color: var(--ll-link, var(--ll-on-glass)) !important;
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)[data-liuli-ready] .operation .send-btn-wrap::after {
+  background: var(--ll-link, var(--ll-brand));
 }
 @media (prefers-reduced-motion: reduce) {
   .liuli-composer-fx {

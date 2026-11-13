@@ -150,21 +150,31 @@
   }
   function applyBar() {
     const icons = barIcons();
+    // An item QQ hides again is no longer pinned (the pinned rule would
+    // otherwise force it visible beside "+").
+    const bar = window.LiuliComposer?.bar();
+    if (bar)
+      for (const el of bar.querySelectorAll('.bar-icon.liuli-pinned'))
+        if (!icons.some(x => x.el === el)) el.classList.remove('liuli-pinned');
     if (!icons.length) return [];
     remember(
       'bar',
       icons.map(x => x.label)
     );
     const lay = barLayout();
+    // 表情 and 截图 always live beside "+" (moved out of the "+" menu, as asked);
+    // further pins from the layout settings follow them.
+    const forced = ['表情', '截图'];
     icons.forEach((x, i) => {
-      const pin = lay.pinned.indexOf(x.label) >= 0;
+      const pin = forced.includes(x.label) || lay.pinned.indexOf(x.label) >= 0;
       x.el.classList.toggle('liuli-pinned', pin);
       x.el.classList.toggle('liuli-in-menu', !pin);
       const k = lay.order.indexOf(x.label);
       const order = String(k >= 0 ? k : 500 + i);
       if (x.el.style.order !== order) x.el.style.order = order;
     });
-    return lay.pinned.filter(label => icons.some(x => x.label === label));
+    const present = label => icons.some(x => x.label === label);
+    return [...forced.filter(present), ...lay.pinned.filter(l => !forced.includes(l) && present(l))];
   }
   function nativeBarItem(label) {
     const x = barIcons().find(y => y.label === label);
