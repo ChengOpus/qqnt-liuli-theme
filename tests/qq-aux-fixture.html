@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>资料卡</title>
+<!--
+  Anonymous standalone card window (profile / group card). Structure recorded by
+  author layout.css:1001-1004 and :1535-1548: the real content sits in a
+  position:fixed .fake-target-element; an empty .mini-buddy is its sibling.
+  There is no main-window chrome here at all, which is the point of this file:
+  the theme must boot and paint without .container-content, .aio or a sidebar.
+-->
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    font: 14px system-ui;
+  }
+  body {
+    --bg_top_light: #ffffff;
+    --brand_standard: #0099ff;
+    background: #fff;
+  }
+  #app {
+    height: 100%;
+    position: relative;
+  }
+  .fake-target-element {
+    position: fixed;
+    inset: 0;
+  }
+  .card-root {
+    height: 100%;
+    padding: 20px;
+    background: var(--bg_top_light);
+  }
+  .card-root__section {
+    margin-top: 12px;
+    padding: 10px;
+    background: #ffffff;
+    border-radius: 8px;
+  }
+  .q-button--primary {
+    margin-top: 16px;
+    padding: 8px 20px;
+    border: 0;
+    border-radius: 6px;
+    color: #fff;
+    background: var(--brand_standard);
+  }
+  .mini-buddy {
+    position: absolute;
+    inset: 0;
+  }
+</style>
+<div id="app">
+  <div class="standalone-mini-profile-container">
+    <div class="fake-target-element">
+      <div class="card-root">
+        <h3 class="card-root__name">示例群聊</h3>
+        <div class="card-root__section">群号 000000</div>
+        <div class="card-root__section">群介绍：匿名示例</div>
+        <button class="q-button q-button--primary">发消息</button>
+      </div>
+    </div>
+  </div>
+  <div class="mini-buddy"></div>
+</div>

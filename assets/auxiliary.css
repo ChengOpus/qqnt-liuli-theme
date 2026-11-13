@@ -111,15 +111,56 @@ body:not([data-liuli-scope="main"]) #app {
   isolation: isolate;
 }
 body:not([data-liuli-scope="main"]) #app::before {
-  z-index: -1 !important;
+  z-index: -2 !important;
+}
+/* Author layout.css:997-1021. Standalone windows (cards, group info, notices,
+ * managers …) put ordinary-flow content straight on the wallpaper. One
+ * window-level sheet between wallpaper and content keeps every one of them
+ * readable without knowing their class names. Positioning QQ's own nodes is
+ * off limits here: the card windows size themselves from a fixed element. */
+body:not([data-liuli-scope="main"]) #app::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ll-search-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+}
+/* Standalone chat keeps the wallpaper open like the main window (#52). The
+ * picture viewer shows media, not a page: no sheet over it either. */
+body:is([data-hash^="#/chat"], [data-hash^="#/image-viewer"]) #app::after {
+  content: none !important;
+}
+body[data-hash^="#/chat"] .chat-container {
+  background: transparent !important;
 }
 body:is([data-liuli-av], [data-hash^="#/av"], [data-hash^="#/mini-fishing"])
   #app {
   isolation: auto !important;
 }
 body:is([data-liuli-av], [data-hash^="#/av"], [data-hash^="#/mini-fishing"])
-  #app::before {
+  #app::before,
+body:is([data-liuli-av], [data-hash^="#/av"], [data-hash^="#/mini-fishing"])
+  #app::after {
   content: none !important;
+}
+/* Hard-coded native fills in standalone windows (author layout.css:1059-1071). */
+body:not([data-liuli-scope="main"])
+  :is(
+    .draggable-view__container:not(.window-title-bar),
+    .container-content,
+    .sidebar-nav,
+    .container-content-view,
+    .panel-header,
+    .aio,
+    .notice,
+    .notice__container,
+    .sys-status-editor
+  ):not(#ll):not(#ll) {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 body[data-liuli-av] .liuli-owned-ui {
   display: none !important;

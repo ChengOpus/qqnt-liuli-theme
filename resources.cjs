@@ -19,6 +19,7 @@ const SCRIPTS = [
   'renderer/pin-groups.js',
   'renderer/video-wallpaper.js',
   'renderer/surfaces.js',
+  'renderer/cards.js',
   'renderer/dock.js',
   'renderer/composer.js',
   'renderer/runtime.js',

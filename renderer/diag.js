@@ -1143,6 +1143,132 @@
       overlays: overlaysInfo()
     };
   }
+  /* 结构探针：只记录类名、标签、几何和绘制属性，用来在真机上确认主题对哪一个原生节点生效。
+   * 不读取任何文字、标题、属性值、账号或图片地址；类名里出现的长数字串会被抹掉。 */
+  function structureProbe() {
+    const d = doc(),
+      w = win();
+    if (!d || !w || typeof d.querySelectorAll !== 'function') return null;
+    const cls = el =>
+      String((el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className) || '')
+        .replace(/\d{5,}/g, '#')
+        .slice(0, 160);
+    const paint = (el, pseudo) => {
+      const cs = w.getComputedStyle(el, pseudo || null);
+      if (pseudo && (!cs || cs.content === 'none')) return null;
+      const out = {};
+      if (cs.backgroundColor !== 'rgba(0, 0, 0, 0)') out.bg = cs.backgroundColor;
+      if (cs.backgroundImage !== 'none') out.bgImage = cs.backgroundImage.indexOf('url(') >= 0 ? 'url' : 'gradient';
+      if (cs.backdropFilter && cs.backdropFilter !== 'none') out.backdrop = cs.backdropFilter;
+      if (cs.boxShadow !== 'none') out.shadow = cs.boxShadow.slice(0, 80);
+      if (parseFloat(cs.borderLeftWidth) || parseFloat(cs.borderRightWidth) || parseFloat(cs.borderTopWidth))
+        out.border = [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].join(' ');
+      if (pseudo) out.size = cs.width + ' x ' + cs.height;
+      return Object.keys(out).length ? out : null;
+    };
+    const node = el => {
+      const r = el.getBoundingClientRect(),
+        cs = w.getComputedStyle(el);
+      const marks = [];
+      for (const a of el.attributes || []) if (a.name.indexOf('data-liuli') === 0) marks.push(a.name.slice(11) + (a.value ? '=' + a.value.slice(0, 20) : ''));
+      const out = {
+        tag: el.tagName.toLowerCase(),
+        cls: cls(el),
+        rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+        pos: cs.position,
+        display: cs.display
+      };
+      if (cs.overflowY !== 'visible') out.overflow = cs.overflowY;
+      if (cs.display === 'grid') out.columns = cs.gridTemplateColumns.slice(0, 120);
+      if (cs.gridArea && cs.gridArea !== 'auto' && cs.gridArea !== 'auto / auto / auto / auto') out.area = cs.gridArea.slice(0, 60);
+      if (marks.length) out.liuli = marks;
+      const own = paint(el),
+        before = paint(el, '::before'),
+        after = paint(el, '::after');
+      if (own) out.paint = own;
+      if (before) out.before = before;
+      if (after) out.after = after;
+      return out;
+    };
+    const chain = (el, stop, limit) => {
+      const out = [];
+      for (let n = el; n && n !== d.documentElement && out.length < (limit || 12); n = n.parentElement) {
+        out.push(node(n));
+        if (stop && n.matches && n.matches(stop)) break;
+      }
+      return out;
+    };
+    const tree = (el, depth, budget) => {
+      const out = node(el);
+      if (depth > 0 && el.children && el.children.length) {
+        out.children = [];
+        for (const child of el.children) {
+          if (budget.left-- <= 0) break;
+          out.children.push(tree(child, depth - 1, budget));
+        }
+      }
+      return out;
+    };
+    const first = selector => safe(() => d.querySelector(selector), null);
+    const shown = selector =>
+      safe(() => [...d.querySelectorAll(selector)].filter(n => n.getClientRects().length), []);
+    const probe = {
+      note: '仅结构与样式；不含文字与属性值',
+      composer: safe(() => (w.LiuliComposer && w.LiuliComposer.state ? w.LiuliComposer.state() : null), null)
+    };
+    // 1/2：聊天面板从输入框一路到 .aio 的真实嵌套，以及真正滚动的那个节点。
+    const input = shown('.chat-input-area').find(n => n.querySelector('.msg-input'));
+    if (input) {
+      probe.inputChain = safe(() => chain(input, '.aio,.chat-container', 10), null);
+      const item = safe(() => (input.closest('.aio') || d).querySelector('.ml-item,.message-container'), null);
+      if (item) probe.messageChain = safe(() => chain(item, '.aio,.chat-container', 12), null);
+      const header = safe(() => input.closest('.aio').querySelector(':scope > .chat-header'), null);
+      if (header) probe.header = safe(() => tree(header, 2, { left: 24 }), null);
+    }
+    // 4：导航与会话列之间那条边上的结构盒。
+    probe.navEdge = safe(
+      () =>
+        ['.container-sidebar', '.container-sidebar > *', '.container-content-view', '.message-panel',
+          '.two-col-layout', '.two-col-layout__aside', '.two-col-layout__aside > .recent-contact',
+          '.two-col-layout__aside > .resize-handler'].map(sel => {
+          const el = d.querySelector(sel);
+          return el ? Object.assign({ sel }, node(el)) : { sel, missing: true };
+        }),
+      null
+    );
+    // 5：搜索浮层（打开时导出）。
+    const search = first('.main-search') || first('.contact-top-bar');
+    if (search) probe.search = safe(() => tree(search, 5, { left: 60 }), null);
+    // 6：当前打开的弹层 / 资料卡 / 抽屉。
+    probe.popups = safe(
+      () =>
+        shown('.q-popup__main,.q-float-card,.q-popover,.q-popover__content,.q-dialog-main,.mini-buddy,.mini-group,.buddy-profile,.group-profile-card,.side-panel,.standalone-mini-profile-container,.fake-target-element,[class*="profile-card"],[class*="group-card"],[class*="mini-profile"]')
+          .slice(0, 8)
+          .map(el => ({ chain: chain(el, null, 4), tree: tree(el, 3, { left: 40 }) })),
+      null
+    );
+    if (safe(() => String(d.body.dataset.liuliScope) !== 'main', false))
+      probe.window = safe(() => tree(d.getElementById('app'), 4, { left: 60 }), null);
+    // 7：文件消息行（当前可见的前两条）。
+    probe.fileRows = safe(
+      () =>
+        shown('.message-container')
+          .filter(n => n.querySelector('.file-element,.normal-file,[class*="file-message"]'))
+          .slice(0, 2)
+          .map(el => tree(el, 4, { left: 50 })),
+      null
+    );
+    // 卡片类消息（邮箱提醒、分享卡片等，当前可见的前两条）。
+    probe.cardRows = safe(
+      () =>
+        shown('.message-container')
+          .filter(n => n.querySelector('.ark-view-message,.ark-msg-content-container,[data-view-id],.rich-ui-app-wrapper'))
+          .slice(0, 2)
+          .map(el => tree(el, 7, { left: 70 })),
+      null
+    );
+    return probe;
+  }
   function perfNow() {
     const w = win();
     try {
@@ -1444,7 +1570,8 @@
       dom: domInfo(),
       performance: performanceBaseInfo(),
       rendererScheduler: safe(() => win().__liuliRuntime?.stats(), null),
-      dockState: safe(() => win().LiuliDock?.state(), null)
+      dockState: safe(() => win().LiuliDock?.state(), null),
+      structureProbe: safe(() => structureProbe(), null)
     };
     if (asyncInfo && typeof asyncInfo === 'object') {
       if (asyncInfo.themeFiles) snap.theme.files = asyncInfo.themeFiles;

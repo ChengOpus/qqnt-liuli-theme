@@ -233,7 +233,13 @@ if (!author)
     );
     const [a, b] = snapshots;
     assert.equal(b.logo, a.logo);
-    for (const key of ["height", "visible", "opacity", "infoHeight", "avatar"])
+    // The capsule itself is deliberately 36px here (explicit request: every
+    // top-row glass piece the same size and on one line); the author's is
+    // 30px. Its native inner layout — 30px info block, 24px avatar — must
+    // still match the author's exactly.
+    assert.equal(a.profile.height, 30, "author capsule height");
+    assert.equal(b.profile.height, 36, "capsule height");
+    for (const key of ["visible", "opacity", "infoHeight", "avatar"])
       assert.equal(b.profile[key], a.profile[key], key);
     assert.ok(b.profile.width > 60);
     for (const key of [

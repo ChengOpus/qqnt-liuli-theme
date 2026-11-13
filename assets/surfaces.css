@@ -7,19 +7,25 @@ body {
   );
   --ll-glass-surface: rgba(var(--ll-acrylic), var(--ll-glass-alpha));
   --ll-popup-surface: var(--ll-glass-surface);
-  --ll-glass-paint:
-    linear-gradient(
-      140deg,
-      rgba(var(--ll-specular), 0.09),
-      rgba(var(--ll-specular), 0) 60%
+  /* Coloured, half-see-through glass (reference: the user's tool panel).
+   * The colour comes from two places: the backdrop is blurred AND saturated,
+   * so the wallpaper's own hues bloom through instead of greying out; and a
+   * faint wash of the theme colour sits in opposite corners, so the pane still
+   * reads as tinted glass over a plain backdrop. The veil itself stays thin. */
+  --ll-glass-wash:
+    radial-gradient(
+      120% 150% at 100% 100%,
+      rgba(var(--ll-brand-rgb), 0.13),
+      rgba(var(--ll-brand-rgb), 0) 62%
     ),
-    var(--ll-glass-surface);
+    radial-gradient(
+      110% 140% at 0% 0%,
+      rgba(var(--ll-specular), 0.16),
+      rgba(var(--ll-specular), 0) 58%
+    );
+  --ll-glass-paint: var(--ll-glass-wash), var(--ll-glass-surface);
   --ll-search-paint:
-    linear-gradient(
-      140deg,
-      rgba(var(--ll-specular), 0.1),
-      rgba(var(--ll-specular), 0) 60%
-    ),
+    var(--ll-glass-wash),
     rgba(
       var(--ll-acrylic),
       clamp(0.32, calc(var(--ll-material-opacity) * 0.7), 0.7)
@@ -85,16 +91,35 @@ body {
   box-shadow: none;
   border: 0;
 }
+/* The search popup keeps its native box. Forcing a width onto the popup root
+ * painted glass beside the list whenever the root is only a positioning shell. */
+[data-liuli-surface="search"] {
+  isolation: isolate;
+  border-radius: 16px;
+}
+/* Before the controller has classified a freshly shown popup, its shell must
+ * already be unpainted and the entries' box already be glass. */
 body[data-liuli-scope="main"]
   .main-search
-  .search-result[data-liuli-surface="search"] {
-  width: calc(var(--ll-aside-width, 280px) - 16px) !important;
-  max-width: calc(100vw - 24px);
-  box-sizing: border-box;
-  isolation: isolate;
-  overflow: hidden;
+  .search-result:has(.search-content):not([data-liuli-surface]) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+body[data-liuli-scope="main"]
+  :is(
+    .main-search .search-result:not(:has(.search-content)),
+    .main-search .search-content,
+    .contact-top-bar .search-content
+  ):not([data-liuli-surface]):not([data-liuli-surface-inner]) {
+  background: var(--ll-search-paint) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
+  border: 0 !important;
   border-radius: 16px;
-  z-index: 1200;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
 }
 [data-liuli-surface="search"]::after {
   content: none !important;
@@ -151,4 +176,63 @@ body
   ):not(:has(.pic-element, .video-element, .ark-view-message, .forward-msg)) {
   backdrop-filter: var(--ll-bubble-blur, none) !important;
   -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
+}
+
+/* Author layout.css:1535-1548: the empty .mini-buddy beside a standalone card
+ * is a placeholder. It owns no material and must not take the card's clicks. */
+body .mini-buddy:not(:has(*)),
+body:has(.standalone-mini-profile-container) #app > .mini-buddy {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+}
+body .mini-buddy:not(:has(*))::before,
+body:has(.standalone-mini-profile-container) #app > .mini-buddy::before {
+  content: none !important;
+}
+
+/* Group drawer (author layout.css:1577-1631). The drawer is the only glass;
+ * its cards are plain rows and only real inputs keep a light field fill. */
+body .aio .side-panel {
+  border-radius: var(--ll-panel-radius) !important;
+}
+body
+  .aio
+  .side-panel
+  :is(
+    .group-profile-card,
+    .group-member-card,
+    .group-profile,
+    .group-info,
+    .pulldown-menu,
+    .q-pulldown-menu
+  ):not(#ll) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+body
+  .aio
+  .side-panel
+  :is(.field-body, .input-container, .q-pulldown-menu-button):not(#ll) {
+  background: rgba(var(--ll-on-glass-rgb), 0.06) !important;
+  border-color: rgba(var(--ll-on-glass-rgb), 0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+body .aio .side-panel .field-body:not(#ll):hover,
+body .aio .side-panel .input-container:not(#ll):focus-within {
+  border-color: rgba(var(--ll-brand-rgb), 0.55) !important;
+}
+body .aio .side-panel :is(input, textarea)::placeholder {
+  color: var(--ll-on-glass-3) !important;
+  opacity: 1 !important;
+}
+body .aio .side-panel :is(.field-title, .field-body, .field-body *) {
+  color: var(--ll-on-glass-2) !important;
 }

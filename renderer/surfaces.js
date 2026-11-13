@@ -94,7 +94,23 @@
         result = p;
     return result;
   }
+  // Author layout.css:1535-1548. A standalone card window holds its content
+  // in a fixed .fake-target-element; the sibling .mini-buddy is an empty
+  // placeholder. Painting it lays a pane of glass over the real card.
+  function placeholder(node) {
+    return (
+      node.matches(".mini-buddy") &&
+      (!node.firstElementChild ||
+        (node.parentElement?.id === "app" &&
+          !!document.querySelector(".standalone-mini-profile-container")))
+    );
+  }
   function profile(node) {
+    if (placeholder(node)) {
+      if (changes.has(node) || node.hasAttribute("data-liuli-surface"))
+        release(node);
+      return;
+    }
     const existing = node.parentElement.closest(
       '[data-liuli-surface="profile"]',
     );
@@ -105,6 +121,10 @@
     if (!D.safe(outer)) return;
     mark(outer, "profile");
     if (outer !== node) clear(node);
+    flatten(outer);
+  }
+  // Structural rows inside a card are not cards themselves.
+  function flatten(outer) {
     const structural = [];
     // Read image exclusions as a batch. Interleaving each computed-style read
     // with background writes used to recalculate the card for every row.
@@ -157,8 +177,20 @@
       ".container-sidebar,.group-box,.right-sidebar:not(:has(.group-box)),.aio .side-panel,.contact-profile .profile__body",
     ))
       mark(node, "panel");
+    // The group drawer (.aio .side-panel) is one glass owner. Cards and inline
+    // selectors inside it are rows of that drawer, not floating surfaces.
+    const nested = (node) =>
+      !node.matches(".side-panel") && !!node.closest(".aio .side-panel");
+    const demote = (node) => {
+      if (changes.has(node) || node.hasAttribute("data-liuli-surface"))
+        release(node);
+    };
     for (const node of D.within(root, popups)) {
       if (node.matches(".bar-more-menu")) continue;
+      if (node.matches(".pulldown-menu") && nested(node)) {
+        demote(node);
+        continue;
+      }
       mark(node, "popup");
     }
     for (const node of D.within(
@@ -171,8 +203,14 @@
     if (profileParent) profileNodes.add(profileParent);
     const paintedProfile = root.closest?.('[data-liuli-surface="profile"]');
     if (paintedProfile) profileNodes.add(paintedProfile);
-    for (const node of D.roots([...profileNodes]))
+    for (const node of [...profileNodes])
+      if (nested(node)) {
+        demote(node);
+        profileNodes.delete(node);
+      }
+    for (const node of D.roots([...profileNodes].filter((n) => !placeholder(n))))
       if (!node.closest(".message")) profile(node);
+    for (const node of profileNodes) if (placeholder(node)) profile(node);
     const inlineSearch = document.body.dataset.liuliScope === "main";
     // Native surfaces can be created hidden/at zero size, then shown through an
     // ancestor v-show/transition. Ownership never depends on insertion geometry.
@@ -180,22 +218,43 @@
       inlineSearch
         ? D.within(
             root,
-            ".main-search .search-result,.search-result:has(.search-result-item)",
+            ".main-search .search-result,.search-result:has(.search-result-item),.contact-top-bar .search-content",
           )
         : [],
     );
     const searchParent =
-      inlineSearch && root.closest?.(".main-search .search-result");
+      inlineSearch &&
+      root.closest?.(
+        ".main-search .search-result,.contact-top-bar .search-content",
+      );
     if (searchParent) searchNodes.add(searchParent);
     for (const node of searchNodes) {
-      const outer = owner(node);
-      if (outer !== node) clear(outer);
-      mark(node, "search");
-      for (const inner of node.querySelectorAll(
+      // The popup root can be a positioning shell that is wider/taller than
+      // the list it shows. The glass belongs to the box holding the entries
+      // (.search-content when the client has one); every shell around it is
+      // cleared, and native geometry is left alone.
+      const content = node.querySelector(".search-content");
+      const painted = content && D.safe(content) ? content : node;
+      for (
+        let shell = painted === node ? node.parentElement : node;
+        shell && shell !== document.body;
+        shell = shell.parentElement
+      ) {
+        if (
+          shell === node ||
+          shell.matches(".q-popup__main,.q-float-card,.q-popover__content")
+        ) {
+          if (shell.hasAttribute("data-liuli-surface")) release(shell);
+          clear(shell);
+        }
+        if (shell.matches(".main-search,.contact-top-bar,.recent-contact")) break;
+      }
+      mark(painted, "search");
+      for (const inner of painted.querySelectorAll(
         ".q-float-card,.q-popup__main,.search-result__content,.search-recent,.search-recent-contact,.search-result-list",
       ))
         clear(inner);
-      for (const inner of node.querySelectorAll(
+      for (const inner of painted.querySelectorAll(
         ":scope > div,:scope > div > div",
       )) {
         if (
@@ -206,15 +265,16 @@
           clear(inner);
       }
     }
-    const route = location.hash.split("?")[0];
-    if (
-      document.body.dataset.liuliScope === "aux" &&
-      /^#\/(?:mini-group|mini-profile|group[-_]?profile|group[-_]?info|group[-_]?detail|buddy[-_]?profile|user[-_]?profile)(?:\/|$)/i.test(
-        route,
-      )
-    ) {
-      const page = document.querySelector("#app > :not(.app-border)");
-      if (page && !page.querySelector(".chat-msg-area")) profile(page);
+    // Standalone card windows (author layout.css:1001-1004). The window-level
+    // material in auxiliary.css is the single owner; here only the card's
+    // structural rows lose their second set of backgrounds. Identified by the
+    // documented container, not by guessing route names or button text.
+    if (document.body.dataset.liuliScope === "aux") {
+      const card = document.querySelector(
+        ".standalone-mini-profile-container .fake-target-element, .standalone-mini-profile-container",
+      );
+      if (card && D.safe(card) && !card.querySelector(".chat-msg-area"))
+        flatten(card);
     }
   }
   window.LiuliSurfaces = Object.freeze({ apply });

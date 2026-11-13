@@ -264,7 +264,7 @@ const root = path.resolve(__dirname, "..");
       await page.waitForFunction(() => !LiuliDock.state().l);
       // Member search owns a full hit area, with no overlap from a long name/tag.
       const members = await page
-        .locator("[data-liuli-composer-host]")
+        .locator("body")
         .evaluate(() => {
           const gm = document.querySelector(
             '.aio:not([aria-hidden="true"]) .group-member',
@@ -436,15 +436,20 @@ const root = path.resolve(__dirname, "..");
         LiuliComposer.bar().querySelector(".bar-more-menu").remove();
         LiuliComposer.expand(false);
       });
-      // Input/delete feedback animates a marker, not the editable text or caret.
-      const editor = page.locator('[data-liuli-composer="float"] .ProseMirror');
+      // Typing and deleting draw nothing: no marker beside the caret, and the
+      // editable text itself is never animated.
+      const editor = page.locator(
+        '[data-liuli-composer="float"] .ProseMirror >> visible=true',
+      );
       await editor.fill("测试输入");
       await editor.dispatchEvent("compositionend", { data: "输入" });
       await page.keyboard.press("Backspace");
-      await page.waitForFunction(
-        () =>
-          LiuliComposer.area().querySelector(".liuli-edit-feedback")?.dataset
-            .edit === "delete",
+      await page.waitForTimeout(120);
+      assert.equal(
+        await page.evaluate(
+          () => document.querySelectorAll(".liuli-edit-feedback").length,
+        ),
+        0,
       );
       assert.equal(
         await editor.evaluate((n) => getComputedStyle(n).transform),

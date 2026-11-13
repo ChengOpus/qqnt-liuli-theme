@@ -458,8 +458,12 @@
  * 这是 QQ 自己算出来的右对齐布局，justify-items / justify-self 都改不动。
  * 只能直接重写列定义：让气泡列紧跟头像列。
  * 2026-11-10：气泡对侧要留出「头像 32 + 缝 14」= 46px，和 QQ 原生列定义里\n * calc(var(--avatar_size_2) + 8px) 那一列同一个作用。以前这一列写成 0，\n * 长链接 / 卡片消息在窄窗口里会一直铺到对侧头像底下。\n * ════════════════════════════════════════════════════════════ */
+/* 2026-11-13：对方一侧的内容列以前写成 minmax(0, 1fr)，把整行剩余宽度都吃掉，
+ * 紧随其后的那一列（QQ 放消息旁操作的位置，例如文件下载完成后的「打开文件夹」）
+ * 被推到行的最右端，和左边的文件卡片脱开。现在与自己一侧对称：内容列贴合气泡
+ * （上限仍是整行减去对侧 46px），剩余宽度归到后面的预留列，旁边的操作始终贴着气泡。 */
 .message-container:has(.msg-content-container.container--others) {
-  grid-template-columns: 0px 32px 8px minmax(0, 1fr) 46px 0px !important;
+  grid-template-columns: 0px 32px 8px minmax(0, auto) minmax(46px, 1fr) 0px !important;
 }
 
 .message-container:has(.msg-content-container.container--self) {
@@ -698,7 +702,7 @@
  * 改为：不是自己的行一律按「对方」靠左排。
  * ════════════════════════════════════════════════════════════ */
 .message-container:not(.message-container--self):not(:has(.container--self)) {
-  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 46px 0px !important;
+  grid-template-columns: 0px 32px 14px minmax(0, auto) minmax(46px, 1fr) 0px !important;
 }
 .message-container:not(.message-container--self):not(:has(.container--self))
   > .message-content__wrapper {
@@ -731,10 +735,27 @@
  * TG 的做法是尾巴落在缝里、离头像还有几像素，这里缝统一 14px。
  * ════════════════════════════════════════════════════════════ */
 body .message-container:has(.msg-content-container.container--others):not(#ll) {
-  grid-template-columns: 0px 32px 14px minmax(0, 1fr) 46px 0px !important;
+  grid-template-columns: 0px 32px 14px minmax(0, auto) minmax(46px, 1fr) 0px !important;
 }
 body .message-container:has(.msg-content-container.container--self):not(#ll) {
   grid-template-columns: 0px minmax(46px, 1fr) 8px auto 14px 32px !important;
+}
+/* 2026-11-13：自己发的卡片行（文件、转发等）有时没有带 container--self 的气泡容器，
+ * 上面按气泡类名写的列宽打不到它，这一行就退回 QQ 原生列宽：卡片贴死头像，
+ * 和同一组里其它行错开一截。按行自身的 --self 类名补同一套列宽，和第 20 节给
+ * 对方一侧做的处理对称。 */
+body
+  .message-container.message-container--self:not(
+    :has(.msg-content-container.container--self)
+  ):not(:has(.msg-picker)):not(#ll) {
+  grid-template-columns: 0px minmax(46px, 1fr) 8px auto 14px 32px !important;
+}
+body
+  .message-container.message-container--self:not(
+    :has(.msg-content-container.container--self)
+  )
+  > .message-content__wrapper {
+  justify-self: end !important;
 }
 
 /* ── 气泡里的 QQ 文字 token（2026-11-01）──
@@ -879,7 +900,7 @@ body .message-container:has(.msg-content-container.container--self):not(#ll) {
  * ════════════════════════════════════════════════════════════ */
 body .message-container:has(.msg-content-container.container--others):has(.msg-picker):not(#ll),
 body .message-container:not(.message-container--self):not(:has(.container--self)):has(.msg-picker):not(#ll) {
-  grid-template-columns: 28px 32px 14px minmax(0, 1fr) 46px 0px !important;
+  grid-template-columns: 28px 32px 14px minmax(0, auto) minmax(46px, 1fr) 0px !important;
 }
 body .message-container:has(.msg-content-container.container--self):has(.msg-picker):not(#ll) {
   grid-template-columns: 28px minmax(46px, 1fr) 8px auto 14px 32px !important;

@@ -72,7 +72,7 @@
 
 在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
-本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.11`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
+本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.12`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
 
 ### 方式三：在线安装
 
@@ -109,9 +109,10 @@ renderer/styles.js    唯一 CSS 清单，供注入与诊断共用
 renderer/dom.js       可见窗口与受保护组件边界
 renderer/runtime.js   页面变化分类、合帧调度、当前编辑器尺寸观察
 renderer/dock.js      导航、左右顶部状态与子弹窗生命周期
-renderer/composer.js  当前原生输入栏、悬浮布局、局部按钮和输入反馈
+renderer/composer.js  输入栏：测量、真实滚动容器、底部留白、局部按钮和输入反馈（悬浮布局本身是静态 CSS）
 renderer/icons.js     主题按钮独立 SVG，避免复制原生 mask ID
 renderer/surfaces.js  原生弹层与资料卡的单层材质所有权
+renderer/cards.js     卡片类消息（邮箱提醒、分享卡片、文件卡片）：按实际绘制结果识别底板、文字和细线
 renderer/pin-groups.js 原生置顶状态与轻量图钉标记
 renderer/host.js      宿主桥：selfUid / openExternal / diagExport / diagOpenPath
 renderer/qq.js        QQ 内核与消息数据访问
@@ -121,7 +122,7 @@ renderer/ark-external.js  「QQ小程序」卡片改用外部浏览器打开
 renderer/motion.js    消息入场动画
 renderer/diag.js      渲染进程诊断：启动标记、错误环形缓冲、壁纸状态
 assets/               各职责 CSS、MCU（mcu.js）
-tests/                匿名 DOM 回归、缓存生命周期与对比基准
+tests/                匿名 DOM 回归、缓存生命周期与对比基准；acceptance.cjs 是按「用户看到什么」写的验收
 ```
 
 ## 诊断包

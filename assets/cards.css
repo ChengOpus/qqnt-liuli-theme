@@ -1,0 +1,51 @@
+/* Card-type messages: nodes are classified by renderer/cards.js from what they
+ * paint, not from template class names. See that file for the rules. */
+[data-liuli-card-sheet] {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+[data-liuli-ink="1"] {
+  color: var(--ll-on-glass) !important;
+  -webkit-text-fill-color: currentColor;
+}
+[data-liuli-ink="2"] {
+  color: var(--ll-on-glass-2) !important;
+  -webkit-text-fill-color: currentColor;
+}
+[data-liuli-ink="3"] {
+  color: var(--ll-on-glass-3) !important;
+  -webkit-text-fill-color: currentColor;
+}
+[data-liuli-card-line] {
+  border-color: rgba(var(--ll-on-glass-rgb), 0.12) !important;
+}
+[data-liuli-card-rule] {
+  background-color: rgba(var(--ll-on-glass-rgb), 0.12) !important;
+}
+/* The bubble is the card. Once its inner sheet is glass, the 8px frame the
+ * bubble kept around an opaque card would only read as a box in a box. */
+.message-container .msg-content-container[data-liuli-card] {
+  padding: 2px !important;
+}
+
+/* ── File cards ───────────────────────────────────────────────────────────
+ * Rows of one's own messages carry text-align:right so short bubbles hug the
+ * avatar side. That is a row-placement concern; inherited into a card it
+ * right-aligns the second line of a wrapped file name. Content starts left. */
+.message-container
+  :is(
+    .msg-content-container,
+    .file-element,
+    .normal-file,
+    [class*="file-message"],
+    .ark-view-message,
+    .forward-msg
+  ) {
+  text-align: start !important;
+}
+.message-container .normal-file {
+  border-radius: 14px;
+}
+.message-container .normal-file :is(.file-info, .file-name) {
+  min-width: 0;
+}

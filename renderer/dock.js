@@ -108,11 +108,24 @@
       commit(key, false);
     }, delay);
   }
-  function zone(key, x, y) {
+  // `over` is the element under the pointer. The author's 36px corner bands
+  // also cover native controls that rest there: the chat-header action buttons
+  // on the right, the search field on the left. Reaching for one of those must
+  // not summon a capsule on top of it (or slide it away). Over them only the
+  // 8px top edge, where nothing else lives, reveals.
+  const RESTING = {
+    l: ".contact-top-bar, .main-search",
+    r: ".chat-header .panel-header__action",
+  };
+  function zone(key, x, y, over = null) {
     if (key === "nav") return x >= 0 && x <= EDGE && y >= 0 && y < innerHeight;
+    const depth =
+      !states[key] && over instanceof Element && over.closest(RESTING[key])
+        ? EDGE
+        : 36;
     return (
       y >= 0 &&
-      y <= 36 &&
+      y <= depth &&
       (key === "l"
         ? x > EDGE && x <= bounds.left
         : x >= bounds.right && x <= innerWidth)
@@ -128,10 +141,10 @@
         zone("nav", last.x, last.y) ||
         (states.nav && rectContains(nav, last.x, last.y)),
       l:
-        zone("l", last.x, last.y) ||
+        zone("l", last.x, last.y, e.target) ||
         (states.l && rectContains(profile, last.x, last.y)),
       r:
-        zone("r", last.x, last.y) ||
+        zone("r", last.x, last.y, e.target) ||
         (states.r && rectContains(controls, last.x, last.y)),
     };
     for (const key of ["nav", "l", "r"]) {
@@ -185,6 +198,9 @@
         document.body.append(shield);
       }
       const r = controls.getBoundingClientRect();
+      // The header action panel steps aside by exactly this much (shell.css).
+      if (r.width > 0)
+        variable("--ll-controls-width", Math.round(r.width) + "px");
       for (const [name, value] of Object.entries({
         left: r.left,
         top: r.top,

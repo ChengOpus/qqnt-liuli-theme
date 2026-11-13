@@ -3,6 +3,11 @@
  * standalone controls. Responsive slots retain the explicitly requested layout. */
 body {
   --ll-dock-gap: 8px;
+  /* Every glass piece of the top row — profile capsule, chat title, chat
+   * actions, window controls — has this height and radius and starts on the
+   * same line (the 8px dock gap), so they read as one set. */
+  --ll-top-h: 36px;
+  --ll-top-radius: 14px;
   --ll-nav-slot: 0px;
   --ll-card-border: none;
   --ll-card-shadow: var(--ll-shadow);
@@ -86,6 +91,47 @@ body[data-liuli-r-nav]
   > :is(.sidebar-nav, .sidebar-wrapper) {
   animation: liuli-nav-in 180ms var(--ll-ui-ease) backwards;
 }
+/* The revealed navigation is one 56px card with the same 8px gap every other
+ * card keeps. Its glass used to fill the whole 64px slot and end flush against
+ * the conversation column, which read as a full-height rule between the two. */
+.container-content
+  > .container-sidebar[data-liuli-surface="panel"]::before {
+  inset: 0 var(--ll-dock-gap) 0 0 !important;
+}
+/* Nothing may draw a separator between the navigation and the conversation
+ * column: not a border, shadow or outline on the structural boxes along that
+ * edge, and not a decorative pseudo-element of theirs either. Hit areas,
+ * resize handles and the per-row pin marker are different nodes and stay. */
+.container-content > .container-sidebar,
+.container-sidebar > :is(.sidebar-nav, .sidebar-wrapper),
+.container-sidebar :is(.sidebar__nav, .sidebar__menu, .sidebar__upper, .sidebar__lower),
+.container-content-view,
+.tab-container,
+.message-panel,
+.two-col-layout,
+.two-col-layout__aside,
+.two-col-layout__aside > .recent-contact,
+.recent-contact > .contact-top-bar {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.container-content > .container-sidebar::after,
+.container-sidebar > :is(.sidebar-nav, .sidebar-wrapper)::before,
+.container-sidebar > :is(.sidebar-nav, .sidebar-wrapper)::after,
+.container-content-view::before,
+.container-content-view::after,
+.message-panel::before,
+.two-col-layout::before,
+.two-col-layout::after,
+.two-col-layout__aside::before,
+.two-col-layout__aside::after,
+.two-col-layout__aside > .recent-contact::before,
+.two-col-layout__aside > .recent-contact::after {
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
 @keyframes liuli-nav-in {
   from {
     opacity: 0.45;
@@ -96,21 +142,37 @@ body[data-liuli-r-nav]
     clip-path: inset(0);
   }
 }
+/* ── Chat header: two independent floating panels ─────────────────────────
+ * The header keeps its native node and stacking contract (author layout.css
+ * 1554-1565: above the member panel; here also above the composer at 120), but
+ * it no longer owns a row of the pane. The chat column slides under it, so
+ * neither the title nor the action panel can move the message viewport.
+ * Its empty band takes no pointer events; only the two panels do. */
 .aio > .chat-header {
-  /* Preserve the author's header-menu stacking contract, above the floating
-   * composer (120) as well as the later announcement/member panel. */
   position: relative !important;
   z-index: 200 !important;
   margin: 0 8px 8px !important;
-  padding: 4px 0 !important;
+  padding: 0 !important;
   height: auto !important;
-  min-height: 48px;
+  min-height: var(--ll-top-h);
+  box-sizing: border-box;
   display: flex;
-  align-items: flex-start !important;
+  align-items: center !important;
   gap: 12px;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+  pointer-events: none;
+}
+.aio > .chat-header > * {
+  pointer-events: auto;
+}
+.aio > .chat-header :is(.background-mask, .texture-background) {
+  background: transparent !important;
+  pointer-events: none;
+}
+/* Window dragging keeps the author's area: the band between the two panels. */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header {
   -webkit-app-region: drag;
 }
 /* Two native hit areas, two glass planes. Keep fixed profile/menu children in
@@ -118,11 +180,13 @@ body[data-liuli-r-nav]
 .aio > .chat-header :is(.panel-header__title, .panel-header__action) {
   position: relative;
   isolation: isolate;
-  min-height: 40px;
+  display: flex;
+  align-items: center;
+  min-height: var(--ll-top-h);
   box-sizing: border-box;
   margin-block: 0;
-  padding: 8px 12px;
-  border-radius: var(--ll-panel-radius);
+  padding: 0 12px;
+  border-radius: var(--ll-top-radius);
   background: transparent !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
@@ -135,7 +199,8 @@ body[data-liuli-r-nav]
 .aio > .chat-header .panel-header__action {
   flex: 0 0 auto;
   margin-left: auto;
-  transition: margin-top 200ms var(--ll-ui-ease);
+  margin-right: 0;
+  transition: margin-right 200ms var(--ll-ui-ease);
 }
 .aio > .chat-header :is(.panel-header__title, .panel-header__action)::before {
   content: "";
@@ -146,6 +211,7 @@ body[data-liuli-r-nav]
   border-radius: inherit;
   background: var(--ll-glass-paint);
   backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
   box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
 }
 .chat-header
@@ -161,6 +227,39 @@ body[data-liuli-r-nav]
   ) {
   -webkit-app-region: no-drag !important;
 }
+/* The chat column (the author's body card: the parent of the editor) starts at
+ * the header's top edge. composer.js marks the same node for unusual nesting
+ * and sets [data-liuli-header="flow"] if a QQ build does not size it this way;
+ * the header then simply stays an ordinary row. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])
+  :has(> .chat-input-area > .msg-input):not([data-liuli-composer-bridge]),
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"]) [data-liuli-chat-column] {
+  margin-top: calc(-1 * var(--ll-header-clearance, 44px)) !important;
+  height: calc(100% + var(--ll-header-clearance, 44px)) !important;
+  max-height: none !important;
+}
+/* A pure clipper between the pane and the column must not cut the part that
+ * now sits behind the header. Scroll containers are never marked. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"]) [data-liuli-chat-shell] {
+  overflow: clip !important;
+  overflow-clip-margin: var(--ll-header-clearance, 44px) !important;
+}
+/* Safe area: the first message and native top banners stay reachable. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"]) [data-liuli-composer-scroll] {
+  padding-top: var(--ll-header-clearance, 44px) !important;
+  scroll-padding-top: var(--ll-header-clearance, 44px);
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])
+  [data-liuli-message-region]:not([data-liuli-composer-scroll]):not(
+    :has([data-liuli-composer-scroll])
+  ) {
+  padding-top: var(--ll-header-clearance, 44px) !important;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])
+  .chat-msg-area
+  :is(.chat-msg-area__tip--top, .chat-msg-area__tip--top-btn) {
+  translate: 0 var(--ll-header-clearance, 44px);
+}
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .global-container
   > .topbar,
@@ -175,19 +274,19 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
     .window-title-bar .window-control-area
   ) {
   position: fixed !important;
-  top: 6px !important;
+  top: var(--ll-dock-gap) !important;
   margin: 0 !important;
-  height: 30px !important;
+  height: var(--ll-top-h) !important;
+  display: flex !important;
+  align-items: center !important;
   box-sizing: border-box;
   z-index: 3600 !important;
   background: var(--ll-glass-paint) !important;
   backdrop-filter: var(--ll-material-blur) !important;
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 0 !important;
-  border-radius: 12px !important;
-  box-shadow:
-    var(--ll-popup-edge),
-    0 3px 12px rgba(var(--ll-shadow-rgb), 0.12);
+  border-radius: var(--ll-top-radius) !important;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
   opacity: 0 !important;
   visibility: visible !important;
   pointer-events: none !important;
@@ -202,7 +301,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   flex: 0 0 auto !important;
   max-width: min(48vw, calc(var(--ll-aside-width, 280px) - 8px)) !important;
   width: max-content !important;
-  padding: 0 12px 0 4px !important;
+  padding: 0 12px 0 6px !important;
 }
 /* The native QQ logo remains native in the native title bar. Author hides it
  * in floating mode; leaving it in the zero-height topbar clipped the word QQ. */
@@ -293,10 +392,9 @@ body[data-liuli-scope="main"]
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .window-title-bar
   .window-control-area {
-  right: 8px !important;
-  display: flex !important;
+  right: var(--ll-dock-gap) !important;
   gap: 0;
-  padding: 2px 4px;
+  padding: 0 4px;
 }
 .window-title-bar {
   z-index: 3100;
@@ -315,10 +413,10 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar {
   justify-content: center;
   flex: none;
   width: 34px;
-  height: 26px;
+  height: 28px;
   padding: 0 !important;
   color: var(--ll-on-glass-2) !important;
-  border-radius: 8px;
+  border-radius: 9px;
 }
 .window-control-area > *:hover {
   background: rgba(var(--ll-on-glass-rgb), 0.08);
@@ -342,17 +440,20 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   transition: padding-top 200ms var(--ll-ui-ease);
 }
 body[data-liuli-r-l]:not([data-liuli-tb="native"]) .two-col-layout__aside {
-  padding-top: 36px;
+  padding-top: calc(var(--ll-top-h) + var(--ll-dock-gap));
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .two-col-layout__main {
   padding-top: 0 !important;
 }
-body[data-liuli-r-r]:not([data-liuli-tb="native"])
+/* Revealed window controls sit where the action panel rests. The panel steps
+ * aside horizontally inside the header band; nothing moves vertically and the
+ * message viewport is not involved. Width comes from dock.js. */
+body[data-liuli-scope="main"][data-liuli-r-r]:not([data-liuli-tb="native"])
   .aio
   > .chat-header
   .panel-header__action {
-  margin-top: 36px;
+  margin-right: var(--ll-controls-width, 112px);
 }
 #liuli-ctl-shield {
   position: fixed;
@@ -479,7 +580,8 @@ body[data-liuli-scope="main"][data-liuli-tb="native"]
     animation: none !important;
   }
   .topbar-profile,
-  .window-control-area {
+  .window-control-area,
+  .aio > .chat-header .panel-header__action {
     transition: none !important;
   }
 }

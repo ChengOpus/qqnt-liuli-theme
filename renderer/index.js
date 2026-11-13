@@ -504,7 +504,7 @@
     window.__liuliSettingsCache = llModeCfg;
     for (const panelSettings of llPanelSettings) Object.assign(panelSettings, llModeCfg);
     b.style.setProperty('--ll-material-blur', llModeCfg.blur > 0
-      ? 'blur(' + llModeCfg.blur + 'px) saturate(1.35)' : 'none');
+      ? 'blur(' + llModeCfg.blur + 'px) saturate(1.8)' : 'none');
     b.style.setProperty('--ll-bubble-blur', llModeCfg.blur > 0
       ? 'blur(' + Math.min(12, llModeCfg.blur) + 'px)' : 'none');
     b.style.setProperty('--ll-material-opacity', String(llModeCfg.opacity));
@@ -748,6 +748,13 @@
         window.LiuliComposer.viewport() || window.LiuliDOM.visibleQuery('.chat-msg-area');
       if (!vp) return;
       var vr = vp.getBoundingClientRect();
+      /* 输入框浮在消息视口上面：吸底的头像以输入框上沿为底，而不是被它盖住的视口底边。 */
+      var vBottom = vr.bottom;
+      var composer = window.LiuliComposer.area();
+      if (composer) {
+        var cr = composer.getBoundingClientRect();
+        if (cr.height > 0 && cr.top < vr.bottom && cr.bottom > vr.top) vBottom = cr.top - 4;
+      }
       var list = vp.querySelectorAll('.message-container');
       if (llModeCfg.avatarPosition === 'top' || llModeCfg.chatStyle === 'classic') {
         for (const avatar of vp.querySelectorAll('.avatar-span[data-liuli-ty]')) {
@@ -776,7 +783,7 @@
         var natBottom = br.bottom;
         var natTop = natBottom - h;
         var ty = 0;
-        if (natBottom > vr.bottom - 4) ty = vr.bottom - 4 - natBottom;
+        if (natBottom > vBottom - 4) ty = vBottom - 4 - natBottom;
         var minTy = groupTop - natTop;
         if (ty < minTy) ty = minTy;
         if (ty > 0) ty = 0;
@@ -1057,6 +1064,7 @@
       markQuoteRoots(root);
       llMarkdownPass(root);
       llAtPass(root);
+      window.LiuliCards.adapt(root);
     }
     groupMessages();
     scheduleStick();

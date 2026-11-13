@@ -166,10 +166,19 @@ const readResources = require("../resources.cjs");
       }));
       assert.equal(result.leftReveal.left, true);
       assert.equal(result.leftReveal.mainPad, "0px");
-      assert.equal(result.leftReveal.asidePad, "36px");
+      // Capsule height (36) + dock gap (8): the column clears the capsule.
+      assert.equal(result.leftReveal.asidePad, "44px");
       await page.mouse.move(600, 150);
       await page.waitForTimeout(750);
+      // Over the chat-header action buttons only the 8px top edge reveals the
+      // window controls (reaching for a button must not summon them).
       await page.mouse.move(variant.width - 20, 15);
+      await page.waitForTimeout(280);
+      assert.equal(
+        await page.evaluate(() => document.body.hasAttribute("data-liuli-r-r")),
+        false,
+      );
+      await page.mouse.move(variant.width - 20, 3);
       await page.waitForTimeout(280);
       result.rightReveal = await page.evaluate(() => ({
         right: document.body.hasAttribute("data-liuli-r-r"),
@@ -410,17 +419,20 @@ const readResources = require("../resources.cjs");
     });
     await aux.evaluate(() => window.SnowLoraLiuli.ready);
     await aux.waitForTimeout(150);
+    // Standalone windows are not recognised by guessing route names. Every
+    // one of them gets a single window-level sheet (author layout.css:997),
+    // so an unknown page is readable without being rewritten as a "card".
     assert.equal(
       await aux
         .locator(".native-profile-root")
         .getAttribute("data-liuli-surface"),
-      "profile",
+      null,
     );
-    assert.equal(
+    assert.match(
       await aux
         .locator("#app")
-        .evaluate((n) => getComputedStyle(n, "::after").content),
-      "none",
+        .evaluate((n) => getComputedStyle(n, "::after").backdropFilter),
+      /blur/,
     );
     await aux.close();
     const search = await browser.newPage({

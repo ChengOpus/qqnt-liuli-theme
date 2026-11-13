@@ -1,7 +1,7 @@
 /* Foundation: tokens, wallpaper plane, native text and scrollbars. */
 :root {
   --ll-material-opacity: 0.55;
-  --ll-material-blur: blur(18px) saturate(1.6);
+  --ll-material-blur: blur(18px) saturate(1.8);
 
   /* DSH 的亚克力底（固定值，不跟 M3 走） */
   --ll-acrylic: 221, 229, 237;

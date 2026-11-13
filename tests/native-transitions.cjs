@@ -15,7 +15,7 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const browser = await chromium.launch({
-    executablePath: "/usr/bin/chromium",
+    executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
     args: ["--no-sandbox"],
   });
   const results = [],
@@ -234,23 +234,51 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
       const titleY = await page
         .locator(".panel-header__title")
         .evaluate((n) => n.getBoundingClientRect().y);
+      // The earlier criterion asserted a 36px margin on the action panel. That
+      // margin stretched the header and pushed the whole message viewport
+      // down; the test passed while the defect shipped. What must hold is the
+      // geometry the user sees: header and viewport do not move at all.
+      const topGeometry = () =>
+        page.evaluate(() => {
+          const r = (s) => {
+            const b = document.querySelector(s).getBoundingClientRect();
+            return [b.top, b.height];
+          };
+          return {
+            header: r(".chat-header"),
+            region: r(".chat-msg-area"),
+            actionY: r(".panel-header__action")[0],
+          };
+        });
+      const topBefore = await topGeometry();
       await page.mouse.move(width - 20, 5);
       await page.waitForTimeout(300);
+      const topAfter = await topGeometry();
       checks.top = await page.locator(".chat-header").evaluate((n) => {
         const title = n.querySelector(".panel-header__title"),
-          action = n.querySelector(".panel-header__action");
+          action = n.querySelector(".panel-header__action"),
+          controls = document
+            .querySelector(".window-control-area")
+            .getBoundingClientRect();
         return {
           titleY: title.getBoundingClientRect().y,
           titlePaint: getComputedStyle(title, "::before").backdropFilter,
           actionPaint: getComputedStyle(action, "::before").backdropFilter,
           margin: getComputedStyle(action).marginTop,
+          clear: action.getBoundingClientRect().right <= controls.left + 0.5,
         };
       });
+      checks.top.before = topBefore;
+      checks.top.after = topAfter;
       check("independent header", () => {
         assert.equal(checks.top.titleY, titleY);
         assert.match(checks.top.titlePaint, /blur/);
         assert.match(checks.top.actionPaint, /blur/);
-        assert.equal(checks.top.margin, "36px");
+        assert.equal(checks.top.margin, "0px");
+        assert.deepEqual(topAfter.header, topBefore.header);
+        assert.deepEqual(topAfter.region, topBefore.region);
+        assert.equal(topAfter.actionY, topBefore.actionY);
+        assert.equal(checks.top.clear, true);
       });
       await page.screenshot({
         path: path.join(out, `transitions-top-${scale}.png`),
@@ -358,8 +386,9 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
         }));
       check("pin indicator", () => {
         assert.equal(checks.pin.content, '""');
-        assert.equal(checks.pin.width, "2px");
-        assert.equal(checks.pin.height, "22px");
+        // A short row-local pill (20px, 28px when hovered/selected).
+        assert.equal(checks.pin.width, "3px");
+        assert.match(checks.pin.height, /^(20|28)px$/);
       });
       await page.locator(".recent-contact-item--top").nth(1).hover();
       checks.pin.hover = await page

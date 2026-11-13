@@ -1,27 +1,104 @@
-/* Owns active-editor selection, floating layout, local proxy controls and input
- * feedback. Native editor nodes stay in place, including composition/selection. */
+/* Measures the active composer and the message viewport behind it.
+ *
+ * The floating layout itself is static CSS (composer.css / shell.css) keyed on
+ * native structure, so it cannot "drop out" when this controller misses a frame,
+ * when the editor is momentarily zero-sized, or when an ancestor is hidden.
+ * This file only: finds the real scroll container, publishes the clearances,
+ * bridges non-standard nesting, and owns the local proxy buttons. Native editor
+ * nodes stay in place, including composition and selection. */
 (() => {
   "use strict";
   const D = window.LiuliDOM;
+  const MARKS = {
+    host: "data-liuli-composer-host",
+    region: "data-liuli-message-region",
+    scroll: "data-liuli-composer-scroll",
+    bridge: "data-liuli-composer-bridge",
+    column: "data-liuli-chat-column",
+    shell: "data-liuli-chat-shell",
+  };
   let active = null,
+    pane = null,
     host = null,
     region = null,
     scroll = null,
-    bridges = [],
     overlay = null,
     installed = false,
     tools = null,
     exit = null,
-    hideTimer = 0,
-    lastFeedback = 0;
+    hideTimer = 0;
   const seenAttachments = new WeakSet();
+  const headerFails = new WeakMap();
+  // ── Input feedback ───────────────────────────────────────────────────────
+  // Everything visual happens on one small theme-owned box behind the editor
+  // and on the send button's colour (see composer.css for why it is a repaint
+  // and not a compositor animation). Nothing is drawn at the caret, no native
+  // text/selection/IME node is animated, and a keystroke costs two attribute
+  // comparisons and a timer reset — no layout read.
+  // Kinds: type | delete | attach | drop.
+  let fx = null,
+    fxTimer = 0,
+    readyFrame = 0;
+  function glow(kind, hold = 460) {
+    if (!area() || window.LiuliMotion.reduced || document.hidden) return;
+    if (!fx) {
+      fx = document.createElement("div");
+      fx.className = "liuli-composer-fx liuli-owned-ui";
+      fx.setAttribute("aria-hidden", "true");
+    }
+    if (fx.parentElement !== active) active.append(fx);
+    // `kind` picks the colour and outlives the light, so the fade-out keeps
+    // its colour; `fx` is the on/off switch the transition follows.
+    if (fx.dataset.kind !== kind) fx.dataset.kind = kind;
+    if (fx.dataset.fx !== "1") fx.dataset.fx = "1";
+    const dropping = kind === "drop";
+    if (active.hasAttribute("data-liuli-drop") !== dropping)
+      active.toggleAttribute("data-liuli-drop", dropping);
+    clearTimeout(fxTimer);
+    const owner = active;
+    fxTimer = setTimeout(() => {
+      if (fx) delete fx.dataset.fx;
+      owner.removeAttribute("data-liuli-drop");
+    }, hold);
+  }
+  // The send button lights up when there is something to send.
+  function syncReady() {
+    readyFrame = 0;
+    const input = area();
+    if (!input) return;
+    const editor = input.querySelector(".ProseMirror, [contenteditable]");
+    const ready =
+      !!editor &&
+      (editor.textContent.trim() !== "" ||
+        !!editor.querySelector(
+          "img,.image-element,.file-element,.file-card,[class*='face']",
+        ));
+    if (input.hasAttribute("data-liuli-ready") !== ready)
+      input.toggleAttribute("data-liuli-ready", ready);
+  }
+  function scheduleReady() {
+    if (!readyFrame) readyFrame = requestAnimationFrame(syncReady);
+  }
+  // Rendered = takes part in layout. A focused or re-rendering editor can be
+  // zero-sized for a frame; that is not "gone". A cached conversation hidden
+  // through display:none has no boxes at all.
+  function rendered(node) {
+    return (
+      !!node?.isConnected &&
+      node.getClientRects().length > 0 &&
+      getComputedStyle(node).visibility !== "hidden"
+    );
+  }
   function area() {
-    return active?.isConnected && D.visible(active) ? active : null;
+    return active?.isConnected ? active : null;
   }
   function bar() {
     return area()?.querySelector(".chat-func-bar") || null;
   }
-  function clean() {
+  function setMark(node, name) {
+    if (node && !node.hasAttribute(name)) node.setAttribute(name, "");
+  }
+  function closeTools() {
     clearTimeout(hideTimer);
     exit?.cancel();
     exit = null;
@@ -31,34 +108,110 @@
       tools.style.removeProperty("pointer-events");
       tools = null;
     }
-    active?.removeAttribute("data-liuli-composer");
-    host?.removeAttribute("data-liuli-composer-host");
-    host?.style.removeProperty("--ll-composer-clearance");
-    region?.removeAttribute("data-liuli-message-region");
-    scroll?.removeAttribute("data-liuli-composer-scroll");
-    bridges.forEach((n) => n.removeAttribute("data-liuli-composer-bridge"));
-    bridges = [];
+  }
+  function unmark(root) {
+    for (const name of Object.values(MARKS))
+      for (const node of D.within(root, "[" + name + "]"))
+        node.removeAttribute(name);
+  }
+  // Leaving chat-capable windows entirely. Ordinary conversation switches never
+  // come here: marks on a cached pane stay valid for that pane.
+  function clean() {
+    closeTools();
     overlay?.remove();
     overlay = null;
-    active = host = scroll = region = null;
+    clearTimeout(fxTimer);
+    fx?.remove();
+    fx = null;
+    for (const node of document.querySelectorAll("[data-liuli-composer]")) {
+      node.removeAttribute("data-liuli-composer");
+      node.removeAttribute("data-liuli-ready");
+      node.removeAttribute("data-liuli-drop");
+    }
+    unmark(document.body);
+    for (const node of document.querySelectorAll("[data-liuli-chat-pane]")) {
+      node.removeAttribute("data-liuli-chat-pane");
+      node.removeAttribute("data-liuli-header");
+      node.style.removeProperty("--ll-header-clearance");
+      node.style.removeProperty("--ll-composer-clearance");
+    }
+    active = pane = host = region = scroll = null;
   }
   function select() {
-    if (!D.mainLike()) return null;
-    const focused = document.activeElement?.closest(".chat-input-area");
-    if (focused && D.visible(focused)) return focused;
-    return (
-      [...document.querySelectorAll(".chat-input-area")]
-        .filter((n) => D.visible(n) && n.querySelector(".msg-input"))
-        .sort((a, b) => {
-          const score = (n) =>
-            n.closest(".two-col-layout__main")
-              ? 2
-              : n.closest(".chat-container")
-                ? 1
-                : 0;
-          return score(b) - score(a);
-        })[0] || null
-    );
+    const candidates = [
+      ...document.querySelectorAll(".chat-input-area"),
+    ].filter((n) => n.querySelector(".msg-input") && rendered(n));
+    if (!candidates.length) return null;
+    const focused = document.activeElement?.closest?.(".chat-input-area");
+    if (focused && candidates.includes(focused)) return focused;
+    const score = (n) =>
+      (n.closest(".two-col-layout__main")
+        ? 4
+        : n.closest(".chat-container")
+          ? 2
+          : 0) +
+      (D.visible(n) ? 1 : 0) +
+      (n === active ? 0.5 : 0);
+    return candidates.sort((a, b) => score(b) - score(a))[0];
+  }
+  function findRegion(input, limit) {
+    for (let parent = input.parentElement; parent; parent = parent.parentElement) {
+      const candidates = [...parent.querySelectorAll(".chat-msg-area")].filter(
+        (node) => !node.closest(".viewport-list__measure") && rendered(node),
+      );
+      if (candidates.length)
+        return candidates.find(D.visible) || candidates[0];
+      if (parent === limit) break;
+    }
+    return null;
+  }
+  // The element that really scrolls. QQ has nested the list several ways
+  // (.chat-msg-area__vlist, .ml-area, .q-scroll-view); padding anything else
+  // only shrinks the viewport instead of letting messages pass behind the editor.
+  function scrollable(node) {
+    const value = getComputedStyle(node).overflowY;
+    return value === "auto" || value === "scroll" || value === "overlay";
+  }
+  function findScroller(target) {
+    const seed =
+      target.querySelector(".ml-item,.message-container,.message") ||
+      target.querySelector(".ml-list,.ml-root,.ml-area,.chat-msg-area__vlist");
+    for (
+      let node = seed?.parentElement;
+      node && target.contains(node);
+      node = node.parentElement
+    )
+      if (scrollable(node)) return node;
+    for (const node of target.querySelectorAll(
+      ".chat-msg-area__vlist,.ml-area,.q-scroll-view,.ml-list",
+    ))
+      if (scrollable(node)) return node;
+    return scrollable(target) ? target : null;
+  }
+  // ── Staying at the newest message ────────────────────────────────────────
+  // The editor's clearance is end padding on the scroll container. The client
+  // scrolls a conversation to its end when it opens; if that happens before
+  // the padding exists (or the padding grows while typing), the view is left
+  // exactly one clearance short and the newest message sits under the editor.
+  // Whenever the padding appears or grows while the view is at the end, the
+  // view is put back at the end. A reader who has scrolled away is never moved.
+  let settleUntil = 0,
+    touchedAt = 0,
+    settleTimers = [];
+  function reversed(node) {
+    const css = getComputedStyle(node);
+    return /flex/.test(css.display) && css.flexDirection === "column-reverse";
+  }
+  // Distance from the newest end, in px (0 = at the end).
+  function fromEnd(node) {
+    const max = node.scrollHeight - node.clientHeight;
+    if (max <= 0) return 0;
+    return node.scrollTop < 0 || reversed(node)
+      ? Math.abs(node.scrollTop)
+      : max - node.scrollTop;
+  }
+  function toEnd(node) {
+    node.scrollTop = reversed(node) ? 0 : node.scrollHeight;
   }
   function makeOverlay() {
     const result = document.createElement("div");
@@ -76,7 +229,6 @@
     const pins = document.createElement("div");
     pins.id = "liuli-bar-pins";
     result.append(more, pins);
-    active.append(result);
     return result;
   }
   function syncPins() {
@@ -84,27 +236,26 @@
     const labels = window.LiuliLayout.applyBar(),
       pins = overlay.querySelector("#liuli-bar-pins");
     const key = labels.join("|");
-    if (pins.dataset.key === key) return;
-    pins.dataset.key = key;
-    pins.replaceChildren();
-    labels.forEach((label) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "liuli-bar-btn";
-      button.title = label;
-      button.setAttribute("aria-label", label);
-      if (label === "表情") button.id = "liuli-emoji-btn";
-      button.innerHTML = window.LiuliIcons.svg(label);
-      button.addEventListener("click", () => {
-        window.LiuliLayout.nativeBarItem(label)?.click();
-        feedback("insert");
+    if (pins.dataset.key !== key) {
+      pins.dataset.key = key;
+      pins.replaceChildren();
+      labels.forEach((label) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "liuli-bar-btn";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        if (label === "表情") button.id = "liuli-emoji-btn";
+        button.innerHTML = window.LiuliIcons.svg(label);
+        button.addEventListener("click", () =>
+          window.LiuliLayout.nativeBarItem(label)?.click(),
+        );
+        pins.append(button);
       });
-      pins.append(button);
-    });
-    active.style.setProperty(
-      "--liuli-bar-pad",
-      12 + (labels.length + 1) * 32 + "px",
-    );
+    }
+    const pad = 12 + (labels.length + 1) * 32 + "px";
+    if (active.style.getPropertyValue("--liuli-bar-pad") !== pad)
+      active.style.setProperty("--liuli-bar-pad", pad);
   }
   function expand(open) {
     const next = bar();
@@ -128,6 +279,7 @@
         next.classList.remove("liuli-expanded");
         delete next.dataset.liuliTools;
         next.style.removeProperty("pointer-events");
+        if (tools === next) tools = null;
       };
       if (window.LiuliMotion.reduced || document.hidden) finish();
       else {
@@ -149,126 +301,172 @@
       }
     }
   }
+  function variable(node, name, value) {
+    if (node.style.getPropertyValue(name) !== value)
+      node.style.setProperty(name, value);
+  }
+  // The floating header pulls the chat column under itself. That relies on the
+  // column being sized by its parent; if a QQ build sizes it differently the
+  // column would stop short of the bottom. Detect that and fall back to the
+  // in-flow header instead of shipping a broken pane.
+  function verifyHeader(header, column) {
+    if (!pane || pane.dataset.liuliHeader === "flow") return;
+    if (!header || !column || window.LiuliDock?.moving()) return;
+    const parent = column.parentElement?.getBoundingClientRect(),
+      own = column.getBoundingClientRect(),
+      head = header.getBoundingClientRect();
+    if (!parent || own.height < 40 || parent.height < 40 || head.height < 1)
+      return;
+    const ok = own.top <= head.top + 12 && own.bottom >= parent.bottom - 2;
+    const fails = ok ? 0 : (headerFails.get(pane) || 0) + 1;
+    headerFails.set(pane, fails);
+    if (fails >= 2) pane.dataset.liuliHeader = "flow";
+  }
   function refresh() {
-    const next = select();
-    if (!next) {
-      clean();
+    if (!D.mainLike()) {
+      if (active || overlay) clean();
       return [];
     }
-    const pane =
-      next.closest(".aio,.chat-container,.two-col-layout__main") ||
+    const next = select();
+    if (!next) {
+      // Nothing rendered right now (route transition, cached pane swap, native
+      // re-render). Keep every mark; only forget nodes that are really gone.
+      if (active && !active.isConnected) {
+        closeTools();
+        overlay?.remove();
+        overlay = null;
+        active = pane = host = region = scroll = null;
+      }
+      return [active, host, region].filter((n) => n?.isConnected);
+    }
+    const nextPane =
+      next.closest(".aio") ||
+      next.closest(".chat-container,.two-col-layout__main") ||
       document.body;
-    // Select the message region, not a virtual-list row translated during scroll.
-    // A focused native editor can temporarily leave its viewport at zero height;
-    // that is not a reason to abandon its floating layout.
-    let nextRegion = null;
-    for (
-      let parent = next.parentElement;
-      parent;
-      parent = parent.parentElement
-    ) {
-      const candidates = [...parent.querySelectorAll(".chat-msg-area")].filter(
-        (node) =>
-          !node.closest(
-            '[hidden],[aria-hidden="true"],.viewport-list__measure',
-          ) && getComputedStyle(node).display !== "none",
-      );
-      nextRegion =
-        candidates.find(D.visible) ||
-        // Accept a temporarily collapsed region only in the editor's closest
-        // shared branch, never an earlier hidden cached conversation.
-        (candidates.length === 1 ? candidates[0] : null);
-      if (nextRegion || parent === pane) break;
-    }
-    if (!nextRegion) return [];
-    const view =
-      nextRegion.querySelector(".chat-msg-area__vlist") || nextRegion;
-    let nextHost = next.parentElement;
-    while (nextHost && !nextHost.contains(view))
-      nextHost = nextHost.parentElement;
-    if (!nextHost || nextHost === document.body) return [];
-    if (next !== active || nextHost !== host) {
-      clean();
+    const nextRegion = findRegion(next, nextPane);
+    if (next !== active) {
+      closeTools();
+      if (fx) delete fx.dataset.fx;
       active = next;
-      host = nextHost;
+      scheduleReady();
     }
-    // Repair attributes even if QQ has reused/reparented the same editor node.
+    pane = nextPane;
     if (active.dataset.liuliComposer !== "float")
       active.dataset.liuliComposer = "float";
-    if (!host.hasAttribute("data-liuli-composer-host"))
-      host.dataset.liuliComposerHost = "";
-    if (region !== nextRegion) {
-      region?.removeAttribute("data-liuli-message-region");
-      region = nextRegion;
+    if (!overlay) overlay = makeOverlay();
+    if (overlay.parentElement !== active) active.append(overlay);
+    syncPins();
+    if (!nextRegion) {
+      host = region = scroll = null;
+      return [active, active.querySelector(".msg-input")].filter(Boolean);
     }
-    if (!region.hasAttribute("data-liuli-message-region"))
-      region.dataset.liuliMessageRegion = "";
-    const nextBridges = [];
+    let nextHost = active.parentElement;
+    while (nextHost && !nextHost.contains(nextRegion))
+      nextHost = nextHost.parentElement;
+    if (!nextHost || nextHost === document.body) {
+      host = region = scroll = null;
+      return [active, active.querySelector(".msg-input")].filter(Boolean);
+    }
+    host = nextHost;
+    region = nextRegion;
+    if (!scroll?.isConnected || !region.contains(scroll) || !scrollable(scroll))
+      scroll = findScroller(region);
+    // Sampled before any padding is written this pass.
+    const fresh = !!scroll && !scroll.hasAttribute(MARKS.scroll);
+    const distance = scroll ? fromEnd(scroll) : 0;
+    const previous = parseFloat(
+      nextPane.style.getPropertyValue("--ll-composer-clearance"),
+    );
+    if (fresh) {
+      // A conversation just opened: its first positioning may still be under
+      // way. Two late checks, then nothing — this is not a poll.
+      settleUntil = performance.now() + 1600;
+      touchedAt = 0;
+      settleTimers.forEach(clearTimeout);
+      settleTimers = [260, 800].map((ms) => setTimeout(requestRefresh, ms));
+    }
+    const header = pane.matches(".aio")
+      ? pane.querySelector(":scope > .chat-header")
+      : null;
+    // The chat column is what slides under the floating header. When the pane
+    // itself hosts the editor, only the message region can move.
+    const column = header ? (host === pane ? region : host) : null;
+    const bridges = [],
+      shells = [];
     for (
       let node = active.parentElement;
       node && node !== host;
       node = node.parentElement
-    ) {
-      if (node === view || node.contains(view)) break;
-      if (!node.hasAttribute("data-liuli-composer-bridge"))
-        node.dataset.liuliComposerBridge = "";
-      nextBridges.push(node);
-    }
-    for (const old of bridges)
-      if (!nextBridges.includes(old))
-        old.removeAttribute("data-liuli-composer-bridge");
-    bridges = nextBridges;
-    if (scroll !== view) {
-      scroll?.removeAttribute("data-liuli-composer-scroll");
-      scroll = view;
-    }
-    if (!scroll.hasAttribute("data-liuli-composer-scroll"))
-      scroll.dataset.liuliComposerScroll = "";
-    if (!overlay || overlay.parentElement !== active) overlay = makeOverlay();
-    syncPins();
-    const clearance = Math.ceil(active.getBoundingClientRect().height) + 28;
-    if (
-      host.style.getPropertyValue("--ll-composer-clearance") !==
-      clearance + "px"
     )
-      host.style.setProperty("--ll-composer-clearance", clearance + "px");
+      bridges.push(node);
+    for (
+      let node = column?.parentElement;
+      node && node !== pane && pane.contains(node);
+      node = node.parentElement
+    ) {
+      const css = getComputedStyle(node);
+      // Only pure clippers. A real scroll container keeps its native overflow.
+      if (
+        /^(hidden|clip)$/.test(css.overflowY) &&
+        /^(hidden|clip|visible)$/.test(css.overflowX)
+      )
+        shells.push(node);
+    }
+    const wanted = new Map([
+      [MARKS.host, [host]],
+      [MARKS.region, [region]],
+      [MARKS.scroll, scroll ? [scroll] : []],
+      [MARKS.bridge, bridges],
+      [MARKS.column, column ? [column] : []],
+      [MARKS.shell, shells],
+    ]);
+    for (const [name, nodes] of wanted) {
+      for (const stale of pane.querySelectorAll("[" + name + "]"))
+        if (!nodes.includes(stale)) stale.removeAttribute(name);
+      if (pane.hasAttribute(name) && !nodes.includes(pane))
+        pane.removeAttribute(name);
+      nodes.forEach((node) => setMark(node, name));
+    }
+    setMark(pane, "data-liuli-chat-pane");
+    const height = active.getBoundingClientRect().height;
+    const clearance = height >= 1 ? Math.ceil(height) + 28 : previous || 76;
+    if (height >= 1) variable(pane, "--ll-composer-clearance", clearance + "px");
+    if (scroll) {
+      const added = fresh ? clearance : Math.max(0, clearance - (previous || clearance));
+      const settling =
+        performance.now() < settleUntil && touchedAt === 0 && distance > 3;
+      if (
+        // was at the end, and the padding has just appeared or grown
+        (added > 0 && distance <= 3) ||
+        // or the client's opening scroll landed exactly one clearance short
+        (settling && distance <= clearance + 8)
+      )
+        toEnd(scroll);
+    }
+    if (header) {
+      const head = header.getBoundingClientRect().height;
+      if (head >= 1)
+        variable(
+          pane,
+          "--ll-header-clearance",
+          Math.ceil(head) +
+            (parseFloat(getComputedStyle(header).marginBottom) || 0) +
+            "px",
+        );
+      verifyHeader(header, column);
+    }
     return [active, active.querySelector(".msg-input"), host, region].filter(
       Boolean,
     );
   }
-  function feedback(kind) {
-    if (!area() || window.LiuliMotion.reduced || document.hidden) return;
-    let marker = active.querySelector(".liuli-edit-feedback");
-    if (performance.now() - lastFeedback < 60 && marker?.dataset.edit === kind)
-      return;
-    lastFeedback = performance.now();
-    if (!marker) {
-      marker = document.createElement("span");
-      marker.className = "liuli-edit-feedback liuli-owned-ui";
-      marker.setAttribute("aria-hidden", "true");
-      active.append(marker);
-    }
-    const selection = getSelection(),
-      range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-    const caret =
-      range && active.contains(range.commonAncestorContainer)
-        ? range.getBoundingClientRect()
-        : null;
-    const r = active.getBoundingClientRect();
-    marker.style.left =
-      Math.round(caret?.width || caret?.height ? caret.left - r.left : 46) +
-      "px";
-    marker.style.top =
-      Math.max(6, Math.round(caret?.height ? caret.top - r.top : 14)) + "px";
-    marker.dataset.edit = kind;
-    window.LiuliMotion.play(marker, [{ opacity: 0.55 }, { opacity: 0 }], {
-      duration: kind === "delete" ? 150 : 190,
-      easing: "ease-out",
-    });
-  }
+  // Attachment chips animate on their own native nodes. Nothing is drawn next
+  // to the caret: typing, deleting and IME composition stay purely native.
+  const attachment =
+    "img,.image-element,.file-element,.file-card";
   function records(records) {
     if (!area()) return;
-    let removed = false;
+    let removed = false,
+      attached = false;
     for (const record of records) {
       if (
         record.type !== "childList" ||
@@ -276,11 +474,15 @@
         record.target.closest?.(".liuli-owned-ui")
       )
         continue;
-      removed ||= [...record.removedNodes].some(
-        (n) =>
-          n instanceof Element &&
-          n.matches("img,.image-element,.file-element,.file-card"),
-      );
+      if (!removed)
+        for (const node of record.removedNodes)
+          if (
+            node instanceof Element &&
+            (node.matches(attachment) || node.querySelector(attachment))
+          ) {
+            removed = true;
+            break;
+          }
       for (const added of record.addedNodes) {
         if (!(added instanceof Element) || added.closest(".liuli-owned-ui"))
           continue;
@@ -290,71 +492,63 @@
         )) {
           if (seenAttachments.has(item)) continue;
           seenAttachments.add(item);
-          window.LiuliMotion.play(
-            item,
-            [
-              { opacity: 0.5, translate: "0 4px" },
-              { opacity: 1, translate: "0 0" },
-            ],
-            { duration: 180, easing: "ease-out" },
-          );
+          attached = true;
+          // Web Animations write no attribute or style, so the editor's own
+          // mutation observer never sees the chip being animated.
+          window.LiuliMotion.play(item, [{ opacity: 0 }, { opacity: 1 }], {
+            duration: 200,
+            easing: "ease-out",
+          });
         }
       }
     }
-    if (removed) feedback("delete");
+    if (attached) glow("attach", 620);
+    else if (removed) glow("delete");
+    if (attached || removed) scheduleReady();
   }
+  let requestRefresh = () => {};
   function install(invalidate) {
     if (installed) return;
     installed = true;
-    document.addEventListener(
-      "focusin",
-      (e) => {
-        if (e.target.closest?.(".chat-input-area")) invalidate();
-      },
-      true,
-    );
-    document.addEventListener(
-      "input",
-      (e) => {
-        if (e.target.closest?.(".chat-input-area")) {
-          if (!e.isComposing)
-            feedback(
-              (e.inputType || "").startsWith("delete") ? "delete" : "insert",
-            );
+    requestRefresh = invalidate;
+    // Any deliberate scroll input ends the opening settle for this view.
+    for (const type of ["wheel", "touchmove", "pointerdown", "keydown"])
+      document.addEventListener(
+        type,
+        (e) => {
+          if (
+            performance.now() < settleUntil &&
+            region?.contains(e.target) &&
+            (type !== "keydown" || /^(Page|Arrow|Home|End)/.test(e.key))
+          )
+            touchedAt = performance.now();
+        },
+        { capture: true, passive: true },
+      );
+    for (const type of ["focusin", "input", "compositionend", "paste", "drop"])
+      document.addEventListener(
+        type,
+        (e) => {
+          if (!e.target.closest?.(".chat-input-area")) return;
+          if (type === "input")
+            glow((e.inputType || "").startsWith("delete") ? "delete" : "type");
+          else if (type === "compositionend" && e.data) glow("type");
+          if (type !== "focusin") scheduleReady();
           invalidate();
-        }
-      },
-      true,
-    );
+        },
+        true,
+      );
+    // Files dragged over the editor: a steady ring until they leave or land.
     document.addEventListener(
-      "compositionend",
+      "dragover",
       (e) => {
-        if (e.target.closest?.(".chat-input-area")) {
-          if (e.data) feedback("insert");
-          invalidate();
-        }
+        if (
+          e.target.closest?.(".chat-input-area") &&
+          [...(e.dataTransfer?.types || [])].includes("Files")
+        )
+          glow("drop", 220);
       },
-      true,
-    );
-    document.addEventListener(
-      "paste",
-      (e) => {
-        if (e.target.closest?.(".chat-input-area")) {
-          feedback("insert");
-          invalidate();
-        }
-      },
-      true,
-    );
-    document.addEventListener(
-      "drop",
-      (e) => {
-        if (e.target.closest?.(".chat-input-area")) {
-          feedback("insert");
-          invalidate();
-        }
-      },
-      true,
+      { capture: true, passive: true },
     );
     document.addEventListener(
       "pointerover",
@@ -413,8 +607,19 @@
     refresh,
     area,
     bar,
-    viewport: () => scroll,
+    viewport: () => (scroll?.isConnected ? scroll : region),
     records,
     expand,
+    state: () => ({
+      active: !!active?.isConnected,
+      host: !!host?.isConnected,
+      region: !!region?.isConnected,
+      scroller: scroll
+        ? scroll === region
+          ? "region"
+          : String(scroll.className).slice(0, 80)
+        : "",
+      header: pane?.dataset?.liuliHeader || "float",
+    }),
   });
 })();

@@ -1,34 +1,93 @@
-/* Requested row-local pin marker. No group divider, heading, count or fold. */
+/* Pinned conversations. Row-local only: no group divider, heading, count or
+ * fold. The short marker beside each pinned row stays (explicitly requested);
+ * it is now a small glowing pill, and the row carries a soft wash of the theme
+ * colour that fades out towards the time column. */
 body[data-liuli-pin-group] .recent-contact-item[data-liuli-pinned]::before {
   content: "" !important;
   display: block !important;
   position: absolute;
-  left: 2px;
-  top: calc(50% - 11px);
-  width: 2px;
-  height: 22px;
-  border-radius: 2px;
-  background: var(--ll-link, var(--ll-brand));
-  opacity: 0.8;
+  left: 3px;
+  top: calc(50% - 10px);
+  width: 3px;
+  height: 20px;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--ll-link, var(--ll-brand)),
+    rgba(var(--ll-brand-rgb), 0.5)
+  );
+  box-shadow: 0 0 8px rgba(var(--ll-brand-rgb), 0.5);
+  opacity: 0.92;
   pointer-events: none;
 }
+/* Longer on the hovered / selected row. A plain switch: animating its height
+ * would run layout on every frame the pointer crosses the list. */
+body[data-liuli-pin-group]
+  .recent-contact-item[data-liuli-pinned]:is(
+    :hover,
+    .recent-contact-item--selected
+  )::before {
+  top: calc(50% - 14px);
+  height: 28px;
+  opacity: 1;
+}
+body[data-liuli-pin-group]
+  .recent-contact-item[data-liuli-pinned]:not(.recent-contact-item--selected) {
+  background-image: linear-gradient(
+    90deg,
+    rgba(var(--ll-brand-rgb), 0.12),
+    rgba(var(--ll-brand-rgb), 0.04) 46%,
+    rgba(var(--ll-brand-rgb), 0) 82%
+  ) !important;
+}
+body[data-liuli-pin-group]
+  .recent-contact-item[data-liuli-pinned]:not(
+    .recent-contact-item--selected
+  ):hover {
+  background-color: rgba(var(--ll-on-glass-rgb), 0.055) !important;
+  background-image: linear-gradient(
+    90deg,
+    rgba(var(--ll-brand-rgb), 0.17),
+    rgba(var(--ll-brand-rgb), 0.06) 52%,
+    rgba(var(--ll-brand-rgb), 0) 88%
+  ) !important;
+}
+/* Optional stronger tint (设置 → 置顶行增加主题色): an even layer under the wash. */
 body[data-liuli-pin-color]
   .recent-contact-item[data-liuli-pinned]:not(.recent-contact-item--selected) {
-  background: rgba(var(--ll-brand-rgb), 0.085) !important;
+  background-color: rgba(var(--ll-brand-rgb), 0.085) !important;
 }
+/* Pin glyph: a small tinted chip before the time instead of a bare grey icon. */
 .recent-contact-item[data-liuli-pinned] .secondary-info {
   position: relative;
-  margin-left: 15px;
+  margin-left: 20px;
+}
+.recent-contact-item[data-liuli-pinned] .secondary-info::before {
+  content: "";
+  position: absolute;
+  right: calc(100% + 3px);
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: rgba(var(--ll-brand-rgb), 0.16);
+  pointer-events: none;
 }
 .recent-contact-item[data-liuli-pinned] .secondary-info::after {
   content: "";
   position: absolute;
-  right: calc(100% + 4px);
-  top: 2px;
+  right: calc(100% + 6px);
+  top: 50%;
   width: 10px;
-  height: 11px;
-  background: var(--ll-on-glass-2);
+  height: 10px;
+  margin-top: -5px;
+  rotate: 35deg;
+  background: var(--ll-link, var(--ll-brand));
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 9V4h1V2H7v2h1v5c0 1.7-1.3 3-3 3v2h6v7l1 1 1-1v-7h6v-2c-1.7 0-3-1.3-3-3z'/%3E%3C/svg%3E")
     center/contain no-repeat;
   pointer-events: none;
+}
+.recent-contact-item--selected[data-liuli-pinned] .secondary-info::before {
+  background: rgba(var(--ll-on-glass-rgb), 0.12);
 }

@@ -1,0 +1,841 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>QQ</title>
+<!--
+  Anonymous QQ-shaped page for acceptance tests. No account, message or cookie.
+
+  Unlike qq-fixture.html, the nesting here follows structure that is documented
+  by code which runs on the real client, not a layout invented for the theme:
+    · author main @ 3d183f3 — layout.css (.message-panel and .aio both clip and
+      .message-panel is an ANCESTOR of .aio; `*:has(> .chat-input-area)` is the
+      body card; header sits above the member panel; 6-column message grid with
+      a checkbox column), input-bar.css (--inputAreaHeight pins the editor),
+      liuli.css (.group-panel, .group-box__container/__wrapper).
+    · public QQNT themes that target the same DOM — .aio > .panel-header +
+      .group-panel > .group-chat > main.chat-msg-area > .ml-area > .ml-root >
+      .ml-list (reversed list), .contact-top-bar > .main-search, the search
+      popup's own .search-content box, .file-message--content .normal-file.
+  Anything not documented there (exact native declarations, the file action
+  node) is modelled in more than one way so a fix cannot depend on a guess.
+  This is still not the real client; see docs/UI-REWORK.md.
+-->
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    font: 14px system-ui;
+    overflow: hidden;
+  }
+  body {
+    background: linear-gradient(115deg, #f9deec, #e6edff 50%, #b9e6f5);
+    --inputAreaHeight: 207px;
+  }
+  #app {
+    height: 100%;
+    position: relative;
+  }
+  .global-container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    height: 40px;
+    flex: none;
+  }
+  .topbar-content {
+    display: flex;
+    height: 40px;
+    align-items: center;
+  }
+  .user-profile-card {
+    width: 0;
+    flex: 1;
+  }
+  .user-profile-card__content {
+    display: flex;
+    gap: 8px;
+  }
+  .user-profile-card__info {
+    display: flex;
+    flex-direction: column;
+  }
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #bed9e8;
+  }
+  .profile_signature {
+    font-size: 10px;
+  }
+  /* Native Electron drag strips (author layout.css:480). */
+  .draggable-view:not(.draggable-view__container) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    -webkit-app-region: drag;
+  }
+  .draggable-view:not(.draggable-view__container):nth-child(2) {
+    width: 100%;
+    height: 40px;
+  }
+  .draggable-view:not(.draggable-view__container):nth-child(3) {
+    width: 52px;
+    height: 100%;
+  }
+  .window-title-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+  }
+  .window-control-area {
+    display: flex;
+    position: absolute;
+    right: 0;
+  }
+  .window-control-area > * {
+    width: 36px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .container-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    margin: 0 4px 4px;
+  }
+  /* The native nav column draws its own separation from the conversation
+   * column. Which node paints it is not documented, so every plausible one
+   * does here; the theme must leave none of them visible. */
+  .container-sidebar {
+    width: 56px;
+    flex: none;
+    position: relative;
+    border-right: 1px solid #5b6270;
+  }
+  .container-sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 1px;
+    background: #5b6270;
+  }
+  .sidebar-nav {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset -1px 0 0 #5b6270;
+  }
+  .sidebar__upper {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tab-item {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tab-item-mask {
+    position: absolute;
+    inset: 0;
+  }
+  .container-content-view {
+    flex: 1;
+    min-width: 0;
+    box-shadow: inset 1px 0 0 #5b6270;
+  }
+  .message-panel {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  .message-panel::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: #5b6270;
+  }
+  .two-col-layout {
+    display: flex;
+    height: 100%;
+  }
+  .two-col-layout__aside {
+    width: 280px;
+    flex: none;
+    min-height: 0;
+    position: relative;
+    border-left: 1px solid #5b6270;
+  }
+  .two-col-layout__main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+  .resize-handler.ew {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    z-index: 3;
+  }
+  .resize-handler.ew::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset -1px 0 #777;
+  }
+  .recent-contact {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .contact-top-bar {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    flex: none;
+    align-items: center;
+  }
+  .main-search {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    position: relative;
+  }
+  .q-input__inner {
+    height: 36px;
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    background: #ffffff55;
+  }
+  .contact-adder-btn {
+    width: 28px;
+    height: 28px;
+    flex: none;
+  }
+  /* Search popup: a positioning shell wider than the box that actually holds
+   * (and natively paints) the suggestions. Painting the shell is what shows up
+   * as an empty strip beside the list. */
+  .search-result {
+    position: absolute;
+    top: 44px;
+    left: -8px;
+    width: 420px;
+    z-index: 20;
+  }
+  .search-content {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    width: 264px;
+    padding: 6px;
+    background: #f4f6fb;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px #0003;
+  }
+  .search-result-item {
+    display: block;
+    width: 100%;
+    padding: 10px 8px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+  }
+  .list-toggler {
+    flex: 1;
+    min-height: 0;
+  }
+  .q-scroll-view {
+    height: 100%;
+    overflow: auto;
+  }
+  .recent-contact-item {
+    min-height: 72px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .item__avatar {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 50%;
+    background: #bed9e8;
+  }
+  .item__content {
+    flex: 1;
+    min-width: 0;
+  }
+  .item__summary {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .secondary-info {
+    font-size: 11px;
+  }
+
+  /* ── chat pane ── */
+  .aio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .panel-header {
+    height: 48px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    box-shadow: inset 0 -1px 0 #5b6270;
+  }
+  .panel-header__title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .panel-header__action {
+    flex: none;
+    display: flex;
+    gap: 4px;
+  }
+  .panel-header__action .icon-item {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: transparent;
+  }
+  .group-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+  }
+  .group-chat,
+  .c2c-chat {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .c2c-chat {
+    min-height: 0;
+    height: auto;
+  }
+  .chat-msg-area {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .chat-msg-area__vlist {
+    height: 100%;
+  }
+  /* The real scroll container is not the node the old fixture padded. */
+  .ml-area {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .ml-list {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .ml-item {
+    padding: 6px 16px;
+  }
+  .chat-msg-area__tip--top-btn {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 5;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #fff;
+    border: 0;
+  }
+  /* Native six-column row: checkbox, avatar, gap, content, opposite-side
+   * reserve, slack (author bubbles.css §17/§21). */
+  .message-container {
+    display: grid;
+    grid-template-columns: 0px 32px 8px fit-content(100%) 40px 1fr;
+    grid-template-areas:
+      "checkbox avatar . nickname . ."
+      "checkbox avatar . content action .";
+    transition: all 0.3s;
+  }
+  .message-container--self {
+    grid-template-columns: 0px 1fr 40px fit-content(100%) 8px 32px;
+    grid-template-areas:
+      "checkbox . . nickname . avatar"
+      "checkbox . action content . avatar";
+  }
+  .avatar-span {
+    grid-area: avatar;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #dcaebf;
+  }
+  .message-container > .user-name {
+    grid-area: nickname;
+    font-size: 12px;
+  }
+  .message-content__wrapper {
+    grid-area: content;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    min-width: 0;
+  }
+  .msg-content-container {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff;
+    min-width: 0;
+  }
+  .container--self {
+    background: #cfe6ff;
+  }
+  .normal-file {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 240px;
+  }
+  .file-icon {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 8px;
+    background: #9ab;
+  }
+  .file-info {
+    min-width: 0;
+    font-size: 12px;
+  }
+  /* Finished-download action. Variant A lives beside the bubble inside the
+   * wrapper; variant B is its own grid item in the reserve column. */
+  .file-side-action,
+  .msg-side-action {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: #7d8aa5;
+  }
+  .msg-side-action {
+    grid-area: action;
+    align-self: end;
+  }
+  .chat-input-area {
+    flex: none;
+    height: var(--inputAreaHeight);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #dce2ee;
+  }
+  .chat-func-bar {
+    display: flex;
+    height: 36px;
+    flex: none;
+  }
+  .chat-func-bar__left,
+  .func-bar-native {
+    display: flex;
+  }
+  .bar-icon {
+    display: flex;
+    width: 30px;
+    height: 30px;
+  }
+  .icon-item {
+    display: flex;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .icon-item svg {
+    width: 20px;
+    height: 20px;
+  }
+  .msg-input {
+    flex: 1;
+    min-height: 0;
+    padding: 6px;
+  }
+  .qq-msg-editor {
+    height: var(--qq-editor-height, 111px);
+  }
+  .ProseMirror {
+    min-height: 44px;
+    outline: 0;
+    padding: 10px;
+  }
+  .ProseMirror p {
+    margin: 0;
+  }
+  .operation {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 16px 12px;
+  }
+  .send-btn-wrap {
+    display: flex;
+    padding-right: 11px;
+  }
+  .resize-handler.ns {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 5px;
+  }
+  .group-box__container {
+    flex: none;
+    display: flex;
+    position: relative;
+  }
+  .group-box__toggle {
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    width: 20px;
+    height: 40px;
+  }
+  .group-box__wrapper {
+    width: 200px;
+    height: 100%;
+  }
+  .group-box {
+    height: 100%;
+    padding: 14px;
+  }
+  .group-user {
+    padding: 10px 0;
+    display: flex;
+    gap: 8px;
+  }
+  .q-context-menu {
+    position: fixed;
+    z-index: 4000;
+    padding: 6px;
+    min-width: 140px;
+    background: #fff;
+    border-radius: 8px;
+  }
+  /* Native second blur layer on menus. */
+  .q-context-menu:not(.is-pure)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: #ffffffcc;
+  }
+  .q-context-menu-item {
+    padding: 6px 10px;
+  }
+</style>
+<div id="app">
+  <div class="global-container">
+    <div class="topbar container-topbar">
+      <div class="topbar-content">
+        <span class="qq-logo">QQ</span>
+        <div class="user-profile-card topbar-profile">
+          <div class="user-profile-card__content">
+            <div class="user-avatar-container">
+              <div class="avatar user-avatar"></div>
+            </div>
+            <div class="user-profile-card__info">
+              <div class="user-profile-card__nick-row">
+                <span class="profile-nickname__text">示例用户</span>
+              </div>
+              <div class="user-profile-card__long-nick">
+                <span class="profile_signature">资料与状态</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="draggable-view"></div>
+    <div class="draggable-view"></div>
+    <div class="draggable-view draggable-view__container window-title-bar">
+      <div class="window-control-area">
+        <i class="pin">⌃</i><i class="minimize">—</i><i class="maximize">□</i
+        ><i class="close">×</i>
+      </div>
+    </div>
+    <div class="container-content">
+      <div class="container-sidebar">
+        <div class="sidebar-nav">
+          <div class="sidebar__upper">
+            <div class="tab-item">
+              <div class="tab-item-mask is-active"></div>
+              <button class="icon-item" aria-label="消息">◍</button>
+            </div>
+            <div class="tab-item">
+              <div class="tab-item-mask"></div>
+              <button class="icon-item" aria-label="联系人">◌</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="container-content-view tab-container">
+        <div class="message-panel">
+          <div class="two-col-layout">
+            <div class="two-col-layout__aside">
+              <div class="recent-contact">
+                <div class="contact-top-bar">
+                  <div class="main-search">
+                    <div class="search">
+                      <div class="search-input">
+                        <input
+                          class="q-input__inner"
+                          placeholder="搜索"
+                          aria-label="搜索"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <button class="contact-adder-btn" aria-label="添加">＋</button>
+                </div>
+                <div class="list-toggler">
+                  <div class="recent-contact-list q-scroll-view">
+                    <div class="viewport-list">
+                      <div class="viewport-list__inner"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="resize-handler ew"></div>
+            </div>
+            <div class="two-col-layout__main">
+              <!-- group conversation -->
+              <div class="aio" data-fixture="group">
+                <div class="panel-header chat-header">
+                  <div class="panel-header__title">
+                    <span class="chat-header__contact-name">示例群聊</span>
+                    <span id="chatHeaderMembersCount">(24)</span>
+                  </div>
+                  <div class="panel-header__action">
+                    <button class="icon-item" aria-label="群应用">▦</button>
+                    <button class="icon-item" aria-label="搜索">⌕</button>
+                    <button class="icon-item" aria-label="更多">⋯</button>
+                  </div>
+                </div>
+                <div class="group-panel">
+                  <div class="group-chat">
+                    <main class="chat-msg-area">
+                      <button class="chat-msg-area__tip--top-btn">
+                        12 条新消息
+                      </button>
+                      <div class="chat-msg-area__vlist">
+                        <div class="ml-area v-list-area">
+                          <div class="ml-root" id="ml-root">
+                            <div class="ml-list"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </main>
+                    <div class="chat-input-area">
+                      <div class="resize-handler ns"></div>
+                      <div class="chat-func-bar"></div>
+                      <div class="msg-input">
+                        <div class="qq-msg-editor">
+                          <div class="ExEditor-qq-msg-editor">
+                            <div class="ProseMirror" contenteditable="true">
+                              <p><br /></p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="operation">
+                        <div class="send-btn-wrap">
+                          <div class="send">
+                            <button class="send-msg">发送</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="forward-ops" style="display: none">
+                        <button>逐条转发</button><button>合并转发</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="group-box__container">
+                    <div class="group-box__toggle"></div>
+                    <div class="group-box__wrapper">
+                      <div class="group-box">
+                        <div class="group-notice">
+                          <h3>群公告</h3>
+                          <p>这是一段匿名示例公告。</p>
+                        </div>
+                        <div class="group-member">
+                          <div class="group-member-title">群聊成员 24</div>
+                          <div class="group-user">
+                            <span class="group-user__name">匿名成员</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- cached private conversation, hidden the way v-show does -->
+              <div class="aio" data-fixture="c2c" style="display: none">
+                <div class="panel-header chat-header">
+                  <div class="panel-header__title">
+                    <span class="chat-header__contact-name">示例好友</span>
+                  </div>
+                  <div class="panel-header__action">
+                    <button class="icon-item" aria-label="更多">⋯</button>
+                  </div>
+                </div>
+                <div class="c2c-chat">
+                  <main class="chat-msg-area">
+                    <div class="chat-msg-area__vlist">
+                      <div class="ml-area v-list-area">
+                        <div class="ml-root">
+                          <div class="ml-list"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </main>
+                  <div class="chat-input-area">
+                    <div class="chat-func-bar"></div>
+                    <div class="msg-input">
+                      <div class="qq-msg-editor">
+                        <div class="ExEditor-qq-msg-editor">
+                          <div class="ProseMirror" contenteditable="true">
+                            <p><br /></p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="operation">
+                      <div class="send-btn-wrap">
+                        <div class="send">
+                          <button class="send-msg">发送</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const tools = ["表情", "截图", "文件", "图片", "红包", "语音", "翻译", "聊天记录"];
+  for (const bar of document.querySelectorAll(".chat-func-bar"))
+    bar.innerHTML =
+      '<div class="chat-func-bar__left"><div class="func-bar-native">' +
+      tools
+        .map(
+          (label) =>
+            '<div class="bar-icon"><button class="icon-item" aria-label="' +
+            label +
+            '"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor"/></svg></button></div>',
+        )
+        .join("") +
+      "</div></div>";
+  const rows = document.querySelector(".viewport-list__inner");
+  for (let i = 0; i < 10; i++) {
+    const row = document.createElement("div");
+    row.className =
+      "recent-contact-item" +
+      (i < 3 ? " recent-contact-item--top" : "") +
+      (i === 0 ? " recent-contact-item--selected" : "");
+    row.dataset.contactId = "fixture-" + i;
+    row.innerHTML =
+      '<div class="item__avatar"></div><div class="item__content"><div class="contact-name__text">' +
+      (i < 3 ? "置顶" : "普通") +
+      "会话 " +
+      (i + 1) +
+      '</div><div class="item__summary">一段匿名消息预览</div></div><div class="secondary-info">12:00</div>';
+    rows.append(row);
+  }
+  // Message rows. The list is reversed: the first DOM child is the newest.
+  function messageRow(i, kind) {
+    const self = kind === "self";
+    const row = document.createElement("div");
+    row.className = "ml-item";
+    row.id = "fixture-message-" + i;
+    const side = self ? "self" : "others";
+    let body =
+      '<div class="message-content"><span class="text-element">示例消息 ' +
+      i +
+      "</span></div>";
+    let extra = "",
+      outside = "";
+    if (kind === "file-a" || kind === "file-b") {
+      body =
+        '<div class="file-element"><div class="normal-file"><div class="file-icon"></div><div class="file-info"><div class="file-name">匿名文件.zip</div><div class="file-size">1.2 MB</div></div></div></div>';
+      if (kind === "file-a")
+        extra =
+          '<button class="file-side-action" aria-label="打开文件夹"></button>';
+      else
+        outside =
+          '<button class="msg-side-action" aria-label="打开文件夹"></button>';
+    }
+    row.innerHTML =
+      '<div class="message"><div class="message-container message-container--' +
+      side +
+      '" data-kind="' +
+      kind +
+      '"><div class="avatar-span"></div><div class="user-name"><span class="text-ellipsis">匿名用户</span></div><div class="message-content__wrapper"><div class="msg-content-container container--' +
+      side +
+      (kind.startsWith("file") ? " file-message--content" : "") +
+      '">' +
+      body +
+      "</div>" +
+      extra +
+      "</div>" +
+      outside +
+      "</div></div>";
+    return row;
+  }
+  const kinds = ["text", "file-a", "self", "file-b", "text"];
+  document.querySelectorAll(".ml-list").forEach((list, pane) => {
+    for (let i = 0; i < 26; i++)
+      list.append(messageRow(pane * 100 + i, i < kinds.length ? kinds[i] : i % 5 === 0 ? "self" : "text"));
+  });
+</script>

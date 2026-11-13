@@ -12,6 +12,7 @@ window.LiuliStyles = Object.freeze({
     "details.css",
     "composer.css",
     "bubbles.css",
+    "cards.css",
     "shell.css",
     "overlays.css",
     "auxiliary.css",
