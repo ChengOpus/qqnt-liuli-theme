@@ -60,8 +60,16 @@
   try {
     stickerTab = JSON.parse(localStorage.getItem("liuli-sticker-tab") || "null");
   } catch (e) {}
+  // Open = laid out, on screen and not faded out. QQ can keep the panel
+  // mounted while closed; a mounted-but-transparent panel is not open.
+  function shown(node) {
+    if (!D.visible(node)) return false;
+    for (let n = node; n && n !== document.body; n = n.parentElement)
+      if (parseFloat(getComputedStyle(n).opacity) < 0.1) return false;
+    return true;
+  }
   function panel() {
-    return [...document.querySelectorAll(PANEL)].find(D.visible) || null;
+    return [...document.querySelectorAll(PANEL)].find(shown) || null;
   }
   // The tab row: the strip at the bottom of the panel with several small,
   // equally sized items in one line. Found by geometry once per opening.
@@ -94,13 +102,12 @@
   // switches it to the sticker tab: the one last used, else the first tab after
   // search and emoji (favourites, in QQ 9.9.36).
   function openStickers(nativeItem) {
-    const already = panel();
-    if (!already) nativeItem?.click();
+    if (!panel()) nativeItem?.click();
     let tries = 0;
     const pick = () => {
       const root = panel();
       if (!root) {
-        if (++tries < 10) requestAnimationFrame(pick);
+        if (++tries < 40) requestAnimationFrame(pick);
         return;
       }
       const strip = tabs(root);

@@ -981,8 +981,8 @@ async function run() {
           panel.querySelectorAll(".tab-x").forEach((t) => t.addEventListener("click", () => opened.push(+t.dataset.i)));
           document.body.append(panel);
         });
-        const button = document.getElementById("liuli-sticker-btn");
-        button.click();
+        const button = document.getElementById("liuli-emoji-btn");
+        button.dispatchEvent(new PointerEvent("pointerenter"));
         await new Promise((r) => setTimeout(r, 200));
         const panel = document.querySelector(".expression-panel");
         const editor = __qa.q(".ProseMirror");
@@ -1010,10 +1010,12 @@ async function run() {
         const afterDraft = sent;
         panel.remove();
         editor.innerHTML = "<p><br></p>";
-        return { button: !!button, opened, afterSticker, afterEmoji, afterDraft };
+        const order = [...document.querySelectorAll("#liuli-input-overlay button")].map((b) => b.getAttribute("aria-label"));
+        return { button: !!button, order, opened, afterSticker, afterEmoji, afterDraft };
       });
       checks.stickers = stickers;
-      expect("sticker.button-opens-sticker-tab", stickers.button && stickers.opened[0] === 2, stickers);
+      expect("sticker.emoji-hover-opens-sticker-tab", stickers.button && stickers.opened[0] === 2, stickers);
+      expect("sticker.emoji-and-screenshot-beside-plus", stickers.order.slice(0, 3).join() === "更多,表情,截图", stickers);
       expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
       expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
       expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);
@@ -1078,14 +1080,14 @@ async function run() {
         before: () => {
           const style = document.createElement("style");
           style.textContent =
-            ".ml-area{display:block!important}.ml-list{flex-direction:column!important}";
+            ".ml-container{display:block!important}.ml-list{flex-direction:column!important}";
           document.head.append(style);
         },
       });
       await page.evaluate(pageHelpers);
       const state = () =>
         page.evaluate(() => {
-          const scroller = __qa.q(".ml-area"),
+          const scroller = __qa.q(".ml-container"),
             input = __qa.q(".chat-input-area").getBoundingClientRect(),
             newest = __qa.q(".ml-list > .ml-item:last-child .msg-content-container").getBoundingClientRect();
           return {
@@ -1096,7 +1098,7 @@ async function run() {
         });
       const openConversation = (stale) =>
         page.evaluate(async (stale) => {
-          const old = __qa.q(".ml-area"),
+          const old = __qa.q(".ml-container"),
             fresh = old.cloneNode(true);
           fresh.removeAttribute("data-liuli-composer-scroll");
           old.replaceWith(fresh);
@@ -1130,19 +1132,53 @@ async function run() {
       await page.mouse.move(box.x + box.w / 2, box.y + box.h / 2);
       await page.mouse.wheel(0, -400);
       await page.waitForTimeout(200);
-      const before = await page.evaluate(() => __qa.q(".ml-area").scrollTop);
+      const before = await page.evaluate(() => __qa.q(".ml-container").scrollTop);
       await page.locator(".ProseMirror").first().click();
       for (let i = 0; i < 3; i++) {
         await page.keyboard.type("x");
         await page.keyboard.press("Shift+Enter");
       }
       await page.waitForTimeout(1000);
-      const after = await page.evaluate(() => __qa.q(".ml-area").scrollTop);
+      const after = await page.evaluate(() => __qa.q(".ml-container").scrollTop);
       if (Math.abs(after - before) > 1) failures.push("open.reader-not-moved: " + JSON.stringify({ before, after }));
       if (errors.length) failures.push("open.errors: " + errors.join("|"));
       results.push({ variant: "opening-scroll", failures });
       failed += failures.length;
       await page.context().close();
+    }
+
+    // ── First start: the theme boots before QQ has rendered any message ──
+    {
+      const failures = [];
+      const { page, context, errors } = await h.open({
+        before: () => {
+          const list = document.querySelector('.aio[data-fixture="group"] .ml-list');
+          window.__rows = [...list.children];
+          list.replaceChildren();
+        },
+      });
+      await page.evaluate(pageHelpers);
+      const r = await page.evaluate(async () => {
+        const list = __qa.q(".ml-list");
+        list.append(...window.__rows);
+        const scroller = __qa.q(".ml-container");
+        scroller.scrollTop = 0; // QQ shows the newest end (reversed list)
+        await new Promise((res) => setTimeout(res, 600));
+        const input = __qa.q(".chat-input-area").getBoundingClientRect();
+        const newest = __qa.q(".ml-list > .ml-item:first-child .msg-content-container").getBoundingClientRect();
+        return {
+          marked: scroller.hasAttribute("data-liuli-composer-scroll"),
+          regionMarked: __qa.q(".chat-msg-area").hasAttribute("data-liuli-composer-scroll"),
+          clear: Math.round(input.top - newest.bottom),
+          state: LiuliComposer.state(),
+        };
+      });
+      if (!r.marked || r.regionMarked) failures.push("firststart.real-scroller: " + JSON.stringify(r));
+      if (!(r.clear >= 4)) failures.push("firststart.newest-above-editor: " + JSON.stringify(r));
+      if (errors.length) failures.push("firststart.errors: " + errors.join("|"));
+      results.push({ variant: "first-start", failures });
+      failed += failures.length;
+      await context.close();
     }
 
     // ── Video wallpaper in the main window, also with reduced motion on ──

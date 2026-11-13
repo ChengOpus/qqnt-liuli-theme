@@ -103,7 +103,11 @@
   pointer-events: none;
   overflow: hidden;
 }
-#liuli-video-wallpaper { width: 100%; height: 100%; display: block; }
+/* opacity just below 1 keeps the video out of a hardware overlay plane: QQ's
+ * main window is transparent, and on Windows an overlay-promoted video in a
+ * transparent window can play without ever being shown (user diagnostics,
+ * 2026-11-13: video "playing", poster removed, nothing on screen). */
+#liuli-video-wallpaper { width: 100%; height: 100%; display: block; opacity: 0.999; }
 #liuli-video-layer::after {
   content: '';
   position: absolute;

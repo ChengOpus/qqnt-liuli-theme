@@ -1258,6 +1258,23 @@
           .map(el => tree(el, 4, { left: 50 })),
       null
     );
+    // 表情面板（打开时导出），用来确认标签栏的真实结构。
+    probe.expression = safe(
+      () => shown('.expression-panel, .expression-panel-inner, .sticker-panel').slice(0, 2).map(el => tree(el, 6, { left: 80 })),
+      null
+    );
+    // 视频壁纸层的状态。
+    probe.video = safe(() => {
+      const v = d.getElementById('liuli-video-wallpaper');
+      if (!v) return null;
+      const r = v.getBoundingClientRect();
+      return {
+        paused: v.paused, time: v.currentTime, w: v.videoWidth, h: v.videoHeight, ready: v.readyState,
+        error: v.error ? v.error.code : 0, rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+        shown: d.body.hasAttribute('data-liuli-video-wallpaper'),
+        stack: (d.elementsFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)) || []).slice(0, 12).map(n => n.tagName.toLowerCase() + '.' + cls(n).slice(0, 40))
+      };
+    }, null);
     // 卡片类消息（邮箱提醒、分享卡片等，当前可见的前两条）。
     probe.cardRows = safe(
       () =>

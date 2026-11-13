@@ -234,7 +234,9 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header 
   background: var(--ll-glass-paint);
   backdrop-filter: var(--ll-material-blur);
   -webkit-backdrop-filter: var(--ll-material-blur);
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+  /* Edge light only. A drop shadow under panels that float over scrolling
+   * messages read as a grey band across the top of the chat. */
+  box-shadow: var(--ll-popup-edge);
 }
 .chat-header
   :is(
@@ -305,7 +307,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 0 !important;
   border-radius: var(--ll-top-radius) !important;
-  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float);
+  box-shadow: var(--ll-popup-edge);
   opacity: 0 !important;
   visibility: visible !important;
   pointer-events: none !important;

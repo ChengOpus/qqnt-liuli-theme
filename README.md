@@ -72,7 +72,7 @@
 
 在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
-本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.13`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
+本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.14`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
 
 ### 方式三：在线安装
 

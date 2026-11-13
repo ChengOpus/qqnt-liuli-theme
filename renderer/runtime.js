@@ -174,6 +174,10 @@
         for (const node of addedRoots)
           if (node.isConnected && !node.closest(".ml-list, .ml-area, .chat-msg-area__vlist"))
             window.LiuliSurfaces?.floating(node);
+        // Rows rendered after the composer was laid out (first start): the
+        // real scroll container only exists now.
+        if (jobs.has("messages") && window.LiuliComposer.needsScroller?.())
+          jobs.add("geometry");
         if (jobs.has("geometry")) {
           const nodes = hooks.geometry?.() || [];
           bind(nodes);

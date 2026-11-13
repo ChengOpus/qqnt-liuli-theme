@@ -14,11 +14,11 @@ const { start } = require("./harness.cjs");
 // Runs in the page before the theme boots. Replaces the fixture's short list
 // with a 3000-message virtualised list in an ordinary top-to-bottom scroller.
 function virtualList() {
-  const area = document.querySelector('.aio[data-fixture="group"] .ml-area');
+  const area = document.querySelector('.aio[data-fixture="group"] .ml-container');
   const list = area.querySelector(".ml-list");
   const style = document.createElement("style");
   style.textContent =
-    '.aio[data-fixture="group"] .ml-area{display:block!important}' +
+    '.aio[data-fixture="group"] .ml-container{display:block!important}' +
     '.aio[data-fixture="group"] .ml-list{display:block!important;position:relative}' +
     ".ml-item{box-sizing:border-box}";
   document.head.append(style);

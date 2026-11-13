@@ -198,21 +198,27 @@
     const value = getComputedStyle(node).overflowY;
     return value === "auto" || value === "scroll" || value === "overlay";
   }
+  // QQ 9.9.36 (from a user's diagnostics): main.chat-msg-area (overflow auto,
+  // never scrolls) > .ml-area.chat-msg-area__vlist (overflow auto, never
+  // scrolls) > .q-scroll-view.ml-container.ml-root (the real scroller) >
+  // .virtual-scroll-area (300 000px) > .ml-list (sticky) > .ml-item. Several
+  // ancestors claim overflow:auto; the one that matters is the nearest one
+  // above the rows. Before any row exists there is no answer yet: return null
+  // and decide again when rows arrive (runtime asks via needsScroller()).
   function findScroller(target) {
-    const seed =
-      target.querySelector(".ml-item,.message-container,.message") ||
-      target.querySelector(".ml-list,.ml-root,.ml-area,.chat-msg-area__vlist");
-    for (
-      let node = seed?.parentElement;
-      node && target.contains(node);
-      node = node.parentElement
-    )
-      if (scrollable(node)) return node;
-    for (const node of target.querySelectorAll(
-      ".chat-msg-area__vlist,.ml-area,.q-scroll-view,.ml-list",
-    ))
-      if (scrollable(node)) return node;
-    return scrollable(target) ? target : null;
+    const row = target.querySelector(".ml-item,.message-container,.message");
+    if (!row) return null;
+    let nearest = null;
+    for (let node = row.parentElement; node && target.contains(node); node = node.parentElement) {
+      if (!scrollable(node)) continue;
+      if (node.scrollHeight > node.clientHeight + 1) return node;
+      nearest ??= node; // a short chat: nothing overflows yet
+    }
+    return nearest;
+  }
+  const ROW = ".ml-item,.message-container,.message";
+  function needsScroller() {
+    return !!(region?.isConnected && (!scroll?.isConnected || !scroll.querySelector(ROW)) && region.querySelector(ROW));
   }
   // ── Staying at the newest message ────────────────────────────────────────
   // The editor's clearance is end padding on the scroll container. The client
@@ -252,25 +258,20 @@
     more.addEventListener("click", () =>
       expand(!bar()?.classList.contains("liuli-expanded")),
     );
-    // Stickers get their own button: the emoji button opens QQ's emoji tab.
-    const sticker = document.createElement("button");
-    sticker.id = "liuli-sticker-btn";
-    sticker.type = "button";
-    sticker.title = "表情包";
-    sticker.setAttribute("aria-label", "表情包");
-    sticker.innerHTML = window.LiuliIcons.svg("表情包");
-    sticker.addEventListener("click", () =>
-      window.LiuliChatExtras?.openStickers(window.LiuliLayout.nativeBarItem("表情")),
-    );
     const pins = document.createElement("div");
     pins.id = "liuli-bar-pins";
-    result.append(more, sticker, pins);
+    result.append(more, pins);
     return result;
   }
   function syncPins() {
     if (!active || !overlay) return;
-    const labels = window.LiuliLayout.applyBar(),
-      pins = overlay.querySelector("#liuli-bar-pins");
+    // 表情 and 截图 sit right after "+" (requested); further pins follow.
+    const pinned = window.LiuliLayout.applyBar();
+    const labels = [
+      ...["表情", "截图"].filter((label) => window.LiuliLayout.nativeBarItem(label)),
+      ...pinned.filter((label) => label !== "表情" && label !== "截图"),
+    ];
+    const pins = overlay.querySelector("#liuli-bar-pins");
     const key = labels.join("|");
     if (pins.dataset.key !== key) {
       pins.dataset.key = key;
@@ -281,15 +282,33 @@
         button.className = "liuli-bar-btn";
         button.title = label;
         button.setAttribute("aria-label", label);
-        if (label === "表情") button.id = "liuli-emoji-btn";
         button.innerHTML = window.LiuliIcons.svg(label);
-        button.addEventListener("click", () =>
-          window.LiuliLayout.nativeBarItem(label)?.click(),
-        );
+        if (label === "表情") {
+          // Stickers first: hovering (or clicking) opens the expression panel
+          // on the sticker tab; emoji are one tab away inside the panel.
+          button.id = "liuli-emoji-btn";
+          const open = () =>
+            window.LiuliChatExtras?.openStickers(window.LiuliLayout.nativeBarItem("表情"));
+          let intent = 0;
+          button.addEventListener("pointerenter", () => {
+            clearTimeout(intent);
+            intent = setTimeout(open, 140);
+          });
+          button.addEventListener("pointerleave", () => clearTimeout(intent));
+          button.addEventListener("click", () => {
+            clearTimeout(intent);
+            open();
+          });
+        } else {
+          if (label === "截图") button.id = "liuli-shot-btn";
+          button.addEventListener("click", () =>
+            window.LiuliLayout.nativeBarItem(label)?.click(),
+          );
+        }
         pins.append(button);
       });
     }
-    const pad = 12 + (labels.length + 2) * 32 + "px";
+    const pad = 12 + (labels.length + 1) * 32 + "px";
     if (active.style.getPropertyValue("--liuli-bar-pad") !== pad)
       active.style.setProperty("--liuli-bar-pad", pad);
   }
@@ -405,7 +424,12 @@
     }
     host = nextHost;
     region = nextRegion;
-    if (!scroll?.isConnected || !region.contains(scroll) || !scrollable(scroll))
+    if (
+      !scroll?.isConnected ||
+      !region.contains(scroll) ||
+      !scrollable(scroll) ||
+      !scroll.querySelector(ROW)
+    )
       scroll = findScroller(region);
     // No scroll container found: composer.css reserves the editor on the region.
     if (region.hasAttribute("data-liuli-noscroll") !== !scroll)
@@ -653,6 +677,7 @@
     bar,
     viewport: () => (scroll?.isConnected ? scroll : region),
     scroller: () => (scroll?.isConnected ? scroll : null),
+    needsScroller,
     prime,
     records,
     expand,

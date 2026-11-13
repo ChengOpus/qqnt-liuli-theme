@@ -351,22 +351,30 @@
     min-height: 0;
     height: auto;
   }
+  /* QQ 9.9.36, from a user's structure probe: three nested boxes claim
+   * overflow:auto, only the innermost one (.q-scroll-view.ml-container)
+   * scrolls. The fixture keeps the list reversed (newest = first child,
+   * scrollTop 0 = newest end) to exercise both scroll orientations' code. */
   .chat-msg-area {
     display: block;
     flex: 1;
     min-height: 0;
     position: relative;
-    overflow: hidden;
+    overflow: auto;
   }
-  .chat-msg-area__vlist {
-    height: 100%;
-  }
-  /* The real scroll container is not the node the old fixture padded. */
   .ml-area {
+    height: 100%;
+    overflow-y: auto;
+    position: relative;
+  }
+  .q-scroll-view.ml-container {
     height: 100%;
     overflow-y: auto;
     display: flex;
     flex-direction: column-reverse;
+  }
+  .virtual-scroll-area {
+    flex: none;
   }
   .ml-list {
     display: flex;
@@ -664,10 +672,10 @@
                       <button class="chat-msg-area__tip--top-btn">
                         12 条新消息
                       </button>
-                      <div class="chat-msg-area__vlist">
-                        <div class="ml-area v-list-area">
-                          <div class="ml-root" id="ml-root">
-                            <div class="ml-list"></div>
+                      <div class="ml-area v-list-area list-wrap chat-msg-area__vlist">
+                        <div class="q-scroll-view scroll-view--hide-scrollbar ml-container ml-root container" id="ml-root">
+                          <div class="virtual-scroll-area">
+                            <div class="ml-list list"></div>
                           </div>
                         </div>
                       </div>
@@ -727,10 +735,10 @@
                 </div>
                 <div class="c2c-chat">
                   <main class="chat-msg-area">
-                    <div class="chat-msg-area__vlist">
-                      <div class="ml-area v-list-area">
-                        <div class="ml-root">
-                          <div class="ml-list"></div>
+                    <div class="ml-area v-list-area list-wrap chat-msg-area__vlist">
+                      <div class="q-scroll-view scroll-view--hide-scrollbar ml-container ml-root container">
+                        <div class="virtual-scroll-area">
+                          <div class="ml-list list"></div>
                         </div>
                       </div>
                     </div>
