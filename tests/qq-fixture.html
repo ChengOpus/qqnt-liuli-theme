@@ -27,8 +27,61 @@
   .topbar-content {
     display: flex;
   }
+  /* Native constraint recorded by author layout.css:206. */
   .user-profile-card {
-    width: 250px;
+    width: 0;
+    flex: 1;
+  }
+  .user-profile-card__info {
+    display: flex;
+    flex-direction: column;
+  }
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #bed9e8;
+  }
+  .profile_signature {
+    font-size: 10px;
+  }
+  /* Native wrappers recorded by author layout.css:1281/1380. */
+  .chat-func-bar__left,
+  .func-bar-native {
+    display: flex;
+    width: 100%;
+  }
+  .bar-icon {
+    display: flex;
+    width: 30px;
+    height: 30px;
+  }
+  .icon-item {
+    display: flex;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .icon-item svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* A split hit area may paint through its own pseudo-element. */
+  .resize-handler.ew {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+  }
+  .resize-handler.ew::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset -1px 0 #777;
+  }
+  .two-col-layout__aside {
+    position: relative;
   }
   .user-profile-card__content {
     display: flex;
@@ -311,10 +364,20 @@
   <div class="global-container">
     <div class="topbar">
       <div class="topbar-content">
+        <span class="qq-logo">QQ</span>
         <div class="user-profile-card topbar-profile">
           <div class="user-profile-card__content">
-            <span>◉ 示例用户</span
-            ><span class="profile_signature">资料与状态</span>
+            <div class="user-avatar-container">
+              <div class="avatar user-avatar"></div>
+            </div>
+            <div class="user-profile-card__info">
+              <div class="user-profile-card__nick-row">
+                <span class="profile-nickname__text">示例用户</span>
+              </div>
+              <div class="user-profile-card__long-nick">
+                <span class="profile_signature">资料与状态</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -329,6 +392,7 @@
       <div class="container-content-view">
         <div class="two-col-layout">
           <aside class="two-col-layout__aside">
+            <div class="resize-handler ew"></div>
             <div class="recent-contact">
               <div class="main-search">
                 <input placeholder="搜索" aria-label="搜索" />

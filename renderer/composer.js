@@ -116,15 +116,9 @@
       ?.querySelector("#liuli-func-toggle")
       ?.setAttribute("aria-expanded", String(open));
     if (open) {
-      const wasOpen = next.classList.contains("liuli-expanded");
       next.classList.add("liuli-expanded");
       next.dataset.liuliTools = "open";
       tools = next;
-      if (!wasOpen)
-        window.LiuliMotion.play(next, [{ opacity: 0.55 }, { opacity: 1 }], {
-          duration: 160,
-          easing: "ease-out",
-        });
     } else if (next.classList.contains("liuli-expanded")) {
       next.style.setProperty("pointer-events", "none");
       const finish = () => {
@@ -137,6 +131,7 @@
         const animation = next.animate([{ opacity: 1 }, { opacity: 0 }], {
           duration: 130,
           easing: "ease-out",
+          pseudoElement: "::before",
         });
         exit = animation;
         animation.finished.then(

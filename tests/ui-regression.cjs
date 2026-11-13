@@ -203,14 +203,18 @@ const readResources = require("../resources.cjs");
           color,
           labelOn,
           value: document.body.getAttribute("data-liuli-pin-group"),
-          label: document.querySelector(".liuli-pin-label")?.textContent,
+          markers: document.querySelectorAll("[data-liuli-pinned]").length,
+          addedDividers: document.querySelectorAll(
+            "[data-liuli-pin-heading],[data-liuli-pin-last]",
+          ).length,
           buttons: document.querySelectorAll(".liuli-pin-label button").length,
         };
       });
       assert.equal(result.pin.value, "1");
-      assert.equal(result.pin.labelOn, true);
+      assert.equal(result.pin.labelOn, false);
+      assert.equal(result.pin.markers, 3);
+      assert.equal(result.pin.addedDividers, 0);
       assert.notEqual(result.pin.on, result.pin.color);
-      assert.equal(result.pin.label, "置顶");
       assert.equal(result.pin.buttons, 0);
       await page.evaluate(() =>
         window.__liuliPinGroups.apply({ group: true, color: false }),

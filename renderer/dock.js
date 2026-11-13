@@ -3,9 +3,14 @@
 (() => {
   "use strict";
   const D = window.LiuliDOM;
+  // Author main @ 3d183f3, installRevealTracker: the full left edge is 8px,
+  // target padding is 18px, and leave holds are 250/600ms. No new gesture policy.
+  const EDGE = 8,
+    PAD = 18,
+    CORNER = 200;
+  const HOLD = { nav: 250, l: 600, r: 600 };
   const states = { nav: false, l: false, r: false },
-    timers = {},
-    intents = {};
+    timers = {};
   const keys = { nav: "liuliRNav", l: "liuliRL", r: "liuliRR" };
   let moveFrame = 0,
     pointer = null,
@@ -14,8 +19,7 @@
   let installed = false,
     owner = null,
     childFocused = false,
-    last = { x: -1, y: -1 },
-    sample = { x: -1, y: -1, time: 0 };
+    last = { x: -1, y: -1 };
   let bounds = { left: 260, right: innerWidth - 160 },
     nav = null,
     controls = null,
@@ -30,7 +34,7 @@
     if (map[key]) clearTimeout(map[key]);
     delete map[key];
   }
-  function rectContains(el, x, y, pad = 10) {
+  function rectContains(el, x, y, pad = PAD) {
     if (!el) return false;
     const r = el.getBoundingClientRect();
     return (
@@ -84,7 +88,7 @@
       }
     }
   }
-  function close(key, delay = key === "nav" ? 180 : 360) {
+  function close(key, delay = HOLD[key]) {
     if (
       !states[key] ||
       locked(key) ||
@@ -104,40 +108,24 @@
       commit(key, false);
     }, delay);
   }
-  function intent(key, delay) {
-    if (intents[key]) return;
-    intents[key] = setTimeout(() => {
-      delete intents[key];
-      if (
-        key === "nav" ? last.x <= 8 && last.y > 42 : zone(key, last.x, last.y)
-      ) {
-        owner = key;
-        commit(key, true);
-      }
-    }, delay);
-  }
   function zone(key, x, y) {
-    if (key === "nav") return x >= 0 && x <= 8 && y > 42 && y < innerHeight;
+    if (key === "nav") return x >= 0 && x <= EDGE && y >= 0 && y < innerHeight;
     return (
       y >= 0 &&
-      y <= 42 &&
+      y <= 36 &&
       (key === "l"
-        ? x >= 0 && x <= bounds.left
+        ? x > EDGE && x <= bounds.left
         : x >= bounds.right && x <= innerWidth)
     );
   }
   function move(e) {
     if (document.body.dataset.liuliScope !== "main") return;
     last = { x: e.clientX, y: e.clientY };
-    const now = performance.now();
-    const dx = sample.x < 0 ? 0 : last.x - sample.x,
-      dy = sample.y < 0 ? 0 : last.y - sample.y;
-    sample = { ...last, time: now };
     const inPopup =
       e.target instanceof Element && e.target.closest(popupSelector);
     const targets = {
       nav:
-        (last.x <= 8 && last.y > 42) ||
+        zone("nav", last.x, last.y) ||
         (states.nav && rectContains(nav, last.x, last.y)),
       l:
         zone("l", last.x, last.y) ||
@@ -154,13 +142,9 @@
       if (targets[key]) {
         clearTimer(timers, key);
         if (states[key]) continue;
-        if (key === "nav") intent(key, 45);
-        else if (key === "r" && last.x >= innerWidth - 76) intent(key, 20);
-        else if (dy < -1 && Math.abs(dx) < Math.abs(dy) * 2 + 10)
-          intent(key, 60);
-        else if (last.y <= 10) intent(key, 100);
+        owner = key;
+        commit(key, true);
       } else {
-        clearTimer(intents, key);
         if (!(inPopup && owner === key)) close(key);
       }
     }
@@ -175,10 +159,8 @@
     const aside = D.visibleQuery(".two-col-layout__aside"),
       right = D.visibleQuery(".group-box");
     const asideWidth = aside?.getBoundingClientRect().width || 280;
-    bounds.left = Math.min(asideWidth, innerWidth * 0.48);
-    bounds.right =
-      innerWidth -
-      Math.max(150, controls?.getBoundingClientRect().width || 140);
+    bounds.left = Math.min(asideWidth, CORNER + 56);
+    bounds.right = innerWidth - CORNER;
     variable("--ll-aside-width", Math.round(asideWidth) + "px");
     const cap = Math.max(
       160,
@@ -217,16 +199,10 @@
   function install() {
     if (installed) return;
     installed = true;
-    const handle = document.createElement("button");
+    const handle = document.createElement("div");
     handle.id = "liuli-nav-handle";
-    handle.type = "button";
     handle.title = "展开导航";
-    handle.setAttribute("aria-label", "展开导航");
-    handle.textContent = "›";
-    handle.addEventListener("click", () => {
-      owner = "nav";
-      commit("nav", !states.nav);
-    });
+    handle.setAttribute("aria-hidden", "true");
     document.body.append(handle);
     for (const key of ["l", "r"]) {
       const hint = document.createElement("div");
@@ -275,7 +251,6 @@
     );
     document.documentElement.addEventListener("mouseleave", () => {
       for (const k of ["nav", "l", "r"]) {
-        clearTimer(intents, k);
         close(k);
       }
     });
@@ -285,7 +260,6 @@
       moveFrame = 0;
       for (const key of ["nav", "l", "r"]) {
         clearTimer(timers, key);
-        clearTimer(intents, key);
       }
     });
     window.addEventListener("focus", () => {

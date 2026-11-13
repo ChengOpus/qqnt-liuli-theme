@@ -22,6 +22,12 @@
   background-clip: padding-box !important;
 }
 
+/* Author typography.css:30-38: native member separators are pseudo-elements. */
+.group-user::before, .group-user::after,
+.group-member::before, .group-member::after {
+  display: none !important;
+}
+
 /* 会话项用间距 + 圆角活跃态区分，不用线 */
 .recent-contact-item {
   margin: 2px 6px !important;

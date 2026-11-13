@@ -76,7 +76,7 @@ const root = path.resolve(__dirname, "..");
       // Native toolbar availability and click handlers remain authoritative.
       await page.evaluate(() => {
         LiuliComposer.bar().innerHTML =
-          '<div class="bar-icon"><button class="icon-item" aria-label="表情">表情</button></div><div class="bar-icon"><button class="icon-item" aria-label="文件">文件</button></div><div class="bar-icon" style="display: none"><button class="icon-item" aria-label="图片">图片</button></div>';
+          '<div class="chat-func-bar__left"><div class="func-bar-native"><div class="bar-icon"><button class="icon-item" aria-label="表情">表情</button></div><div class="bar-icon"><button class="icon-item" aria-label="文件">文件</button></div><div class="bar-icon" style="display: none"><button class="icon-item" aria-label="图片">图片</button></div></div></div>';
         window.__nativeEmojiClicks = 0;
         LiuliComposer.bar()
           .querySelector('[aria-label="表情"]')
@@ -299,17 +299,19 @@ const root = path.resolve(__dirname, "..");
         heading.textContent = "置顶";
         document.querySelector(".list-toggler").before(heading);
       });
-      await page.waitForFunction(() =>
-        document.querySelector("[data-liuli-pin-heading]"),
-      );
-      const line = await page
-        .locator("[data-liuli-pin-heading]")
-        .evaluate((n) => ({
-          image: getComputedStyle(n).backgroundImage,
-          width: n.getBoundingClientRect().width,
-        }));
-      assert.match(line.image, /linear-gradient/);
-      assert.ok(line.width > 180);
+      await page.waitForTimeout(80);
+      const line = await page.locator(".native-pin-heading").evaluate((n) => ({
+        text: n.textContent,
+        image: getComputedStyle(n).backgroundImage,
+        themed: n.hasAttribute("data-liuli-pin-heading"),
+        injected: document.querySelectorAll(
+          ".liuli-pin-label,[data-liuli-pin-last]",
+        ).length,
+      }));
+      assert.equal(line.text, "置顶");
+      assert.equal(line.image, "none");
+      assert.equal(line.themed, false);
+      assert.equal(line.injected, 0);
       // Search keeps the list visible, owns exactly one edge, and fits its column.
       await page.evaluate(() => {
         const shell = document.createElement("div");
@@ -388,15 +390,18 @@ const root = path.resolve(__dirname, "..");
         "rgba(0, 0, 0, 0.5)",
       );
       await page.locator("#protected").evaluate((n) => n.remove());
-      // Glass does not create a containing block for native fixed tool submenus.
+      // Author layout.css:1525: a zero-sized native shell must anchor its
+      // fixed inner menu; global viewport coordinates were the wrong contract.
       await page.evaluate(() => {
         const child = document.createElement("div");
         child.className =
           "native-fixed-tool-submenu bar-more-menu-inner q-context-menu";
         const shell = document.createElement("div");
         shell.className = "bar-more-menu";
+        shell.style.cssText =
+          "position:absolute;left:38px;top:-18px;width:0;height:0";
         child.style.cssText =
-          "position:fixed;left:520px;top:72px;width:100px;height:80px";
+          "position:fixed;left:0;top:0;width:100px;height:80px";
         shell.append(child);
         LiuliComposer.bar().append(shell);
         LiuliComposer.expand(true);
@@ -411,12 +416,22 @@ const root = path.resolve(__dirname, "..");
           pseudo: getComputedStyle(bar, "::before").backdropFilter,
           left: rect.left,
           top: rect.top,
+          shellLeft: bar.querySelector(".bar-more-menu").getBoundingClientRect()
+            .left,
+          shellTop: bar.querySelector(".bar-more-menu").getBoundingClientRect()
+            .top,
+          columns: getComputedStyle(bar).gridTemplateColumns,
+          wrappers: [
+            ...bar.querySelectorAll(".chat-func-bar__left,.func-bar-native"),
+          ].map((n) => getComputedStyle(n).display),
         };
       });
       assert.equal(tool.filter, "none");
       assert.match(tool.pseudo, /blur\(18px\)/);
-      assert.equal(tool.left, 520);
-      assert.equal(tool.top, 72);
+      assert.ok(Math.abs(tool.left - (tool.shellLeft - 29)) < 0.5);
+      assert.ok(Math.abs(tool.top - (tool.shellTop - 10)) < 0.5);
+      assert.equal(tool.columns, "38px 38px 38px 38px");
+      assert.ok(tool.wrappers.every((value) => value === "contents"));
       await page.evaluate(() => {
         LiuliComposer.bar().querySelector(".bar-more-menu").remove();
         LiuliComposer.expand(false);

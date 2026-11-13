@@ -173,95 +173,142 @@
 .chat-input-area[data-liuli-composer] > .chat-func-bar {
   display: none !important;
 }
-.chat-input-area[data-liuli-composer] > .chat-func-bar.liuli-expanded {
-  display: flex !important;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 8px;
+/* Author main @ 3d183f3 layout.css:1370-1535. Native wrappers are
+ * .chat-func-bar__left and .func-bar-native, not the simplified test fixture. */
+body .chat-input-area[data-liuli-composer] > .chat-func-bar.liuli-expanded {
+  display: grid !important;
+  grid-template-columns: repeat(4, 38px) !important;
+  grid-auto-rows: 38px !important;
+  gap: 4px !important;
   position: absolute !important;
-  left: 0 !important;
+  left: 2px !important;
   right: auto !important;
   bottom: calc(100% + 8px) !important;
   top: auto !important;
-  max-width: min(270px, calc(100vw - 32px));
   width: max-content !important;
-  max-height: min(300px, 50vh);
+  min-width: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
   height: auto !important;
   margin: 0 !important;
-  padding: 12px !important;
+  padding: 6px !important;
   overflow: visible !important;
   z-index: 1000;
   border: 0 !important;
-  border-radius: 18px;
+  border-radius: var(--ll-radius);
   background: transparent !important;
-  box-shadow: none;
+  box-shadow: none !important;
   isolation: isolate;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  transform: none !important;
+  animation: none !important;
 }
-.chat-func-bar.liuli-expanded
-  > :is(.chat-func-bar__left, .chat-func-bar__right, .chat-func-bar__main) {
+body .chat-func-bar.liuli-expanded :is(.chat-func-bar__left, .func-bar-native) {
   display: contents !important;
 }
-.chat-func-bar.liuli-expanded .bar-icon {
-  display: flex !important;
-  position: relative;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 36px !important;
-  height: 36px !important;
+body .chat-func-bar.liuli-expanded > .func-bar-native {
   margin: 0 !important;
   padding: 0 !important;
-  border-radius: 9px;
+  border: none !important;
 }
-.chat-func-bar.liuli-expanded .bar-icon:hover {
+body .chat-func-bar.liuli-expanded .bar-icon {
+  display: flex !important;
+  position: relative !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: none !important;
+  width: 38px !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px;
+}
+body .chat-func-bar.liuli-expanded .bar-icon:hover {
   background: rgba(var(--ll-on-glass-rgb), 0.06);
 }
-.chat-func-bar.liuli-expanded .bar-icon > .icon-item {
+body .chat-func-bar.liuli-expanded .bar-icon > .icon-item {
   position: static !important;
-  width: 30px !important;
-  height: 30px !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 auto !important;
   display: flex !important;
-  align-items: center;
-  justify-content: center;
-  opacity: 1;
-  color: var(--ll-on-glass);
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--ll-on-glass-2) !important;
 }
-.chat-func-bar.liuli-expanded .bar-icon :is(.q-icon, svg) {
-  width: 22px;
-  height: 22px;
+body .chat-func-bar.liuli-expanded .bar-icon > .icon-item::after {
+  content: none !important;
+  display: none !important;
 }
-.chat-func-bar.liuli-expanded .bar-icon > .arrow {
-  position: absolute;
-  top: auto;
-  left: auto;
-  right: 2px;
-  bottom: 2px;
-  width: 14px;
-  height: 14px;
+body .chat-func-bar.liuli-expanded .bar-icon :is(.q-icon, svg) {
+  width: 20px !important;
+  height: 20px !important;
+}
+body .chat-func-bar.liuli-expanded .bar-icon > .arrow {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  right: 2px !important;
+  bottom: 2px !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: none !important;
   border-radius: 5px;
   background: rgba(var(--ll-on-glass-rgb), 0.1);
   color: var(--ll-on-glass-2);
-  box-shadow: none;
+  box-shadow: none !important;
 }
-.chat-func-bar.liuli-expanded .bar-icon > .arrow:hover {
+body .chat-func-bar.liuli-expanded .bar-icon > .arrow:hover {
   background: rgba(var(--ll-brand-rgb), 0.2);
   color: var(--ll-link);
 }
-.chat-func-bar.liuli-expanded .bar-icon > .arrow svg {
-  width: 12px;
-  height: 12px;
+body .chat-func-bar.liuli-expanded .bar-icon > .arrow :is(svg, i) {
+  width: 12px !important;
+  height: 12px !important;
   fill: currentColor;
 }
-.chat-func-bar.liuli-expanded
+body
+  .chat-func-bar.liuli-expanded
   .bar-icon:is(
     .liuli-pinned,
     [hidden],
     [aria-hidden="true"],
-    [style*="display: none"]
-  ) {
+    [style*="display: none"],
+    [style*="display:none"]
+  ),
+body
+  .chat-func-bar.liuli-expanded
+  .bar-icon:not(:has(.icon-item[aria-label]:not([aria-label=""]))) {
   display: none !important;
+}
+/* Author layout.css:1525-1535 and 1809-1812. The zero-sized positioning shell
+ * anchors its fixed inner menu. It owns no glass; its transform is intentional. */
+body .chat-func-bar.liuli-expanded .bar-more-menu {
+  animation: none !important;
+  transform: translateZ(0) !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+body
+  .chat-func-bar.liuli-expanded
+  .bar-more-menu
+  .bar-more-menu-inner.q-context-menu {
+  margin-top: -10px !important;
+  margin-left: -29px !important;
 }
 .chat-func-bar.liuli-expanded::after {
   content: "";
@@ -302,6 +349,7 @@
 
 .chat-input-area[data-liuli-composer] > .chat-func-bar.liuli-expanded::before {
   content: "";
+  animation: liuli-fade-in 160ms ease backwards;
   position: absolute;
   inset: 0;
   z-index: -1;

@@ -1,4 +1,6 @@
-/* Shell owns geometry. Dock state is written only by renderer/dock.js. */
+/* Shell owns geometry. Native contracts are aligned with author main @ 3d183f3:
+ * layout.css profile/avatar sizing, draggable regions, full-height edge and
+ * standalone controls. Responsive slots retain the explicitly requested layout. */
 body {
   --ll-dock-gap: 8px;
   --ll-nav-slot: 0px;
@@ -15,7 +17,7 @@ body {
   margin: 0 !important;
   padding: 8px !important;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
 }
 .container-content-view {
   flex: 1 1 0% !important;
@@ -101,8 +103,16 @@ body[data-liuli-r-nav]
   box-shadow: none !important;
   -webkit-app-region: drag;
 }
-.chat-header :is(button, input, .icon-item, .panel-header__action) {
-  -webkit-app-region: no-drag;
+.chat-header
+  :is(
+    button,
+    input,
+    [role="button"],
+    .icon-item,
+    .panel-header__action,
+    .panel-header__action *
+  ) {
+  -webkit-app-region: no-drag !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .global-container
@@ -113,59 +123,125 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-content {
   overflow: visible !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
-  :is(.topbar-profile, .window-title-bar .window-control-area) {
+  :is(
+    .topbar-content .user-profile-card.topbar-profile,
+    .window-title-bar .window-control-area
+  ) {
   position: fixed !important;
   top: 6px !important;
   margin: 0 !important;
   height: 30px !important;
   box-sizing: border-box;
-  z-index: 3200;
+  z-index: 3600 !important;
   background: var(--ll-glass-paint) !important;
-  backdrop-filter: var(--ll-material-blur);
-  -webkit-backdrop-filter: var(--ll-material-blur);
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
   border: 0 !important;
   border-radius: 12px !important;
   box-shadow:
     var(--ll-popup-edge),
     0 3px 12px rgba(var(--ll-shadow-rgb), 0.12);
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
   transform: none !important;
-  transition: opacity 150ms ease;
-  -webkit-app-region: no-drag;
+  transition: opacity 180ms ease;
+  -webkit-app-region: no-drag !important;
 }
-body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .topbar-profile {
-  left: var(--ll-nav-slot) !important;
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile {
+  left: calc(var(--ll-nav-slot) + var(--ll-dock-gap)) !important;
+  flex: 0 0 auto !important;
   max-width: min(48vw, calc(var(--ll-aside-width, 280px) - 8px)) !important;
   width: max-content !important;
-  padding: 0 10px 0 4px;
+  padding: 0 12px 0 4px !important;
 }
-.topbar-profile :is(.user-profile-card__content, .user-profile-card__info) {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  height: 100%;
-  gap: 5px;
-  background: transparent !important;
+/* The native QQ logo remains native in the native title bar. Author hides it
+ * in floating mode; leaving it in the zero-height topbar clipped the word QQ. */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .qq-logo {
+  display: none !important;
 }
-.topbar-profile
+/* Author layout.css:220-256. Keep native content layout; do not turn both the
+ * information column and its outer row into an invented horizontal flex row. */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  :is(.user-profile-card__content, .user-profile-card__info) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 30px !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .user-avatar-container {
+  flex: 0 0 24px !important;
+  height: 30px !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
   :is(
-    .profile_signature,
-    .profile-nickname__text,
+    .user-profile-card__nick-row,
+    .user-profile-card__nickname,
     .user-profile-card__long-nick
   ) {
-  min-width: 0;
-  max-width: 140px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
-.topbar-profile .user-avatar {
-  width: 24px !important;
-  height: 24px !important;
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  :is(.profile-nickname__text, .profile_signature) {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
-.topbar-profile :is(.user-status, .online-status) {
-  background: transparent !important;
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .user-avatar {
+  margin-top: -5px !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .user-avatar-container,
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .user-avatar-container
+  * {
+  top: auto;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .avatar.user-avatar {
+  margin: 3px 0 0 !important;
+}
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile
+  .user-profile-card__long-nick:has(.empty-long-nick) {
+  display: none !important;
+}
+/* Author layout.css:491-497: Electron's native drag strips otherwise consume
+ * pointer events before the document can reveal the profile/navigation. */
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .draggable-view:not(.draggable-view__container):nth-child(1) {
+  height: var(--ll-dock-gap) !important;
+}
+body[data-liuli-scope="main"]
+  .draggable-view:not(.draggable-view__container):nth-child(2) {
+  display: none !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .window-title-bar
@@ -179,9 +255,12 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   z-index: 3100;
   -webkit-app-region: drag;
 }
+body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .window-title-bar {
+  z-index: 3800 !important;
+}
 .window-control-area,
 .window-control-area * {
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
 }
 .window-control-area > * {
   display: flex;
@@ -190,6 +269,8 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   flex: none;
   width: 34px;
   height: 26px;
+  padding: 0 !important;
+  color: var(--ll-on-glass-2) !important;
   border-radius: 8px;
 }
 .window-control-area > *:hover {
@@ -199,12 +280,14 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   background: var(--ll-danger);
   color: var(--ll-on-danger);
 }
-body[data-liuli-r-l]:not([data-liuli-tb="native"]) .topbar-profile,
-body[data-liuli-r-r]:not([data-liuli-tb="native"])
+body[data-liuli-scope="main"][data-liuli-r-l]:not([data-liuli-tb="native"])
+  .topbar-content
+  .user-profile-card.topbar-profile,
+body[data-liuli-scope="main"][data-liuli-r-r]:not([data-liuli-tb="native"])
   .window-title-bar
   .window-control-area {
-  opacity: 1;
-  pointer-events: auto;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   :is(.two-col-layout__aside, .two-col-layout__main) {
@@ -220,16 +303,16 @@ body[data-liuli-r-r]:not([data-liuli-tb="native"]) .two-col-layout__main {
 #liuli-ctl-shield {
   position: fixed;
   pointer-events: none;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
   z-index: 3100;
 }
 .liuli-top-hint {
   position: fixed;
   top: 0;
-  width: 150px;
+  width: 200px;
   height: 8px;
-  z-index: 3150;
-  -webkit-app-region: no-drag;
+  z-index: 3700;
+  -webkit-app-region: no-drag !important;
 }
 #liuli-top-hint-l {
   left: 0;
@@ -251,34 +334,44 @@ body[data-liuli-r-r]:not([data-liuli-tb="native"]) .two-col-layout__main {
   left: auto;
   right: 22px;
 }
+/* Author layout.css:925-965: an empty 8px full-height no-drag sensor.
+ * No arrow, click toggle, enlarged button, background or extra visual feature. */
 #liuli-nav-handle {
   position: fixed;
-  left: 0;
-  top: calc(50% - 22px);
-  width: 13px;
-  height: 44px;
-  z-index: 2500;
+  inset: 0 auto 0 0;
+  width: 8px;
+  z-index: 3500;
+  background: transparent;
   border: 0;
-  border-radius: 0 8px 8px 0;
-  background: rgba(var(--ll-acrylic), 0.42);
-  color: var(--ll-on-glass-2);
-  padding: 0;
-  font: 22px system-ui;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
+  box-shadow: none;
+  -webkit-app-region: no-drag !important;
 }
-body[data-liuli-r-nav] #liuli-nav-handle {
-  opacity: 0;
+#liuli-nav-handle::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: calc(50% - 18px);
+  width: 3px;
+  height: 36px;
+  border-radius: 2px;
+  background: var(--ll-on-glass);
+  opacity: 0.55;
   pointer-events: none;
 }
-body:is([data-liuli-tb="native"], [data-liuli-hide-edge-hints]) .liuli-top-hint,
+body[data-liuli-r-nav] #liuli-nav-handle::after {
+  opacity: 0;
+}
+body[data-liuli-tb="native"] :is(.liuli-top-hint, #liuli-ctl-shield),
 body:not([data-liuli-scope="main"])
   :is(.liuli-top-hint, #liuli-nav-handle, #liuli-ctl-shield),
 body[data-liuli-nav-pin] #liuli-nav-handle {
   display: none;
 }
-body[data-liuli-hide-edge-hints] #liuli-nav-handle {
-  background: transparent;
+/* Hiding the hint must not remove the sensor/no-drag region (author #65). */
+body[data-liuli-hide-edge-hints]
+  :is(.liuli-top-hint, #liuli-nav-handle)::after {
+  content: none !important;
+  display: none !important;
 }
 .tab-item-mask.is-active {
   background: rgba(
@@ -288,14 +381,53 @@ body[data-liuli-hide-edge-hints] #liuli-nav-handle {
   border-radius: 10px;
   box-shadow: none !important;
 }
-.resize-handler {
+/* Author no-dividers.css:12-26: keep resize hit areas, remove their paint. */
+.resize-handler,
+[class*="resize-handler"] {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+  opacity: 0 !important;
+}
+.resize-handler:hover,
+[class*="resize-handler"]:hover {
+  opacity: 1 !important;
+  background: rgba(var(--ll-brand-rgb), 0.25) !important;
+}
+.two-col-layout,
+.two-col-layout__aside,
+.two-col-layout__main,
+.container-content,
+.container-content-view,
+.message-panel,
+.aio,
+.group-chat,
+.chat-msg-area {
+  outline: none !important;
 }
 body[data-hash^="#/chat"] .chat-container > .container-content {
   padding: 0 8px 8px !important;
   margin: 0 !important;
+}
+body[data-hash^="#/chat"]:not([data-liuli-tb="native"])
+  .window-title-bar
+  > .window-control-area:not(.window-title-bar__controls-left) {
+  height: 30px !important;
+  margin: 6px 8px 0 0 !important;
+  padding: 2px 4px !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  align-items: center !important;
+  border-radius: 12px;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+}
+body[data-liuli-scope="main"][data-liuli-tb="native"]
+  .window-title-bar
+  .window-control-area {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 @media (prefers-reduced-motion: reduce) {
   body[data-liuli-scope="main"] .container-content > .container-sidebar {
