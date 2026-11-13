@@ -1,6 +1,15 @@
 /* Native overlay geometry stays native. A context menu's material is on its
  * pseudo-element so fixed submenus keep the viewport as their containing block. */
-body:not([data-liuli-av]):not(
+/* The protected-content check is scoped to the overlay itself. A body:has()
+ * here was re-evaluated on every DOM change in the page (every message row). */
+body:not([data-liuli-av])
+  :is(
+    .q-dialog,
+    .q-popup__modal,
+    .q-dialog-modal,
+    .q-modal-mask,
+    .modal-mask
+  ):not(
     :has(
       .lucky-money-dialog,
       .send-lucky-money-dialog,
@@ -8,8 +17,7 @@ body:not([data-liuli-av]):not(
       .av-call,
       .screen-share
     )
-  )
-  :is(.q-dialog, .q-popup__modal, .q-dialog-modal, .q-modal-mask, .modal-mask) {
+  ) {
   background: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;

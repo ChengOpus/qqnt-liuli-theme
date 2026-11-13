@@ -392,6 +392,9 @@
     pinCollapsed: false, // Legacy setting, no longer used by the list.
     hideImageNames: false,
     hideEmptyLogo: true,
+    hideFileTip: true,
+    stickerSend: true,
+    blockUpdate: true,
     chatStyle: 'tg',
     avatarPosition: 'bottom',
     messageFontSize: 14,
@@ -510,6 +513,11 @@
     b.style.setProperty('--ll-material-opacity', String(llModeCfg.opacity));
     b.style.setProperty('--ll-glow-strength', String(llModeCfg.glow));
     b.toggleAttribute('data-liuli-hide-image-names', llModeCfg.hideImageNames === true);
+    llSyncUpdateGuard();
+    window.LiuliChatExtras?.configure({
+      hideFileTip: llModeCfg.hideFileTip !== false,
+      stickerSend: llModeCfg.stickerSend !== false
+    });
     b.toggleAttribute('data-liuli-hide-empty-logo', llModeCfg.hideEmptyLogo !== false);
     b.dataset.liuliChatStyle = llModeCfg.chatStyle;
     b.dataset.liuliAvatarPosition = llModeCfg.avatarPosition;
@@ -739,65 +747,100 @@
         else if (prevSame && nextSame) g = 'mid';
         else g = 'last';
         if (mc.dataset.liuliG !== g) mc.dataset.liuliG = g;
+        // bubbles.css: grouped rows lose the native bottom padding of .message
+        var native = mc.parentElement;
+        var message = native && native.classList.contains('message-native') ? native.parentElement : null;
+        if (message && !message.hasAttribute('data-liuli-grouped')) message.setAttribute('data-liuli-grouped', '');
       }
     } catch (e) {}
+  }
+  /* 吸底头像：一组连续消息的头像贴在这一组的最后一条旁边；这一组跨过视口底边时，
+   * 头像跟着停在底边上方。只有跨过底边的那一组需要位移，其余一律为 0。
+   * 以前每一帧都对视口里每个气泡取 getBoundingClientRect；现在二分找到跨底边的那一行，
+   * 只读这一组，每帧十几次读取，与消息数量无关。 */
+  var llShiftedAvatars = new Set();
+  function llSetAvatar(av, ty) {
+    var t = String(ty);
+    if (ty) llShiftedAvatars.add(av);
+    else llShiftedAvatars.delete(av);
+    if ((av.dataset.liuliTy || '0') === t) return;
+    if (ty) {
+      av.dataset.liuliTy = t;
+      av.style.transform = 'translateY(' + t + 'px)';
+    } else {
+      delete av.dataset.liuliTy;
+      av.style.transform = '';
+    }
   }
   function stickAvatars() {
     try {
       var vp =
         window.LiuliComposer.viewport() || window.LiuliDOM.visibleQuery('.chat-msg-area');
       if (!vp) return;
-      var vr = vp.getBoundingClientRect();
-      /* 输入框浮在消息视口上面：吸底的头像以输入框上沿为底，而不是被它盖住的视口底边。 */
-      var vBottom = vr.bottom;
-      var composer = window.LiuliComposer.area();
-      if (composer) {
-        var cr = composer.getBoundingClientRect();
-        if (cr.height > 0 && cr.top < vr.bottom && cr.bottom > vr.top) vBottom = cr.top - 4;
-      }
-      var list = vp.querySelectorAll('.message-container');
       if (llModeCfg.avatarPosition === 'top' || llModeCfg.chatStyle === 'classic') {
-        for (const avatar of vp.querySelectorAll('.avatar-span[data-liuli-ty]')) {
-          delete avatar.dataset.liuliTy;
-          avatar.style.transform = '';
-        }
+        for (const avatar of vp.querySelectorAll('.avatar-span[data-liuli-ty]')) llSetAvatar(avatar, 0);
         return;
       }
-      var groupTop = null;
-      var writes = [];
-      for (var i = 0; i < list.length; i++) {
-        var mc = list[i];
-        var g = mc.dataset.liuliG;
-        if (groupTop !== null && g !== 'first' && g !== 'last' && g !== 'single') continue;
-        var bubble =
-          mc.querySelector(':scope > .message-content__wrapper') ||
-          mc.querySelector('.msg-content-container');
-        if (!bubble) continue;
-        var br = bubble.getBoundingClientRect();
-        if (br.height < 1) continue;
-        if (g === 'first' || g === 'single' || groupTop === null) groupTop = br.top;
-        if (g !== 'last' && g !== 'single') continue;
-        var av = mc.querySelector(':scope > .avatar-span');
-        if (!av) continue;
-        var h = av.offsetHeight || 32;
-        var natBottom = br.bottom;
-        var natTop = natBottom - h;
-        var ty = 0;
-        if (natBottom > vBottom - 4) ty = vBottom - 4 - natBottom;
-        var minTy = groupTop - natTop;
-        if (ty < minTy) ty = minTy;
-        if (ty > 0) ty = 0;
-        writes.push([av, Math.round(ty)]);
-        groupTop = null;
-      }
-      for (var w = 0; w < writes.length; w++) {
-        var a = writes[w][0],
-          t = String(writes[w][1]);
-        if (a.dataset.liuliTy !== t) {
-          a.dataset.liuliTy = t;
-          a.style.transform = writes[w][1] ? 'translateY(' + t + 'px)' : '';
+      var list = vp.getElementsByClassName('message-container');
+      var n = list.length;
+      var keep = null;
+      if (n) {
+        var vr = vp.getBoundingClientRect();
+        /* 输入框浮在消息视口上面：吸底的头像以输入框上沿为底，而不是被它盖住的视口底边。 */
+        var vBottom = vr.bottom;
+        var composer = window.LiuliComposer.area();
+        if (composer) {
+          var cr = composer.getBoundingClientRect();
+          if (cr.height > 0 && cr.top < vr.bottom && cr.bottom > vr.top) vBottom = cr.top - 4;
+        }
+        var bubbleOf = function (mc) {
+          return mc.querySelector(':scope > .message-content__wrapper') || mc.querySelector('.msg-content-container');
+        };
+        var cache = new Map();
+        var rectAt = function (d) {
+          if (cache.has(d)) return cache.get(d);
+          var b = bubbleOf(list[d]);
+          var r = b ? b.getBoundingClientRect() : null;
+          if (r && r.height < 1) r = null;
+          cache.set(d, r);
+          return r;
+        };
+        var first = rectAt(0),
+          last = rectAt(n - 1);
+        var reversedDom = !!(first && last && first.top > last.top);
+        var dom = function (k) { return reversedDom ? n - 1 - k : k; };
+        // first row (visual order, top to bottom) whose bubble reaches the line
+        var lo = 0, hi = n;
+        while (lo < hi) {
+          var mid = (lo + hi) >> 1;
+          var r = rectAt(dom(mid));
+          if (!r || r.bottom > vBottom - 4) hi = mid;
+          else lo = mid + 1;
+        }
+        if (lo < n) {
+          var d = dom(lo);
+          var g = function (i) { return list[i] && list[i].dataset.liuliG; };
+          var start = d, end = d;
+          while (start > 0 && (g(start) === 'mid' || g(start) === 'last')) start--;
+          while (end < n - 1 && (g(end) === 'first' || g(end) === 'mid')) end++;
+          var mc = list[end];
+          var av = mc && mc.querySelector(':scope > .avatar-span');
+          var br = rectAt(end), gr = rectAt(start);
+          if (av && br && gr && (g(end) === 'last' || g(end) === 'single')) {
+            var h = av.offsetHeight || 32;
+            var natBottom = br.bottom,
+              natTop = natBottom - h;
+            var ty = natBottom > vBottom - 4 ? vBottom - 4 - natBottom : 0;
+            var minTy = gr.top - natTop;
+            if (ty < minTy) ty = minTy;
+            if (ty > 0) ty = 0;
+            ty = Math.round(ty);
+            if (ty) keep = av;
+            llSetAvatar(av, ty);
+          }
         }
       }
+      for (const av of [...llShiftedAvatars]) if (av !== keep) llSetAvatar(av, 0);
     } catch (e) {}
   }
   var liuliStickRaf = 0;
@@ -816,6 +859,7 @@
       function (e) {
         var t = e.target;
         if (t && t.closest && !t.closest('.chat-msg-area')) return;
+        if (t && t.closest) motion.moving(t.closest('.aio') || t);
         scheduleStick();
       },
       {
@@ -1073,11 +1117,29 @@
     chat: null,
     max: null
   };
+  /* 会话标识只读节点与文字，不读几何：这里每批新消息行都会调用，
+   * 以前用 visibleQuery 取标题位置，每次都逼浏览器在消息插入后同步重排整页。 */
   function llChatKey() {
     var pane = window.LiuliComposer.area()?.closest('.aio,.chat-container,.two-col-layout__main');
-    var t = pane && window.LiuliDOM.visibleQuery('.chat-header .panel-header__title', pane);
-    return t ? (t.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    if (!pane) return '';
+    var t = pane.querySelector('.chat-header .panel-header__title');
+    if (!llPaneIds.has(pane)) llPaneIds.set(pane, ++llPaneSeq);
+    return llPaneIds.get(pane) + '|' + (t ? (t.textContent || '').replace(/\s+/g, ' ').trim() : '');
   }
+  var llUpdateGuardSent = null;
+  // 只由主窗口告诉主进程，避免每个独立窗口重复写同一个文件。
+  function llSyncUpdateGuard() {
+    if (document.body.dataset.liuliScope !== 'main' || !window.LiuliHost?.updateGuard) return;
+    const want = llModeCfg.blockUpdate !== false;
+    if (llUpdateGuardSent === want) return;
+    llUpdateGuardSent = want;
+    window.LiuliHost.updateGuard(want)
+      .then(report => { window.__liuliUpdateGuard = report; })
+      .catch(() => { llUpdateGuardSent = null; });
+  }
+  window.addEventListener('liuli-scope', () => llSyncUpdateGuard());
+  var llPaneIds = new WeakMap(),
+    llPaneSeq = 0;
   function llMsgId(el) {
     try {
       return el && /^\d+$/.test(el.id) ? BigInt(el.id) : null;
@@ -1085,35 +1147,32 @@
       return null;
     }
   }
+  /* 新消息（收到或自己发出）：TG 式整列上推 + 气泡淡入。
+   * 打开会话、翻历史加载出来的旧消息不做任何动画，原样立刻显示。 */
   function llMotionPass(added) {
     try {
       const key = llChatKey();
-      const items = activeChatRoot().querySelectorAll('.ml-item[id]');
-      if (!items.length) return;
       if (key !== llMsgSeen.chat) {
-        const first = llMsgSeen.chat !== null;
         llMsgSeen.chat = key;
         let max = null;
-        items.forEach(item => {
+        for (const item of activeChatRoot().querySelectorAll('.ml-item[id]')) {
           const id = llMsgId(item);
           if (id !== null && (max === null || id > max)) max = id;
-        });
+        }
         llMsgSeen.max = max;
-        if (first) motion.enterMessages(items);
         return;
       }
-      if (motion.reduced || !added || !added.length) return;
-      added.forEach(item => {
-        if (!activeChatRoot().contains(item)) return;
+      if (!added || !added.length) return;
+      const fresh = [];
+      for (const item of added) {
         const id = llMsgId(item);
-        if (id === null || llMsgSeen.max === null || id <= llMsgSeen.max) return;
+        if (id === null || (llMsgSeen.max !== null && id <= llMsgSeen.max)) continue;
+        if (!item.isConnected) continue;
         llMsgSeen.max = id;
-        const mc = item.querySelector('.message-container');
-        const w = item.querySelector('.message-content__wrapper');
-        if (!mc || !w || typeof w.animate !== 'function') return;
-        motion.play(w, [{ opacity: .7, translate: '0 4px' }, { opacity: 1, translate: '0 0' }],
-          { duration: 180, easing: LL_EASE });
-      });
+        fresh.push(item);
+      }
+      if (fresh.length && motion.arrive(fresh, window.LiuliComposer.scroller()))
+        setTimeout(scheduleStick, 340);
     } catch (e) {}
   }
 
@@ -3051,6 +3110,17 @@
     choice('聊天布局', 'chatStyle', [['tg', 'TG'], ['classic', '经典'], ['tim', 'TIM']]);
     choice('头像位置', 'avatarPosition', [['top', '消息开头'], ['bottom', '消息末尾']]);
     settingSwitch('隐藏纯图片消息的昵称', 'hideImageNames', settings.hideImageNames === true);
+    settingSwitch('隐藏顶部的文件接收提示条', 'hideFileTip', settings.hideFileTip !== false);
+    settingSwitch('点表情包直接发送', 'stickerSend', settings.stickerSend !== false);
+    settingSwitch('禁止 QQ 自动更新', 'blockUpdate', settings.blockUpdate !== false);
+    const updateHint = document.createElement('div');
+    updateHint.className = 'liuli-field__hint';
+    updateHint.textContent = '把 QQ 的版本配置固定为当前版本并设为只读，后台下载的新版本不会被加载。关闭后恢复可写，QQ 下次检查时照常更新。';
+    host.appendChild(updateHint);
+    const stickerHint = document.createElement('div');
+    stickerHint.className = 'liuli-field__hint';
+    stickerHint.textContent = '输入框为空时点表情包立即发出；已经写了字时仍插入到输入框，不会把半句话发出去。小表情（emoji）始终插入文字。';
+    host.appendChild(stickerHint);
     const imageHint = document.createElement('div');
     imageHint.className = 'liuli-field__hint';
     imageHint.textContent = '同时隐藏图片上方的头衔；带文字或引用的混合消息保留昵称。';
@@ -3118,8 +3188,12 @@
   }
   let llSelfUid = '';
   let llSelfUidRequest = null;
+  let llSelfUidRetryAt = 0;
   function llLoadSelfUid() {
     if (llSelfUid || llSelfUidRequest || !window.LiuliHost) return;
+    // 主进程还拿不到自己的 uid 时，别在每一批新消息上都发一次请求。
+    if (performance.now() < llSelfUidRetryAt) return;
+    llSelfUidRetryAt = performance.now() + 5000;
     llSelfUidRequest = window.LiuliHost.selfUid()
       .then(uid => {
         if (uid) {

@@ -80,28 +80,8 @@ body[data-liuli-dark='0'] .ll-inline-md .text-normal .ll-spoiler {
   background: color-mix(in srgb, var(--ll-tertiary, var(--ll-brand)) 18%, transparent) !important;
 }
 
-/* ============================================================
- * 消息入场：级联（renderer 的 llAnimateEnter 加 .ll-enter 和 --ll-enter-i）
- * 只动 opacity / transform，不碰排版。
- * ============================================================ */
-@keyframes ll-msg-enter {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: none; }
-}
-.ml-item.ll-enter {
-  animation: ll-msg-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  animation-delay: calc(var(--ll-enter-i, 0) * 28ms);
-  /* 缩放原点钉在头像那一侧：行宽约 1200px，默认以整行中心缩放会把左边的头像
-   * 横向推出约 12px 再弹回来。改成以头像下角为原点，头像不动、气泡朝头像收缩。
-   * 别人的消息头像在左，自己的消息头像在右。 */
-  transform-origin: 0 100%;
-}
-.ml-item.ll-enter:has(.message-container--self) {
-  transform-origin: 100% 100%;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ml-item.ll-enter { animation: none; }
-}
+/* 消息入场的 .ll-enter 级联已不使用（renderer 里没有设置它的代码），规则一并移除。
+ * 新消息动画见 renderer/motion.js。 */
 
 /* ============================================================
  * 字体（renderer 的 llApplyFont 写 --ll-font 和 data-ll-font）

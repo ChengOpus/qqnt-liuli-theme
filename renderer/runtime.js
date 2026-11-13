@@ -7,6 +7,7 @@
     if (window.__liuliRuntime) return window.__liuliRuntime;
     const pending = new Set(),
       roots = new Set(),
+      insertedRoots = new Set(),
       messages = new Set();
     let frame = 0,
       flushing = false,
@@ -33,6 +34,13 @@
       if (touches(".group-member,.recent-contact")) pending.add("side");
       if (touches(".chat-input-area,.expression-panel"))
         pending.add("geometry");
+      // The scroll container itself was replaced (a chat opened in place).
+      if (
+        descendants &&
+        (node.matches(".ml-area,.chat-msg-area__vlist,.v-list-area") ||
+          node.querySelector(".ml-area,.chat-msg-area__vlist,.v-list-area"))
+      )
+        pending.add("geometry");
       if (
         node.matches(structure) ||
         (descendants && node.querySelector(structure))
@@ -46,12 +54,33 @@
         pending.add("layout");
     }
     const observer = new MutationObserver((records) => {
+      // Row facts the stylesheet relies on are written before this frame
+      // renders, so a freshly inserted row never paints in native layout.
+      window.LiuliRows?.sync(records);
+      for (const record of records) {
+        const node = record.target;
+        if (node.nodeType !== 1) continue;
+        if (record.type === "attributes") {
+          if (node.classList.contains("aio")) window.LiuliComposer.prime(node);
+        } else
+          for (const added of record.addedNodes)
+            if (
+              added.nodeType === 1 &&
+              (added.classList.contains("chat-input-area") ||
+                added.getElementsByClassName("chat-input-area").length)
+            )
+              window.LiuliComposer.prime(added);
+      }
       if (document.hidden) {
         dirtyHidden = true;
         hooks.hidden?.();
         return;
       }
-      hooks.records?.(records);
+      try {
+        hooks.records?.(records);
+      } finally {
+        window.LiuliChatExtras?.records(records);
+      }
       for (const record of records) {
         const target = element(record.target);
         if (isOwn(target)) continue;
@@ -70,6 +99,7 @@
           for (const node of record.addedNodes) {
             if (!(node instanceof Element) || isOwn(node)) continue;
             roots.add(node);
+            insertedRoots.add(node);
             classify(node, true);
             D.within(node, ".ml-item").forEach((n) => messages.add(n));
           }
@@ -117,10 +147,12 @@
       flushing = true;
       const jobs = new Set(pending),
         changed = D.roots([...roots]),
+        addedRoots = new Set(insertedRoots),
         added = [...messages];
       lastJobs = [...jobs];
       pending.clear();
       roots.clear();
+      insertedRoots.clear();
       messages.clear();
       try {
         if (jobs.has("structure")) {
@@ -132,7 +164,16 @@
           hooks.layout?.();
           jobs.add("geometry");
         }
-        changed.forEach((root) => hooks.root?.(root));
+        // Message rows carry no popup or profile surface; skipping them keeps a
+        // fast scroll from running every surface query on every new row.
+        changed.forEach((root) => {
+          if (root.closest?.(".ml-list, .ml-area, .chat-msg-area__vlist")) return;
+          hooks.root?.(root);
+          window.LiuliChatExtras?.scanTips(root);
+        });
+        for (const node of addedRoots)
+          if (node.isConnected && !node.closest(".ml-list, .ml-area, .chat-msg-area__vlist"))
+            window.LiuliSurfaces?.floating(node);
         if (jobs.has("geometry")) {
           const nodes = hooks.geometry?.() || [];
           bind(nodes);
@@ -203,7 +244,10 @@
       }),
     });
     window.__liuliRuntime = api;
+    window.LiuliRows?.mark(document.body);
+    window.LiuliComposer.prime(document.body);
     window.LiuliComposer.install(() => invalidate());
+    window.LiuliChatExtras?.install();
     window.LiuliDock.install();
     refresh();
     return api;

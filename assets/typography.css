@@ -40,9 +40,9 @@
 }
 
 /* 新消息提示只用文字。QQ 的两侧占位子节点不是线，给所有子节点
+ * （按类名列举而不用 [class*=…]：子串匹配会让每个元素都参与这几条规则的匹配）
  * 加 padding/border 会把它们画成录屏里的两个空矩形。 */
-.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
-  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider']) {
+.chat-msg-area :is(.new-msg-indicator, .chat-msg-area__tip, .msg-divider, .unread-divider, .new-msg-divider, .unread-msg-divider) {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -54,12 +54,9 @@
   color: var(--ll-brand) !important;
   font-size: 12px !important;
 }
-.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
-  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider']) > :empty,
-.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
-  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider'])::before,
-.chat-msg-area :is([class*='new-msg'], [class*='newMsg'], [class*='newmsg'],
-  .chat-msg-area__tip, [class*='msg-divider'], [class*='unread-divider'])::after {
+.chat-msg-area :is(.new-msg-indicator, .chat-msg-area__tip, .msg-divider, .unread-divider, .new-msg-divider, .unread-msg-divider) > :is(div, span, i):empty,
+.chat-msg-area :is(.new-msg-indicator, .chat-msg-area__tip, .msg-divider, .unread-divider, .new-msg-divider, .unread-msg-divider)::before,
+.chat-msg-area :is(.new-msg-indicator, .chat-msg-area__tip, .msg-divider, .unread-divider, .new-msg-divider, .unread-msg-divider)::after {
   display: none !important;
   content: none !important;
 }

@@ -704,6 +704,62 @@ async function run() {
         return r;
       });
       checks.card = card;
+      // The group card under the chat title as QQ 9.9.36 draws it: a known
+      // popover shell around a card whose own fill is white, with a pale
+      // gradient band; and a suggestion list of a class this theme has never
+      // seen, floating above the composer.
+      const sheets = await page.evaluate(async () => {
+        const shell = document.createElement("div");
+        shell.className = "q-popover__content";
+        shell.style.cssText = "position:fixed;left:360px;top:60px;z-index:4000";
+        shell.innerHTML =
+          '<div class="group-mini-card-x" style="width:300px;padding:16px;background:#fff;border-radius:8px">' +
+          '<div class="head-x" style="height:60px;background:linear-gradient(#f2f4f8,#ffffff)">群名</div>' +
+          '<div class="row-x" style="background:#fff;padding:8px">群号</div>' +
+          '<span class="q-tag" style="background:#e5e5e5">游戏</span>' +
+          '<button class="q-button q-button--primary" style="background:#09f;color:#fff">发消息</button></div>';
+        document.body.append(shell);
+        const input = __qa.q(".chat-input-area");
+        const suggest = document.createElement("div");
+        suggest.className = "unknown-suggest-list";
+        suggest.style.cssText = "position:absolute;left:40px;bottom:calc(100% + 6px);width:260px;height:120px;background:#ffffff;border-radius:8px";
+        suggest.innerHTML = '<div class="unknown-suggest-item" style="height:30px">候选一</div><div class="unknown-suggest-item" style="height:30px">候选二</div>';
+        input.append(suggest);
+        await __qa.frames(4);
+        const css = (n, p) => getComputedStyle(n, p);
+        const card = shell.firstElementChild;
+        const r = {
+          owner: shell.dataset.liuliSurface || "",
+          ownerPaint: css(shell, "::before").backdropFilter,
+          card: css(card).backgroundColor,
+          head: css(card.querySelector(".head-x")).backgroundImage,
+          row: css(card.querySelector(".row-x")).backgroundColor,
+          tag: css(card.querySelector(".q-tag")).backgroundColor,
+          button: css(card.querySelector("button")).backgroundColor,
+          suggest: suggest.dataset.liuliSurface || "",
+          suggestPaint: css(suggest, "::before").backdropFilter,
+          suggestFill: css(suggest).backgroundColor,
+          composerStill: css(input).position,
+        };
+        shell.remove();
+        suggest.remove();
+        await __qa.frames(2);
+        return r;
+      });
+      checks.sheets = sheets;
+      expect(
+        "card.inner-white-sheet-is-glass",
+        sheets.owner === "popup" && /blur/.test(sheets.ownerPaint) && sheets.card === "rgba(0, 0, 0, 0)" &&
+          sheets.head === "none" && sheets.row === "rgba(0, 0, 0, 0)",
+        sheets,
+      );
+      expect("card.tags-and-buttons-kept", sheets.tag === "rgb(229, 229, 229)" && sheets.button !== "rgb(0, 153, 255)", sheets);
+      expect(
+        "suggest.unknown-floating-list-is-glass",
+        sheets.suggest === "popup" && /blur/.test(sheets.suggestPaint) && sheets.suggestFill === "rgba(0, 0, 0, 0)" &&
+          sheets.composerStill === "absolute",
+        sheets,
+      );
       expect(
         "card.in-page",
         card.surface === "profile" && /blur/.test(card.paint) && card.own === "rgba(0, 0, 0, 0)" &&
@@ -821,6 +877,146 @@ async function run() {
       expect("file.sheet-is-glass", cards.fileSheet === "rgba(0, 0, 0, 0)" && cards.fileName === "1", cards);
       expect("file.own-row-aligned-with-text-rows", cards.fileGap === cards.textGap, cards);
       expect("card.plain-text-untouched", cards.plainTouched === 0, cards);
+
+      // ── New messages: Telegram-style arrival, nothing else animates ──
+      const arrival = await page.evaluate(async () => {
+        const scroller = __qa.q("[data-liuli-composer-scroll]"),
+          list = __qa.q(".ml-list");
+        scroller.scrollTop = 0; // newest end (reversed list)
+        await __qa.frames(2);
+        let seq = 9000000;
+        const add = (side) => {
+          const item = document.createElement("div");
+          item.className = "ml-item";
+          item.id = String(++seq);
+          item.innerHTML =
+            '<div class="message"><div class="message-container message-container--' + side +
+            '"><div class="avatar-span"></div><div class="message-content__wrapper"><div class="msg-content-container container--' + side +
+            '"><div class="message-content"><span class="text-element">新消息</span></div></div></div></div></div>';
+          list.prepend(item);
+          return item;
+        };
+        const sample = async (item) => {
+          await __qa.frames(2);
+          const moving = list.getAnimations().find((a) => a.effect?.getKeyframes()[0]?.translate);
+          const bubble = item.querySelector(".message-content__wrapper");
+          return {
+            listShift: moving ? moving.effect.getKeyframes()[0].translate : "",
+            bubble: bubble.getAnimations().length,
+            pane: __qa.pane().hasAttribute("data-liuli-moving"),
+            blur: getComputedStyle(item.querySelector(".msg-content-container")).backdropFilter,
+          };
+        };
+        const received = await sample(add("others"));
+        await new Promise((r) => setTimeout(r, 450));
+        const sent = await sample(add("self"));
+        await new Promise((r) => setTimeout(r, 450));
+        const rest = getComputedStyle(__qa.q(".ml-list .msg-content-container")).backdropFilter;
+        // Reading history: a new message must not move the view.
+        scroller.scrollTop = -600;
+        await __qa.frames(2);
+        const anchor = [...list.children].find((n) => {
+          const r = n.getBoundingClientRect();
+          return r.top > 200 && r.bottom < innerHeight - 200;
+        });
+        const top = anchor.getBoundingClientRect().top;
+        const history = await sample(add("others"));
+        history.scrollKept = Math.abs(anchor.getBoundingClientRect().top - top) < 1;
+        scroller.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 450));
+        return { received, sent, history, rest };
+      });
+      checks.arrival = arrival;
+      expect("arrival.received-glides", /px/.test(arrival.received.listShift) && arrival.received.bubble > 0 && arrival.received.pane, arrival);
+      expect("arrival.sent-glides", /px/.test(arrival.sent.listShift) && arrival.sent.bubble > 0, arrival);
+      expect("arrival.no-blur-while-moving", arrival.received.blur === "none", arrival);
+      expect("arrival.blur-back-at-rest", arrival.rest !== "none" || variant.dark === undefined, arrival);
+      expect("arrival.history-untouched", !arrival.history.listShift && arrival.history.scrollKept, arrival);
+
+      // ── File-transfer strip under the title: hidden; the message keeps its own ──
+      const fileStrip = await page.evaluate(async () => {
+        const area = __qa.q(".chat-msg-area");
+        const tip = document.createElement("div");
+        tip.className = "chat-msg-area__tip--top";
+        tip.innerHTML =
+          '<div class="file-tip-x"><div class="file-tip-info"><span>11月13日.gif</span><span>39.06 MB · 待下载</span></div>' +
+          '<div class="file-tip-ops"><button>下载</button><button>另存为</button><button>取消</button></div></div>';
+        area.prepend(tip);
+        const row = __qa.q(".ml-list .ml-item");
+        const own = document.createElement("div");
+        own.innerHTML = "<span>2.4 MB</span><button>下载</button><button>取消</button>";
+        row.querySelector(".message-content__wrapper").append(own);
+        await __qa.frames(4);
+        const r = {
+          strip: getComputedStyle(tip.firstElementChild).display,
+          inMessage: getComputedStyle(own).display,
+        };
+        tip.remove();
+        own.remove();
+        return r;
+      });
+      checks.fileStrip = fileStrip;
+      expect("filestrip.hidden", fileStrip.strip === "none", fileStrip);
+      expect("filestrip.message-controls-kept", fileStrip.inMessage !== "none", fileStrip);
+
+      // ── Stickers: own button opens the sticker tab; a sticker sends at once ──
+      const stickers = await page.evaluate(async () => {
+        const native = __qa.q('.chat-func-bar .icon-item[aria-label="表情"]');
+        let sent = 0;
+        __qa.q(".operation .send-msg").addEventListener("click", () => sent++);
+        const opened = [];
+        native.addEventListener("click", () => {
+          const panel = document.createElement("div");
+          panel.className = "expression-panel";
+          panel.style.cssText = "position:fixed;left:320px;bottom:120px;width:420px;height:300px;background:#fff";
+          let grid = "";
+          for (let i = 0; i < 6; i++) grid += '<img class="sticker-tile" style="width:90px;height:90px;display:inline-block">';
+          let emoji = "";
+          for (let i = 0; i < 6; i++) emoji += '<span class="emoji-tile" style="width:28px;height:28px;display:inline-block">😀</span>';
+          panel.innerHTML =
+            '<div class="grid-x" style="height:240px;overflow:hidden">' + grid + emoji + "</div>" +
+            '<div class="tabs-x" style="display:flex;height:48px">' +
+            ["搜索", "表情", "收藏", "GIF", "包"].map((t, i) => '<div class="tab-x" style="width:48px;height:40px" data-i="' + i + '">' + t + "</div>").join("") +
+            "</div>";
+          panel.querySelectorAll(".tab-x").forEach((t) => t.addEventListener("click", () => opened.push(+t.dataset.i)));
+          document.body.append(panel);
+        });
+        const button = document.getElementById("liuli-sticker-btn");
+        button.click();
+        await new Promise((r) => setTimeout(r, 200));
+        const panel = document.querySelector(".expression-panel");
+        const editor = __qa.q(".ProseMirror");
+        editor.innerHTML = "<p><br></p>";
+        // a sticker: lands in the editor, then QQ's own send is pressed
+        panel.querySelector(".sticker-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        const img = document.createElement("img");
+        img.className = "image-element";
+        editor.firstElementChild.append(img);
+        await new Promise((r) => setTimeout(r, 120));
+        const afterSticker = sent;
+        // an emoji: inserted as text, never sent
+        editor.innerHTML = "<p><br></p>";
+        panel.querySelector(".emoji-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        const face = document.createElement("img");
+        face.className = "face-element";
+        editor.firstElementChild.append(face);
+        await new Promise((r) => setTimeout(r, 120));
+        const afterEmoji = sent;
+        // half-written text: a sticker is inserted, not sent
+        editor.innerHTML = "<p>写了一半</p>";
+        panel.querySelector(".sticker-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        editor.firstElementChild.append(img.cloneNode());
+        await new Promise((r) => setTimeout(r, 120));
+        const afterDraft = sent;
+        panel.remove();
+        editor.innerHTML = "<p><br></p>";
+        return { button: !!button, opened, afterSticker, afterEmoji, afterDraft };
+      });
+      checks.stickers = stickers;
+      expect("sticker.button-opens-sticker-tab", stickers.button && stickers.opened[0] === 2, stickers);
+      expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
+      expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
+      expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);
 
       // ── Diagnostics: structure only, never content ──
       const probe = await page.evaluate(() => {
@@ -947,6 +1143,40 @@ async function run() {
       results.push({ variant: "opening-scroll", failures });
       failed += failures.length;
       await page.context().close();
+    }
+
+    // ── Video wallpaper in the main window, also with reduced motion on ──
+    for (const reduced of [false, true]) {
+      const failures = [];
+      const { page, context, errors } = await h.open({});
+      if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
+      const clip = fs.readFileSync(path.join(__dirname, "clip.webm")).toString("base64");
+      const v = await page.evaluate(async (b64) => {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const res = await window.LiuliVideoWallpaper.importFile(new File([bytes], "clip.webm", { type: "video/webm" }));
+        localStorage.setItem("liuli-dsh-wallpaper", JSON.stringify({ kind: "video", videoId: res.id, src: res.poster, fit: "cover" }));
+        window.dispatchEvent(new StorageEvent("storage", { key: "liuli-dsh-wallpaper" }));
+        await new Promise((r) => setTimeout(r, 1500));
+        const video = document.getElementById("liuli-video-wallpaper");
+        const layer = document.getElementById("liuli-video-layer");
+        const r = layer?.getBoundingClientRect();
+        return {
+          playing: !!video && !video.paused && video.currentTime > 0,
+          shown: document.body.hasAttribute("data-liuli-video-wallpaper"),
+          covers: !!r && r.width >= innerWidth - 1 && r.height >= innerHeight - 1,
+          container: getComputedStyle(document.querySelector(".global-container")).position,
+          posterHidden: getComputedStyle(document.getElementById("app"), "::before").backgroundImage === "none",
+        };
+      }, clip);
+      const want = (name, ok) => ok || failures.push(name + ": " + JSON.stringify(v));
+      want("video.playing", v.playing);
+      want("video.layer-covers-window", v.shown && v.covers);
+      want("video.native-container-position-kept", v.container === "fixed");
+      want("video.poster-dropped-only-when-shown", v.posterHidden === v.shown);
+      if (errors.length) failures.push("video.errors: " + errors.join("|"));
+      results.push({ variant: "video-wallpaper" + (reduced ? "-reduced-motion" : ""), failures });
+      failed += failures.length;
+      await context.close();
     }
 
     // ── 6 (cont.) Standalone card window ──

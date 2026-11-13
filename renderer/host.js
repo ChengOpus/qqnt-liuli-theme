@@ -22,6 +22,7 @@
     },
     selfUid: () => request('selfUid'),
     openExternal: url => request('openExternal', url),
+    updateGuard: enabled => request('updateGuard', enabled),
     diagExport: payload => request('diagExport', payload),
     diagOpenPath: path => request('diagOpenPath', path),
     diagLog: entry => send(token + JSON.stringify({ id: 0, method: 'diagLog', argument: entry })),

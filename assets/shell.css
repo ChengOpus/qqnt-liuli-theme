@@ -171,6 +171,28 @@ body[data-liuli-r-nav]
   background: transparent !important;
   pointer-events: none;
 }
+/* Native decoration along the top of the chat (a scroll/header shadow, a
+ * banner backdrop): with the header floating over the messages it showed up as
+ * a soft grey band under the two panels, appearing and disappearing as the
+ * pointer moved over the pane. Hit areas and the panels themselves stay. */
+.aio > .chat-header::before,
+.aio > .chat-header::after,
+.aio > .chat-header > :not(.panel-header__title, .panel-header__action),
+.message-panel::after,
+.group-panel::before,
+.group-panel::after,
+.chat-msg-area::before,
+.chat-msg-area::after,
+.chat-msg-area__vlist::before,
+.chat-msg-area__vlist::after,
+.ml-area::before,
+.ml-area::after,
+.chat-msg-area__tip--top {
+  background: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  filter: none !important;
+}
 /* Window dragging keeps the author's area: the band between the two panels. */
 body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header {
   -webkit-app-region: drag;
@@ -232,8 +254,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header 
  * and sets [data-liuli-header="flow"] if a QQ build does not size it this way;
  * the header then simply stays an ordinary row. */
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])
-  :has(> .chat-input-area > .msg-input):not([data-liuli-composer-bridge]),
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"]) [data-liuli-chat-column] {
+  :is(.group-chat, [data-liuli-chat-column]) {
   margin-top: calc(-1 * var(--ll-header-clearance, 44px)) !important;
   height: calc(100% + var(--ll-header-clearance, 44px)) !important;
   max-height: none !important;
@@ -250,9 +271,7 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"]) .aio > .chat-header 
   scroll-padding-top: var(--ll-header-clearance, 44px);
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])
-  [data-liuli-message-region]:not([data-liuli-composer-scroll]):not(
-    :has([data-liuli-composer-scroll])
-  ) {
+  [data-liuli-message-region][data-liuli-noscroll] {
   padding-top: var(--ll-header-clearance, 44px) !important;
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio:has(> .chat-header):not([data-liuli-header="flow"])

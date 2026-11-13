@@ -94,8 +94,10 @@
   white-space: nowrap;
 }
 /* 视频替换图片层，遮罩仍使用当前明暗配置，前景只抬高一个绘制层。 */
+/* fixed: the layer covers the window whatever #app's own box is (in QQ the
+ * content lives in a fixed .global-container, so #app can be zero-height). */
 #liuli-video-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -110,7 +112,12 @@
 }
 body:not([data-liuli-video-wallpaper]) #liuli-video-layer { visibility: hidden; }
 body[data-liuli-video-wallpaper] #app::before { background-image: none !important; }
-body[data-liuli-video-wallpaper] #app > .global-container { position: relative; z-index: 1; }
+/* Lift the content above the layer without changing how QQ positions it
+ * (it is position:fixed natively; relative would reflow the whole window). */
+body[data-liuli-video-wallpaper] #app > .global-container { z-index: 1; }
+body[data-liuli-video-wallpaper] #app > .global-container:not([style*="position"]) {
+  position: fixed;
+}
 body[data-liuli-av] #liuli-video-layer,
 body[data-hash^='#/mini-fishing'] #liuli-video-layer { display: none !important; }
 @media (max-width: 480px) {

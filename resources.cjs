@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { optimize } = require('./css-optimize.cjs');
 
 const SCRIPTS = [
   'renderer/host.js',
@@ -18,10 +19,12 @@ const SCRIPTS = [
   // window.__liuliPinGroups.apply。
   'renderer/pin-groups.js',
   'renderer/video-wallpaper.js',
+  'renderer/rows.js',
   'renderer/surfaces.js',
   'renderer/cards.js',
   'renderer/dock.js',
   'renderer/composer.js',
+  'renderer/chat-extras.js',
   'renderer/runtime.js',
   'renderer/index.js'
 ];
@@ -60,7 +63,8 @@ async function refresh(root, state) {
       fetchOk: true,
       status: 200,
       bytes: bytes.length,
-      text: name.endsWith('.css') ? bytes.toString('utf8') : ''
+      // Same rules, faster matching (see css-optimize.cjs).
+      text: name.endsWith('.css') ? optimize(bytes.toString('utf8')) : ''
     };
   }
   const wallpaper = files.get('assets/wallpaper.jpg')?.bytes;

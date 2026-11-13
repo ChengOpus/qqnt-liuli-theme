@@ -49,3 +49,9 @@
 .message-container .normal-file :is(.file-info, .file-name) {
   min-width: 0;
 }
+
+/* The file-transfer strip QQ pins under the chat title (renderer/chat-extras.js).
+ * The message itself keeps its own download controls. */
+[data-liuli-file-strip] {
+  display: none !important;
+}

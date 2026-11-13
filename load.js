@@ -74,6 +74,12 @@ function createMethods(state) {
       await shell.openExternal(url.href);
       return true;
     },
+    // 「禁止 QQ 自动更新」：主窗口启动和切换开关时调用，见 update-guard.cjs。
+    updateGuard(enabled) {
+      const report = require('./update-guard.cjs').apply(app, enabled === true);
+      diagnostics?.log({ event: 'update-guard', ...report });
+      return report;
+    },
     diagLog: entry => diagnostics.log(entry),
     diagExport: payload => diagnostics.exportReport(payload),
     diagOpenPath: file => diagnostics.openPath(file)

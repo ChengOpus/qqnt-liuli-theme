@@ -478,11 +478,11 @@
 }
 
 /* 明暗切换：DSH 的圆形遮罩过渡 */
-::view-transition-old(root) {
+html::view-transition-old(root) {
   animation: none;
   z-index: 1;
 }
-::view-transition-new(root) {
+html::view-transition-new(root) {
   z-index: 2;
   animation: liuli-vt-circle 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -495,7 +495,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-new(root) {
+  html::view-transition-new(root) {
     animation: none;
   }
 }

@@ -76,6 +76,63 @@
       write(node, key, key === "background" ? "transparent" : "none");
     if (needsPosition) node.dataset.liuliSurfaceStatic = "";
   }
+  // ── Opaque sheets inside a glass surface ────────────────────────────────
+  // A native popup is often a transparent positioning shell holding a card
+  // with its own white (or, in dark mode, near-black) fill: the group card
+  // under the chat title, suggestion lists, pickers. Making only the shell
+  // glass leaves a white card inside it. Large, opaque, colourless fills
+  // inside an owner are cleared; anything with a colour or an image of its own
+  // (buttons, tags, avatars, pictures) is left alone, and so are small items
+  // whose hover/selection backgrounds are native state.
+  function rgba(color) {
+    const m = /rgba?\(([^)]+)\)/.exec(color || "");
+    if (!m) return null;
+    const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+  }
+  function opaqueSheet(css) {
+    if (css.backgroundImage !== "none" && !/^linear-gradient\(/.test(css.backgroundImage)) return false;
+    const c = rgba(css.backgroundColor);
+    const image = css.backgroundImage;
+    if (image !== "none") {
+      // a pale gradient band (card header) counts; a coloured one does not
+      const stops = image.match(/rgba?\([^)]+\)/g) || [];
+      return stops.length > 0 && stops.every((stop) => {
+        const s = rgba(stop);
+        const l = (0.2126 * s.r + 0.7152 * s.g + 0.0722 * s.b) / 255;
+        return Math.max(s.r, s.g, s.b) - Math.min(s.r, s.g, s.b) <= 24 && (l >= 0.86 || l <= 0.18 || s.a < 0.2);
+      });
+    }
+    if (!c || c.a < 0.85) return false;
+    const l = (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
+    return Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b) <= 16 && (l >= 0.88 || l <= 0.18);
+  }
+  function clearSheets(outer) {
+    const box = outer.getBoundingClientRect();
+    if (box.width < 40 || box.height < 30) return;
+    const nodes = outer.querySelectorAll("div, section, header, main, ul");
+    if (nodes.length > 400) return;
+    const sheets = [],
+      rows = [],
+      fills = new Set();
+    const own = getComputedStyle(outer);
+    if (opaqueSheet(own)) fills.add(own.backgroundColor);
+    for (const inner of nodes) {
+      if (inner.hasAttribute("data-liuli-surface-inner") || inner.hasAttribute("data-liuli-surface")) continue;
+      if (inner.closest('button, [role="button"], .q-button, [class*="avatar"]')) continue;
+      const css = getComputedStyle(inner);
+      if (!opaqueSheet(css)) continue;
+      const r = inner.getBoundingClientRect();
+      if (r.width >= box.width * 0.6 && r.height >= Math.min(60, box.height * 0.4)) {
+        sheets.push(inner);
+        fills.add(css.backgroundColor);
+      } else if (r.width >= box.width * 0.4 && r.height >= 14) rows.push([inner, css.backgroundColor]);
+    }
+    sheets.forEach(clear);
+    // Rows painted in exactly the card's own fill are part of the card. A row
+    // in a different grey (selection, a field) keeps its fill.
+    for (const [row, fill] of rows) if (fills.has(fill)) clear(row);
+  }
   function owner(node) {
     let result = node;
     // A fixed card uses the viewport even when nested in a zero-sized portal.
@@ -192,6 +249,7 @@
         continue;
       }
       mark(node, "popup");
+      clearSheets(node);
     }
     for (const node of D.within(
       root,
@@ -277,5 +335,34 @@
         flatten(card);
     }
   }
-  window.LiuliSurfaces = Object.freeze({ apply });
+  // ── Floating sheets QQ adds under classes this theme does not know ───────
+  // (input suggestion lists, newer card variants). Only the root of a change
+  // and its direct children are inspected, and only when they float
+  // (fixed/absolute), are sizable and paint an opaque colourless fill.
+  const FIXED_UI =
+    ".ml-list, .recent-contact, .container-sidebar, .group-box, .chat-header, .msg-input, .liuli-owned-ui, #liuli-settings-dialog, [data-liuli-surface], [data-liuli-surface-inner]";
+  function floating(root) {
+    if (!(root instanceof Element) || document.body.hasAttribute("data-liuli-av")) return;
+    const candidates = [root, ...[...root.children].slice(0, 4)];
+    for (const node of candidates) {
+      if (node.closest(FIXED_UI) || !D.safe(node)) continue;
+      const css = getComputedStyle(node);
+      if (css.position !== "fixed" && css.position !== "absolute") continue;
+      if (css.display === "none" || css.visibility === "hidden") continue;
+      const r = node.getBoundingClientRect();
+      if (r.width < 120 || r.height < 40 || r.width > innerWidth * 0.9 || r.height > innerHeight * 0.9) continue;
+      // the fill may be on the node or on its single card child
+      let sheet = opaqueSheet(css) ? node : null;
+      if (!sheet && node.children.length === 1) {
+        const child = node.firstElementChild;
+        const cr = child.getBoundingClientRect();
+        if (cr.width >= r.width * 0.8 && opaqueSheet(getComputedStyle(child))) sheet = child;
+      }
+      if (!sheet) continue;
+      mark(node, "popup");
+      if (sheet !== node) clear(sheet);
+      clearSheets(node);
+    }
+  }
+  window.LiuliSurfaces = Object.freeze({ apply, floating });
 })();

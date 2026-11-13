@@ -129,6 +129,8 @@
       node.removeAttribute("data-liuli-drop");
     }
     unmark(document.body);
+    for (const node of document.querySelectorAll("[data-liuli-noscroll]"))
+      node.removeAttribute("data-liuli-noscroll");
     for (const node of document.querySelectorAll("[data-liuli-chat-pane]")) {
       node.removeAttribute("data-liuli-chat-pane");
       node.removeAttribute("data-liuli-header");
@@ -136,6 +138,30 @@
       node.style.removeProperty("--ll-composer-clearance");
     }
     active = pane = host = region = scroll = null;
+  }
+  // Structural marks for every chat pane, shown or cached, written from the
+  // mutation callback before the frame renders. A cached private chat (whose
+  // body card has no stable class) therefore floats its composer on the very
+  // first frame it is shown. Pure DOM reads; no layout.
+  function prime(root) {
+    if (!(root instanceof Element) || !D.mainLike()) return;
+    const areas = root.classList.contains("chat-input-area")
+      ? [root]
+      : root.getElementsByClassName("chat-input-area");
+    for (const input of areas) {
+      if (!input.querySelector(":scope > .msg-input")) continue;
+      const parent = input.parentElement;
+      if (!parent || parent.classList.contains("group-chat")) continue;
+      let region = null;
+      for (const child of parent.children)
+        if (child.classList.contains("chat-msg-area")) region = child;
+      if (!region) continue;
+      setMark(parent, MARKS.host);
+      setMark(region, MARKS.region);
+      const pane = parent.closest(".aio");
+      if (pane && pane !== parent && pane.querySelector(":scope > .chat-header"))
+        setMark(parent, MARKS.column);
+    }
   }
   function select() {
     const candidates = [
@@ -226,9 +252,19 @@
     more.addEventListener("click", () =>
       expand(!bar()?.classList.contains("liuli-expanded")),
     );
+    // Stickers get their own button: the emoji button opens QQ's emoji tab.
+    const sticker = document.createElement("button");
+    sticker.id = "liuli-sticker-btn";
+    sticker.type = "button";
+    sticker.title = "表情包";
+    sticker.setAttribute("aria-label", "表情包");
+    sticker.innerHTML = window.LiuliIcons.svg("表情包");
+    sticker.addEventListener("click", () =>
+      window.LiuliChatExtras?.openStickers(window.LiuliLayout.nativeBarItem("表情")),
+    );
     const pins = document.createElement("div");
     pins.id = "liuli-bar-pins";
-    result.append(more, pins);
+    result.append(more, sticker, pins);
     return result;
   }
   function syncPins() {
@@ -253,7 +289,7 @@
         pins.append(button);
       });
     }
-    const pad = 12 + (labels.length + 1) * 32 + "px";
+    const pad = 12 + (labels.length + 2) * 32 + "px";
     if (active.style.getPropertyValue("--liuli-bar-pad") !== pad)
       active.style.setProperty("--liuli-bar-pad", pad);
   }
@@ -371,6 +407,9 @@
     region = nextRegion;
     if (!scroll?.isConnected || !region.contains(scroll) || !scrollable(scroll))
       scroll = findScroller(region);
+    // No scroll container found: composer.css reserves the editor on the region.
+    if (region.hasAttribute("data-liuli-noscroll") !== !scroll)
+      region.toggleAttribute("data-liuli-noscroll", !scroll);
     // Sampled before any padding is written this pass.
     const fresh = !!scroll && !scroll.hasAttribute(MARKS.scroll);
     const distance = scroll ? fromEnd(scroll) : 0;
@@ -439,7 +478,12 @@
         // was at the end, and the padding has just appeared or grown
         (added > 0 && distance <= 3) ||
         // or the client's opening scroll landed exactly one clearance short
-        (settling && distance <= clearance + 8)
+        // (both safe areas: the editor's at the end, the header's at the start)
+        (settling &&
+          distance <=
+            clearance +
+              (parseFloat(pane.style.getPropertyValue("--ll-header-clearance")) || 0) +
+              8)
       )
         toEnd(scroll);
     }
@@ -608,6 +652,8 @@
     area,
     bar,
     viewport: () => (scroll?.isConnected ? scroll : region),
+    scroller: () => (scroll?.isConnected ? scroll : null),
+    prime,
     records,
     expand,
     state: () => ({

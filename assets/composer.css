@@ -6,15 +6,18 @@
  * controller (composer.js) only measures; if it misses a frame, or the editor
  * is momentarily hidden / zero-sized, nothing here stops applying.
  * `data-liuli-*` marks extend the same rules to non-standard nesting. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :has(> .chat-input-area > .msg-input),
-[data-liuli-composer-host] {
+/* The body card: .group-chat in group chats (author layout.css:16); any other
+ * nesting is marked by composer.js. No :has() here — a :has() whose subject is
+ * any element inside .aio was re-matched for every message row the virtual
+ * list inserted, which made scrolling and opening chats slow. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) {
   position: relative !important;
   min-height: 0;
   /* Native focus/resize code subtracts a flow editor through this variable.
    * The editor is out of flow, so no input-sized hole may remain. */
   --inputAreaHeight: 0px !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :has(> .chat-input-area > .msg-input) > .chat-msg-area,
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) > .chat-msg-area,
 [data-liuli-message-region] {
   --inputAreaHeight: 0px !important;
   flex: 1 1 0% !important;
@@ -29,7 +32,7 @@
 }
 /* Only a real editor floats. The client also keeps an empty, editor-less
  * .chat-input-area in the page (author layout.css:1817); it is never styled. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) {
   position: absolute !important;
   inset: auto 14px 14px !important;
   margin: 0 !important;
@@ -55,7 +58,7 @@
     var(--ll-surface-halo);
   transform: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input)::before {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -66,7 +69,7 @@
   backdrop-filter: var(--ll-material-blur);
   -webkit-backdrop-filter: var(--ll-material-blur);
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .msg-input {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .msg-input {
   width: 100% !important;
   min-height: 44px !important;
   max-height: 50vh !important;
@@ -80,15 +83,15 @@
   background: transparent !important;
   box-shadow: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .qq-msg-editor {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .qq-msg-editor {
   --qq-editor-height: auto !important;
   height: auto !important;
   max-height: 44vh;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .ExEditor-qq-msg-editor {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ExEditor-qq-msg-editor {
   height: auto !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .ProseMirror {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror {
   min-height: 44px !important;
   max-height: 44vh !important;
   padding-top: 11px !important;
@@ -104,16 +107,14 @@
 }
 /* No scroll container identified (yet): reserve on the region instead. The
  * editor then looks docked rather than floating, but no message is covered. */
-[data-liuli-message-region]:not([data-liuli-composer-scroll]):not(
-    :has([data-liuli-composer-scroll])
-  ) {
+[data-liuli-message-region][data-liuli-noscroll] {
   padding-bottom: var(--ll-composer-clearance, 76px) !important;
   box-sizing: border-box !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .resize-handler {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .resize-handler {
   display: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .operation {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .operation {
   position: absolute !important;
   right: 8px !important;
   bottom: 7px !important;
@@ -123,14 +124,14 @@
   height: 30px !important;
   z-index: 2;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .send-btn-wrap {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .send-btn-wrap {
   height: 30px !important;
   min-width: 30px !important;
   width: 30px !important;
   padding: 0 !important;
   box-shadow: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .operation :is(.send, .send-msg) {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation :is(.send, .send-msg) {
   display: flex !important;
   align-items: center;
   justify-content: center;
@@ -143,10 +144,10 @@
   color: var(--ll-link, var(--ll-on-glass)) !important;
   box-shadow: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .operation .send-msg {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-msg {
   font-size: 0 !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) .operation .send-msg::after {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-msg::after {
   content: "";
   display: block;
   width: 18px;
@@ -155,7 +156,7 @@
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m22 2-7 20-4-9-9-4 20-7M22 2 11 13' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E")
     center/contain no-repeat;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input)
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)
   .operation
   :is(.divider, .send-setting__wrapper, .close) {
   display: none !important;
@@ -203,12 +204,12 @@
 #liuli-func-toggle svg {
   transition: rotate 180ms ease;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .chat-func-bar {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar {
   display: none !important;
 }
 /* Author main @ 3d183f3 layout.css:1370-1535. Native wrappers are
  * .chat-func-bar__left and .func-bar-native, not the simplified test fixture. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .chat-func-bar.liuli-expanded {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar.liuli-expanded {
   display: grid !important;
   grid-template-columns: repeat(4, 38px) !important;
   grid-auto-rows: 38px !important;
@@ -375,7 +376,7 @@ body
   height: 12px;
 }
 @media (max-width: 780px) {
-  :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) {
+  :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) {
     inset: auto 8px 10px !important;
   }
 }
@@ -385,7 +386,7 @@ body
   }
 }
 
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input) > .chat-func-bar.liuli-expanded::before {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .chat-func-bar.liuli-expanded::before {
   content: "";
   animation: liuli-fade-in 160ms ease backwards;
   position: absolute;
@@ -401,7 +402,7 @@ body
 
 /* QQ's v-show selection toolbar belongs to this editor. Never let a cached
  * conversation or an arbitrary inline style change invalidate the whole body. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input):has(
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input):has(
     > .msg-input
       ~ .forward-ops:not([hidden]):not([aria-hidden="true"]):not(
         [style*="display: none"]
@@ -410,7 +411,7 @@ body
   > :is(.msg-input, .chat-func-bar, #liuli-input-overlay) {
   display: none !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input):has(
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input):has(
     > .msg-input
       ~ .forward-ops:not([hidden]):not([aria-hidden="true"]):not(
         [style*="display: none"]
@@ -472,18 +473,18 @@ body
 .liuli-composer-fx[data-kind="drop"] {
   --ll-fx-peak: 0.5;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input)[data-liuli-drop] {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)[data-liuli-drop] {
   outline: 1.5px solid rgba(var(--ll-brand-rgb), 0.6);
   outline-offset: -1.5px;
 }
 /* Send button: quiet while there is nothing to send, lit when there is.
  * A plain colour switch — even a colour transition measured as extra frames
  * here — and it stays clickable in both states. */
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input):not([data-liuli-ready]) .operation :is(.send, .send-msg) {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input):not([data-liuli-ready]) .operation :is(.send, .send-msg) {
   background: rgba(var(--ll-on-glass-rgb), 0.07) !important;
   color: var(--ll-on-glass-3) !important;
 }
-:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio .chat-input-area:has(> .msg-input)[data-liuli-ready] .operation :is(.send, .send-msg) {
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input)[data-liuli-ready] .operation :is(.send, .send-msg) {
   background: rgba(var(--ll-brand-rgb), 0.24) !important;
   color: var(--ll-link, var(--ll-on-glass)) !important;
 }

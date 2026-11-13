@@ -24,18 +24,53 @@
     }
   }
 
+  // The component that renders a message list. A lookup that misses the cache
+  // used to walk the whole application's vnode tree from the root — sidebar,
+  // contact list, every open pane — once per batch of new rows. With the list
+  // component known, only that list's subtree is walked.
+  const LIST = '.ml-list, .ml-root, .ml-area, .chat-msg-area';
+  const lists = new WeakMap(); // list element -> component
+  function listScope(message) {
+    for (let node = message.parentElement; node; node = node.parentElement) {
+      if (!node.matches(LIST)) continue;
+      const component = lists.get(node);
+      if (component && !component.isUnmounted) return component.subTree;
+    }
+    return null;
+  }
+  function walk(vnode, visit) {
+    const stack = [vnode];
+    const seen = new Set();
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object' || seen.has(node)) continue;
+      seen.add(node);
+      const component = node.component;
+      if (component && !component.isUnmounted) {
+        if (visit(component)) return true;
+        stack.push(component.subTree);
+      }
+      if (Array.isArray(node.children)) stack.push(...node.children);
+      if (Array.isArray(node.dynamicChildren)) stack.push(...node.dynamicChildren);
+      stack.push(node.suspense?.activeBranch);
+    }
+    return false;
+  }
   function messageRecord(element) {
     const message = element?.closest('.message');
     if (!message) return null;
     const cached = messages.get(message);
     if (cached && !cached.isUnmounted) return cached.props.msgRecord;
-    visitComponents(message, component => {
-      const record = component.props?.msgRecord;
+    const visit = component => {
       const node = component.vnode.el;
-      const owner = node?.nodeType === 1 ? node.closest('.message') : null;
-      if (record && owner) messages.set(owner, component);
-      return record && owner === message;
-    });
+      if (node?.nodeType === 1 && node.matches(LIST) && !lists.has(node)) lists.set(node, component);
+      const record = component.props?.msgRecord;
+      const owner = record && node?.nodeType === 1 ? node.closest('.message') : null;
+      if (owner) messages.set(owner, component);
+      return !!record && owner === message;
+    };
+    const scope = listScope(message);
+    if (!(scope && walk(scope, visit))) visitComponents(message, visit);
     return messages.get(message)?.props.msgRecord || null;
   }
 

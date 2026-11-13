@@ -58,6 +58,8 @@ async function start() {
       settings = {},
       layout = {},
       before = null,
+      omit = [],
+      assets: assetOverride = null,
     } = options;
     const context = await browser.newContext({
       viewport: { width, height },
@@ -116,7 +118,16 @@ async function start() {
         "const bootstrap=" +
         JSON.stringify({
           token: "[qa-host]",
-          assets: bundle.assets,
+          assets: assetOverride
+            ? assetOverride(bundle.assets)
+            : omit.length
+              ? Object.fromEntries(
+                  Object.entries(bundle.assets).map(([k, v]) => [
+                    k,
+                    omit.includes(k) ? { ...v, text: "" } : v,
+                  ]),
+                )
+              : bundle.assets,
           wallpaper: "",
           info: { versions: {} },
         }) +
@@ -131,7 +142,7 @@ async function start() {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
-  return { open, stop, origin, repo };
+  return { open, stop, origin, repo, browser };
 }
 
 module.exports = { start, repo };

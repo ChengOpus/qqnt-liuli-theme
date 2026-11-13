@@ -79,7 +79,7 @@ body {
   border-radius: 5px;
   box-shadow: none;
 }
-[data-liuli-surface="profile"]
+[data-liuli-surface]
   :is(
     .q-button--primary,
     button[class*="primary"],
@@ -165,7 +165,7 @@ body
 .message-container
   .msg-content-container.container--others:not(.container--personalization):not(
     .mix-message__container--pic
-  ):not(:has(.pic-element, .video-element, .ark-view-message, .forward-msg)) {
+  ):not([data-liuli-media]) {
   background: var(--ll-bubble-other, var(--ll-glass-surface)) !important;
   backdrop-filter: var(--ll-bubble-blur, none) !important;
   -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
@@ -173,15 +173,15 @@ body
 .message-container
   .msg-content-container.container--self:not(.container--personalization):not(
     .mix-message__container--pic
-  ):not(:has(.pic-element, .video-element, .ark-view-message, .forward-msg)) {
+  ):not([data-liuli-media]) {
   backdrop-filter: var(--ll-bubble-blur, none) !important;
   -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
 }
 
 /* Author layout.css:1535-1548: the empty .mini-buddy beside a standalone card
  * is a placeholder. It owns no material and must not take the card's clicks. */
-body .mini-buddy:not(:has(*)),
-body:has(.standalone-mini-profile-container) #app > .mini-buddy {
+body .mini-buddy:empty,
+body #app > .standalone-mini-profile-container ~ .mini-buddy {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -189,8 +189,8 @@ body:has(.standalone-mini-profile-container) #app > .mini-buddy {
   animation: none !important;
   pointer-events: none !important;
 }
-body .mini-buddy:not(:has(*))::before,
-body:has(.standalone-mini-profile-container) #app > .mini-buddy::before {
+body .mini-buddy:empty::before,
+body #app > .standalone-mini-profile-container ~ .mini-buddy::before {
   content: none !important;
 }
 

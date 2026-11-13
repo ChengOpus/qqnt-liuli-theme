@@ -10,7 +10,6 @@
   let activeId = '';
   let serial = 0;
   let current = null;
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   function database() {
     return new Promise((resolve, reject) => {
@@ -116,15 +115,17 @@
     activeId = '';
     document.body.removeAttribute('data-liuli-video-wallpaper');
   }
+  // 系统「减少动画」不再停用视频壁纸：视频是用户明确选的壁纸，而 Windows 关掉
+  // 「动画效果」的人很多，以前这种情况下主界面直接没有视频（2026-11-13 用户反馈）。
   function playback() {
     if (!layer) return;
-    if (document.hidden || reduced.matches) layer.pause();
+    if (document.hidden) layer.pause();
     else layer.play().catch(() => { /* 自动播放被拒绝时保留首帧，用户操作后重试。 */ });
   }
   async function apply(state) {
     current = state;
     const main = document.body.dataset.liuliScope === 'main';
-    if (!main || !state || state.kind !== 'video' || !state.videoId || reduced.matches) {
+    if (!main || !state || state.kind !== 'video' || !state.videoId) {
       dispose();
       return;
     }
@@ -159,9 +160,24 @@
     layer = video;
     activeId = id;
     // 播放失败仍用现有的图片壁纸层作为首帧兜底，不留下空白。
-    video.addEventListener('playing', () => {
-      if (layer === video) document.body.setAttribute('data-liuli-video-wallpaper', '');
-    });
+    // 只有确认画面真的出来了（有尺寸、时间在走）才撤掉首帧图：'playing' 事件
+    // 先于第一帧上屏，解码慢或解不了时以前会撤掉首帧却没有画面，整片空白。
+    const shown = () => {
+      if (layer !== video || !video.videoWidth || video.currentTime <= 0) return false;
+      document.body.setAttribute('data-liuli-video-wallpaper', '');
+      return true;
+    };
+    if (typeof video.requestVideoFrameCallback === 'function') {
+      const frame = () => {
+        if (layer === video && !shown()) video.requestVideoFrameCallback(frame);
+      };
+      video.requestVideoFrameCallback(frame);
+    } else {
+      const tick = () => {
+        if (shown()) video.removeEventListener('timeupdate', tick);
+      };
+      video.addEventListener('timeupdate', tick);
+    }
     video.addEventListener('error', () => {
       if (layer === video) document.body.removeAttribute('data-liuli-video-wallpaper');
     });
@@ -171,7 +187,7 @@
   }
   document.addEventListener('visibilitychange', playback);
   document.addEventListener('pointerdown', playback, { passive: true });
-  reduced.addEventListener('change', () => apply(current).catch(console.warn));
+
   window.addEventListener('pagehide', dispose);
   window.LiuliVideoWallpaper = { importFile, remove, clearAll, apply, clear: () => { current = null; dispose(); } };
 })();
