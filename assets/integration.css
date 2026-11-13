@@ -128,11 +128,22 @@ body:not([data-liuli-scope="main"]) #liuli-video-layer {
   background: rgba(var(--ll-veil-rgb, 0, 0, 0), var(--ll-wallpaper-dim, 0.18));
 }
 body:not([data-liuli-video-wallpaper]) #liuli-video-layer { visibility: hidden; }
+/* Visible even when QQ hides the element it sits in: in the main window
+ * nothing under .global-container reaches the screen (user screenshots show
+ * the desktop backdrop there), and visibility is the one property a child can
+ * override. The picture wallpaper gets the same. */
+body[data-liuli-video-wallpaper] #liuli-video-layer,
+body[data-liuli-video-wallpaper] #liuli-video-layer > * {
+  visibility: visible !important;
+}
+body[data-liuli-scope="main"] #app::before {
+  visibility: visible !important;
+}
 body[data-liuli-video-wallpaper] #app::before { background-image: none !important; }
 /* Lift the content above the layer without changing how QQ positions it
  * (it is position:fixed natively; relative would reflow the whole window). */
-body[data-liuli-video-wallpaper] #app > .global-container { z-index: 1; }
-body[data-liuli-video-wallpaper] #app > .global-container:not([style*="position"]) {
+body[data-liuli-video-wallpaper] .global-container { z-index: 1; }
+body[data-liuli-video-wallpaper] .global-container:not([style*="position"]) {
   position: fixed;
 }
 body[data-liuli-av] #liuli-video-layer,

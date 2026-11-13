@@ -107,3 +107,5 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 
 画不出来（拿不到 2D 上下文或绘制报错）时撤掉画布，`<video>` 本身重新当壁纸，和 .15 一样。
 
+主窗口里视频层插在 `.global-container` 的正前面（同一父元素），并强制 `visibility: visible`（.17）。用户截图显示主窗口里 `.global-container` 下面的东西都不上屏（看到的是桌面亚克力），视频层若放在 `#app` 里会跟着不可见。`.global-container` 在视频开启时 `z-index: 1`，保持 QQ 原生的 fixed 定位。
+

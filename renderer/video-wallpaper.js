@@ -329,8 +329,22 @@
     });
     host.appendChild(video);
     if (canvas) host.appendChild(canvas);
-    app.prepend(host);
+    const at = mountPoint(app);
+    at.parent.insertBefore(host, at.before);
     playback();
+  }
+  // Main window: right before QQ's .global-container, in the same parent, so
+  // the layer is drawn whenever the content is. In QQ's main window nothing
+  // under that container reaches the screen — the theme's white base, the
+  // picture wallpaper and (.16) the video canvas all showed the desktop
+  // backdrop instead (user screenshots, contrast-stretched), while the canvas
+  // was drawing frames. CSS also forces the layer visible (integration.css).
+  function mountPoint(app) {
+    if (document.body.dataset.liuliScope === 'main') {
+      const container = document.querySelector('.global-container');
+      if (container && container.parentElement) return { parent: container.parentElement, before: container };
+    }
+    return { parent: app, before: app.firstChild };
   }
   window.addEventListener('resize', onResize);
   // Pooled windows change route (and so scope) without reloading.

@@ -1115,6 +1115,11 @@ async function run() {
       expect("diag.probe-present", !!probe?.inputChain && !!probe?.navEdge && !!probe?.fileRows?.length, Object.keys(probe || {}));
       expect("diag.probe-has-no-text", !/示例|匿名|会话|公告|\.zip/.test(probeText));
       expect("diag.probe-header-effects", Array.isArray(probe?.headerEffects), probe?.headerEffects);
+      expect(
+        "diag.probe-layers",
+        !!probe?.layers?.app && !!probe.layers.container && probe.layers.points?.length === 3 && typeof probe.layers.containerInApp === "boolean",
+        Object.keys(probe?.layers || {}),
+      );
       // QQ's own telemetry warnings stay out of 「最近错误」; the theme's do not.
       const noise = await page.evaluate(() => {
         const before = window.LiuliDiag.getErrorCount();
@@ -1280,7 +1285,13 @@ async function run() {
     // ── Video wallpaper: main window (also with reduced motion), the settings
     // page, and a pooled standalone chat window (first frame only) ──
     const clip = fs.readFileSync(path.join(__dirname, "clip.webm")).toString("base64");
-    for (const variant of ["main", "main-reduced-motion", "setting", "chat-window", "main-contain", "main-no-frame-callbacks"]) {
+    const variants = [
+      "main", "main-reduced-motion", "setting", "chat-window", "main-contain", "main-no-frame-callbacks",
+      // QQ's main window does not draw what lies under .global-container
+      // (user screenshots: desktop backdrop there). Two ways that can happen:
+      "main-app-hidden", "main-container-outside-app",
+    ];
+    for (const variant of variants) {
       const failures = [];
       const hash = variant === "setting" ? "#/setting/settings/common" : variant === "chat-window" ? "#/chat" : "#/main/message";
       // A compositor that never reports frames: drawing must fall back to
@@ -1291,7 +1302,21 @@ async function run() {
               HTMLVideoElement.prototype.requestVideoFrameCallback = () => 1;
               HTMLVideoElement.prototype.cancelVideoFrameCallback = () => {};
             }
-          : null;
+          : variant === "main-app-hidden"
+            ? () => {
+                const style = document.createElement("style");
+                style.textContent = "#app{visibility:hidden}.global-container{visibility:visible}";
+                document.head.append(style);
+              }
+            : variant === "main-container-outside-app"
+              ? () => {
+                  const app = document.getElementById("app");
+                  app.after(document.querySelector(".global-container"));
+                  const style = document.createElement("style");
+                  style.textContent = "#app{opacity:0}";
+                  document.head.append(style);
+                }
+              : null;
       const { page, context, errors } = await h.open({ hash, before });
       if (variant === "main-reduced-motion") await page.emulateMedia({ reducedMotion: "reduce" });
       const v = await page.evaluate(async ({ b64, fit, wait }) => {
@@ -1338,9 +1363,34 @@ async function run() {
           container: document.querySelector(".global-container") ? getComputedStyle(document.querySelector(".global-container")).position : null,
           posterHidden: getComputedStyle(document.getElementById("app"), "::before").backgroundImage === "none",
           scope: document.body.dataset.liuliScope,
+          beforeContainer: !!layer && layer.nextElementSibling === document.querySelector(".global-container"),
         };
       }, { b64: clip, fit: variant === "main-contain" ? "contain" : "cover", wait: variant === "main-no-frame-callbacks" ? 2600 : 1500 });
+      // On screen: with the content hidden, the pixel in the middle of the
+      // window is the canvas picture (under the light veil), not the base.
+      if (variant !== "chat-window") {
+        await page.addStyleTag({ content: ".global-container{visibility:hidden!important}#liuli-video-layer::after{content:none!important}" });
+        await page.waitForTimeout(120);
+        const shot = (await page.screenshot({ clip: { x: 640, y: 430, width: 1, height: 1 } })).toString("base64");
+        v.screen = await page.evaluate(async (b64) => {
+          const img = new Image();
+          img.src = "data:image/png;base64," + b64;
+          await img.decode();
+          const c = document.createElement("canvas");
+          c.width = c.height = 1;
+          const x = c.getContext("2d");
+          x.drawImage(img, 0, 0);
+          const s = [...x.getImageData(0, 0, 1, 1).data].slice(0, 3);
+          const cv = document.getElementById("liuli-video-canvas");
+          const k = cv ? cv.width / innerWidth : 1;
+          const p = cv ? [...cv.getContext("2d").getImageData(Math.round(640 * k), Math.round(430 * k), 1, 1).data].slice(0, 3) : null;
+          return { screen: s, canvas: p };
+        }, shot);
+      }
       const want = (name, ok) => ok || failures.push(name + ": " + JSON.stringify(v));
+      const close = (a, b) => !!a && !!b && a.every((x, i) => Math.abs(x - b[i]) <= 40);
+      if (variant !== "chat-window")
+        want("video.on-screen", close(v.screen?.screen, v.screen?.canvas) && v.screen.screen.reduce((a, b) => a + b, 0) < 700);
       if (variant === "chat-window") {
         want("video.pooled-window-keeps-first-frame", !v.playing && !v.canvas && !v.shown && !v.posterHidden);
       } else {
@@ -1354,7 +1404,10 @@ async function run() {
         want("video.poster-dropped-only-when-shown", v.posterHidden === v.shown);
         if (variant === "main-no-frame-callbacks") want("video.falls-back-to-animation-frames", v.state.painting === "raf");
         if (variant === "setting") want("video.setting-behind-content", v.layerZ === "-2" && v.appIsolated === "isolate");
-        else want("video.native-container-position-kept", v.container === "fixed");
+        else {
+          want("video.native-container-position-kept", v.container === "fixed");
+          want("video.main-layer-next-to-content", v.beforeContainer);
+        }
       }
       if (errors.length) failures.push("video.errors: " + errors.join("|"));
       results.push({ variant: "video-wallpaper-" + variant, failures, v });

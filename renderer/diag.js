@@ -1314,6 +1314,67 @@
         stack: (d.elementsFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)) || []).slice(0, 12).map(n => n.tagName.toLowerCase() + '.' + cls(n).slice(0, 40))
       };
     }, null);
+    // 窗口底层：html/body/#app/视频层/.global-container 及其祖先的可见性与绘制属性，
+    // 以及几个空白点上从上到下的元素（只记类名与样式）。用来确认主窗口里
+    // .global-container 下面的东西为什么不上屏。
+    probe.layers = safe(() => {
+      const look = el => {
+        if (!el) return null;
+        const c = w.getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        const out = {
+          tag: el.tagName.toLowerCase(),
+          id: el.id ? String(el.id).replace(/\d{5,}/g, '#').slice(0, 40) : '',
+          cls: cls(el).slice(0, 60),
+          rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+          vis: c.visibility,
+          op: c.opacity,
+          disp: c.display,
+          pos: c.position,
+          z: c.zIndex
+        };
+        if (c.backgroundColor !== 'rgba(0, 0, 0, 0)') out.bg = c.backgroundColor;
+        if (c.backgroundImage !== 'none') out.bgImage = c.backgroundImage.indexOf('url(') >= 0 ? 'url' : 'gradient';
+        for (const [k, v, none] of [
+          ['backdrop', c.backdropFilter, 'none'],
+          ['filter', c.filter, 'none'],
+          ['blend', c.mixBlendMode, 'normal'],
+          ['iso', c.isolation, 'auto'],
+          ['transform', c.transform, 'none'],
+          ['mask', c.maskImage || c.webkitMaskImage, 'none'],
+          ['clip', c.clipPath, 'none'],
+          ['contain', c.contain, 'none'],
+          ['will', c.willChange, 'auto'],
+          ['cv', c.contentVisibility, 'visible']
+        ])
+          if (v && v !== none) out[k] = String(v).slice(0, 60);
+        return out;
+      };
+      const container = d.querySelector('.global-container');
+      const ancestors = [];
+      for (let n = container && container.parentElement; n && n !== d.documentElement; n = n.parentElement) ancestors.push(look(n));
+      const app = d.getElementById('app');
+      const appBefore = app ? w.getComputedStyle(app, '::before') : null;
+      const points = [];
+      const W = w.innerWidth, H = w.innerHeight;
+      for (const [x, y] of [[0.5, 0.06], [0.62, 0.5], [0.97, 0.97]]) {
+        const list = (d.elementsFromPoint(Math.round(W * x), Math.round(H * y)) || []).slice(0, 25);
+        points.push({ at: [x, y], stack: list.map(look) });
+      }
+      return {
+        html: look(d.documentElement),
+        body: look(d.body),
+        app: look(app),
+        appBefore: appBefore ? { vis: appBefore.visibility, z: appBefore.zIndex, bgImage: appBefore.backgroundImage === 'none' ? 'none' : 'set', content: appBefore.content } : null,
+        host: look(d.getElementById('liuli-video-layer')),
+        hostParent: (() => { const h = d.getElementById('liuli-video-layer'); return h && h.parentElement ? look(h.parentElement) : null; })(),
+        canvas: look(d.getElementById('liuli-video-canvas')),
+        container: look(container),
+        containerInApp: !!(app && container && app.contains(container)),
+        ancestors,
+        points
+      };
+    }, null);
     // 卡片类消息（邮箱提醒、分享卡片等，当前可见的前两条）。
     probe.cardRows = safe(
       () =>
