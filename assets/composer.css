@@ -841,10 +841,3 @@ body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:is(:hover, :active
   clip-path: none !important;
   will-change: auto !important;
 }
-
-/* The sticker panel held open after a send while the pointer is over it
- * (chat-extras.js): QQ has hidden it (display none, inline); shown with the
- * display it had until the pointer leaves. */
-.sticker-panel[data-liuli-keep-open] {
-  display: var(--ll-keep-display, block) !important;
-}

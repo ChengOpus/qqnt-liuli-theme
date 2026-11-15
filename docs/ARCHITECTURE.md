@@ -141,3 +141,8 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 QQ 9.9.36 的 ark 卡片（群公告等）是 `canvas.ark-view-message`。`cards.js` 的 `arkCanvas()` 把画布缩到 24×16 取样（`drawImage` + `getImageData`）：不透明像素里 55% 以上近白（或近黑）、彩色不超过 18% 的，打 `data-liuli-ark-glass="light"`（或 `dark`），CSS 用 SVG 滤镜 `#liuli-ark-light`：`feColorMatrix` 让透明度 = 1.5 ×（1 − RGB 平均），颜色不变，再用 `feComposite in SourceAlpha` 保留原来透明的角。深色同理（透明度 = 1.5 × RGB 平均）。读不到像素（画了网络图片）或带图片的标 `keep`，不加滤镜。还没画出来的画布最多再看 8 次（间隔递增）。键是「消息行 id + 画布尺寸」，变了就重判。滤镜定义在 `#liuli-ark-filters`（`liuli-owned-ui`）。
 
 表情包面板的「按住」只被用户真实的点击（`isTrusted`）放掉，主题自己替 QQ 按发送键不算。
+
+## .32 调整
+
+- 画布卡片：`cards.js` 给外层气泡打 `data-liuli-ark-bubble`，`bubbles.css` 让它和同侧文字气泡用同一套底色、模糊（TG 布局下对方气泡有模糊）和 2px 内边距。滤镜系数 1.8。
+- 表情包面板：不再强制显示 QQ 已隐藏的面板（QQ 连网格一起隐藏，强制显示只剩空壳）。按下表情包时在 `.expression-panel` 上挂 MutationObserver；QQ 隐藏 `.sticker-panel` 时，如果在按下后 2.5 秒内且指针还在面板上，就在同一个任务里点 QQ 自己的「表情」按钮重新打开（Vue 的更新在微任务里完成，绘制之前面板已经回来）。指针离开面板时，若面板是这样重开的，用同一按钮关掉（`bypass` 让主题自己的点击拦截放行）。

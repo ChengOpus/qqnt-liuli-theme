@@ -1378,6 +1378,13 @@ async function run() {
           picture: arkPicture.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
           pictureFilter: getComputedStyle(arkPicture.querySelector("canvas")).filter,
           later: arkLater.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
+          bubble: arkWhite.querySelector(".msg-content-container").hasAttribute("data-liuli-ark-bubble"),
+          bubbleBg: getComputedStyle(arkWhite.querySelector(".msg-content-container")).backgroundColor,
+          textBubbleBg: (() => {
+            const t = [...document.querySelectorAll(".msg-content-container.container--others:not(.ark-msg-content-container)")].find((n) => n.querySelector(".text-element"));
+            return t ? getComputedStyle(t).backgroundColor : "";
+          })(),
+          pictureBubble: arkPicture.querySelector(".msg-content-container").hasAttribute("data-liuli-ark-bubble"),
           probe: LiuliCards.arks().length,
         };
         for (const n of [arkWhite, arkPicture, arkLater]) n.remove();
@@ -1419,7 +1426,8 @@ async function run() {
       expect(
         "card.canvas-drawn-card-is-glass",
         cards.ark.white === "light" && /liuli-ark-light/.test(cards.ark.whiteFilter) && cards.ark.filterDefined &&
-          cards.ark.picture === "keep" && cards.ark.pictureFilter === "none" && cards.ark.later === "light" && cards.ark.probe >= 3,
+          cards.ark.picture === "keep" && cards.ark.pictureFilter === "none" && cards.ark.later === "light" && cards.ark.probe >= 3 &&
+          cards.ark.bubble && cards.ark.textBubbleBg !== "" && cards.ark.bubbleBg === cards.ark.textBubbleBg && !cards.ark.pictureBubble,
         cards.ark,
       );
       expect("card.classified-once-laid-out", cards.late.hidden === false && cards.late.shown === "light", cards.late);
@@ -1534,6 +1542,7 @@ async function run() {
         let panelEl = null;
         // QQ's behaviour: the icon toggles the panel.
         native.addEventListener("click", () => {
+          if (window.__qaPanelMode === "vshow") return;
           nativeClicks++;
           if (panelEl) { panelEl.remove(); panelEl = null; return; }
           const panel = document.createElement("div");
@@ -1680,6 +1689,24 @@ async function run() {
         document.body.append(panel);
         const sheet = panel.querySelector(".sticker-panel");
         const tile = panel.querySelector(".stickers-item img");
+        // QQ's 表情 button toggles this panel (v-show)
+        window.__qaPanelMode = "vshow";
+        const native = __qa.q('.chat-func-bar .icon-item[aria-label="表情"]');
+        let toggles = 0, hiddenFrames = 0, watching = true;
+        const toggle = () => {
+          if (window.__qaPanelMode !== "vshow") return;
+          toggles++;
+          // Vue applies the change in a microtask
+          queueMicrotask(() => (sheet.style.display = sheet.style.display === "none" ? "flex" : "none"));
+        };
+        native.addEventListener("click", toggle);
+        // a painted frame without the panel would be a visible flicker
+        const frames = () => {
+          if (!watching) return;
+          if (getComputedStyle(sheet).display === "none") hiddenFrames++;
+          requestAnimationFrame(frames);
+        };
+        requestAnimationFrame(frames);
         const editor = __qa.q(".ProseMirror");
         // QQ: hide the panel on the press and put the sticker in the editor
         tile.addEventListener("pointerdown", () => {
@@ -1705,14 +1732,33 @@ async function run() {
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left + 50, clientY: box.top + 50 }));
         await __qa.frames(1);
         const shownInside = getComputedStyle(sheet).display !== "none";
+        const flickerFrames = hiddenFrames;
+        watching = false;
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
-        await __qa.frames(1);
+        await __qa.frames(2);
         const closedOutside = getComputedStyle(sheet).display === "none";
+        // a second sticker after the first: the panel is still there with its
+        // stickers (the grid is QQ's, re-rendered by QQ on the reopen)
+        native.click();
+        await __qa.frames(2);
+        const r2 = tile.getBoundingClientRect();
+        tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r2.left + 10, clientY: r2.top + 10 }));
+        await new Promise((res) => setTimeout(res, 400));
+        const secondShown = getComputedStyle(sheet).display !== "none" && tile.getBoundingClientRect().height > 40;
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
+        await __qa.frames(2);
+        native.removeEventListener("click", toggle);
+        window.__qaPanelMode = "";
         panel.remove();
         editor.innerHTML = "<p><br></p>";
-        return { sent, shownAfterPress, shownInside, closedOutside, debug: LiuliChatExtras.debug() };
+        return { sent, shownAfterPress, shownInside, closedOutside, flickerFrames, toggles, secondShown, debug: LiuliChatExtras.debug() };
       });
-      expect("sticker.panel-stays-while-pointer-over-it", stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.closedOutside && !stickerHold.debug.holding, stickerHold);
+      expect(
+        "sticker.panel-stays-while-pointer-over-it",
+        stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.flickerFrames === 0 &&
+          stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 2,
+        stickerHold,
+      );
 
       // ── A click in the text places the caret ──
       // QQ's send row is natively a full-width bar; emulate that, then click

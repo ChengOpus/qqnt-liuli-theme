@@ -157,6 +157,7 @@
     if (icon && !icon.contains(event.relatedTarget)) clearTimeout(intent);
   }
   function onEmojiClick(event) {
+    if (bypass) return;
     const icon = emojiIcon(event.target);
     if (!icon || event.target.closest(".arrow")) return;
     clearTimeout(intent);
@@ -176,7 +177,7 @@
   // the sticker stayed in the editor). The editor is then watched each frame
   // for the picture rather than for one particular mutation shape.
   let pending = null;
-  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, released: '', last: '', skipped: '' };
+  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, reopened: 0, closedOnLeave: 0, released: '', last: '', skipped: '' };
   // What counts as a picture in the editor. ProseMirror keeps helper nodes in
   // an otherwise empty paragraph — an <img class="ProseMirror-separator"> and
   // a trailing <br> — and QQ pads with zero-width characters; none of those
@@ -308,53 +309,88 @@
   }
   // The panel stays open after a sticker is sent while the pointer is still
   // over it, and closes once the pointer leaves (user, 2026-11-15). QQ closes
-  // it on the press by hiding .sticker-panel (v-show: display none, the
-  // panel stays mounted — diagnostics); while held, a mark keeps it shown
-  // with the display it had, and dropping the mark hands it back to QQ's
-  // closed state. Never kept: Escape, a press elsewhere, QQ opening it again.
-  let keep = null;
-  function holdOpen(tile) {
-    const sheet = tile.closest('.sticker-panel') || tile.closest(PANEL)?.querySelector('.sticker-panel');
-    if (!sheet) return;
-    const shown = getComputedStyle(sheet).display;
-    if (shown === 'none') return;
-    const box = (sheet.closest('.expression-panel-inner') || sheet).getBoundingClientRect();
+  // it on the press. Keeping QQ's hidden panel visible (.30/.31) showed an
+  // empty shell: QQ hides the sticker grid inside too. So when QQ closes it
+  // right after a sticker press with the pointer still on it, it is opened
+  // again through QQ's own 表情 button — in the same task, before anything is
+  // painted, so it never visibly closes — and QQ renders it as on any open.
+  // When the pointer then leaves it, it is closed the same way.
+  let stay = null; // { root, sheet, box, until, reopened }
+  let pointer = { x: -1, y: -1 };
+  let bypass = false;
+  const watcher = new MutationObserver(() => {
+    if (!stay) return;
+    if (!stay.sheet.isConnected) return letGo("gone");
+    if (getComputedStyle(stay.sheet).display !== "none") return;
+    // QQ closed it
+    if (performance.now() > stay.until || !inside(stay.box, pointer.x, pointer.y)) return letGo("closed");
+    const item = nativeEmoji();
+    if (!item) return letGo("no-button");
+    stay.until = 0; // one reopen per sticker press
+    stay.reopened = true;
+    debug.reopened++;
+    item.click();
+    whenOpen(chooseStickerTab);
+  });
+  function nativeEmoji() {
+    return document.querySelector(EMOJI_ICON + " > .icon-item");
+  }
+  function inside(b, x, y) {
+    const m = 6;
+    return x >= b.left - m && x <= b.right + m && y >= b.top - m && y <= b.bottom + m;
+  }
+  function holdOpen(tile, event) {
+    const sheet = tile.closest(".sticker-panel") || tile.closest(PANEL)?.querySelector(".sticker-panel");
+    if (!sheet || getComputedStyle(sheet).display === "none") return;
+    const box = (sheet.closest(".expression-panel-inner") || sheet).getBoundingClientRect();
     if (box.width < 40 || box.height < 40) return;
-    if (keep && keep.sheet !== sheet) letGo("other-panel");
-    sheet.style.setProperty('--ll-keep-display', shown);
-    sheet.setAttribute('data-liuli-keep-open', '');
-    keep = { sheet, box };
+    if (event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)) pointer = { x: event.clientX, y: event.clientY };
+    const root = sheet.closest(".expression-panel") || sheet.parentElement || sheet;
+    if (!stay || stay.root !== root) {
+      watcher.disconnect();
+      watcher.observe(root, { attributes: true, attributeFilter: ["style", "class", "hidden"], subtree: true, childList: true });
+    }
+    stay = { root, sheet, box, until: performance.now() + 2500, reopened: stay?.reopened || false };
     debug.held++;
   }
   function letGo(reason) {
-    if (!keep) return;
+    if (!stay) return;
     debug.released = typeof reason === "string" ? reason : "other";
-    keep.sheet.removeAttribute('data-liuli-keep-open');
-    keep.sheet.style.removeProperty('--ll-keep-display');
-    keep = null;
+    watcher.disconnect();
+    stay = null;
+  }
+  function closePanel() {
+    const item = nativeEmoji();
+    if (!item || !panel()) return;
+    bypass = true;
+    try {
+      item.click();
+    } finally {
+      bypass = false;
+    }
   }
   function onMove(event) {
-    if (!keep) return;
-    if (!keep.sheet.isConnected) return letGo("gone");
-    // QQ hides it (inline display none) on the press or the click; once it
-    // has, QQ showing it again itself means there is nothing to hold
-    if (keep.sheet.style.display === 'none') keep.seenHidden = true;
-    else if (keep.seenHidden) return letGo("reopened");
-    const panelBox = (keep.sheet.closest('.expression-panel-inner') || keep.sheet).getBoundingClientRect();
-    const b = panelBox.width > 0 && panelBox.height > 0 ? panelBox : keep.box;
-    const m = 6;
-    if (event.clientX < b.left - m || event.clientX > b.right + m || event.clientY < b.top - m || event.clientY > b.bottom + m) letGo("left");
+    pointer = { x: event.clientX, y: event.clientY };
+    if (!stay) return;
+    if (inside(stay.box, event.clientX, event.clientY)) return;
+    // left the panel: close it if it is only open because it was reopened
+    const reopened = stay.reopened;
+    letGo("left");
+    if (reopened) {
+      debug.closedOnLeave++;
+      closePanel();
+    }
   }
   function onPress(event) {
     // A press elsewhere by the user lets go. Not the theme's own press on
-    // QQ's send button right after the sticker (that released the hold at
+    // QQ's send button right after the sticker (that released the stay at
     // once in .30, user diagnostics: held 2, holding false).
-    if (keep && event.isTrusted && event.button === 0 && !keep.sheet.contains(event.target) && !event.target.closest?.(PANEL)) letGo("press");
+    if (stay && event.isTrusted && event.button === 0 && !event.target.closest?.(PANEL)) letGo("press");
     if (event.button !== 0 || !settings.stickerSend) return;
     if (!event.target.closest?.(PANEL)) return;
     const tile = stickerTile(event);
     if (!tile) return void (debug.skipped = 'not-a-sticker-tile');
-    holdOpen(tile);
+    holdOpen(tile, event);
     const input = window.LiuliComposer.area();
     const editor = editorOf(input);
     if (!editor) return void (debug.skipped = 'no-editor');
@@ -387,7 +423,6 @@
     document.addEventListener("pointerover", onOver, true);
     document.addEventListener("pointermove", onMove, { capture: true, passive: true });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") letGo("escape"); }, true);
-    addEventListener("blur", () => letGo("blur"));
     document.addEventListener("pointerout", onOut, true);
   }
   function configure(next) {
@@ -401,7 +436,7 @@
     scanTips,
     records,
     openStickers,
-    debug: () => ({ ...debug, pending: !!pending, holding: !!keep }),
+    debug: () => ({ ...debug, pending: !!pending, holding: !!stay }),
     letGo,
   });
 })();

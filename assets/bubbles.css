@@ -1042,3 +1042,27 @@ body[data-liuli-hide-image-names] .message-container[data-liuli-image-only] > .u
 /* Bubbles keep their glass while the list moves. Until .19 they dropped the
  * blur during a scroll or an arrival and got it back 160ms later; on a busy
  * wallpaper that read as the glass vanishing for a moment (user, 2026-11-15). */
+
+/* A card QQ drew on a canvas whose white sheet the theme made see-through
+ * (cards.js, data-liuli-ark-bubble): the bubble around it is an ordinary
+ * message bubble — the fill, blur and corners of a text message from the
+ * same side — so the card reads as the same glass as the messages around it. */
+.message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble].container--others {
+  background: var(--ll-bubble-other, var(--ll-glass-surface)) !important;
+  color: var(--ll-bubble-other-fg, var(--ll-on-glass)) !important;
+}
+.message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble].container--self {
+  background: var(
+    --ll-bubble-self,
+    color-mix(in srgb, rgb(var(--ll-brand-rgb)) 34%, rgb(var(--ll-acrylic)))
+  ) !important;
+  color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
+}
+body[data-liuli-chat-style='tg'] .message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble].container--others {
+  backdrop-filter: var(--ll-bubble-blur, none) !important;
+  -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
+}
+.message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble] {
+  padding: 2px !important;
+  box-shadow: 0 1px 2px rgba(var(--ll-shadow-rgb), 0.12) !important;
+}

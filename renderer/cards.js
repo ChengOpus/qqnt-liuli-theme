@@ -181,7 +181,7 @@
   // that are mostly plain white/black are filtered: a card showing a picture
   // (a link preview, a mini-program cover) stays as it is, and a canvas QQ
   // drew a remote picture into cannot be sampled and is left alone too.
-  const ARK_K = 1.5;
+  const ARK_K = 1.8;
   function arkFilters() {
     if (document.getElementById("liuli-ark-filters")) return;
     const k = ARK_K, t = (k / 3).toFixed(4);
@@ -242,14 +242,21 @@
       arkKeys.set(canvas, key);
       arkTries.delete(canvas);
       canvas.removeAttribute("data-liuli-ark-glass");
+      canvas.closest(".msg-content-container")?.removeAttribute("data-liuli-ark-bubble");
     }
     if (canvas.hasAttribute("data-liuli-ark-glass")) return;
     const kind = arkKind(canvas);
     if (kind) {
       if (kind !== "keep") arkFilters();
       canvas.setAttribute("data-liuli-ark-glass", kind);
+      // the bubble around it becomes an ordinary message bubble: the same
+      // fill and blur as a text message from the same side (user, .31: the
+      // card was a faint pane, not the glass the other messages have)
       const bubble = canvas.closest(".msg-content-container");
-      if (bubble && kind !== "keep") set(bubble, "data-liuli-card", "");
+      if (bubble) {
+        if (kind !== "keep") set(bubble, "data-liuli-ark-bubble", "");
+        else bubble.removeAttribute("data-liuli-ark-bubble");
+      }
       return;
     }
     // not drawn yet: look again a few times
