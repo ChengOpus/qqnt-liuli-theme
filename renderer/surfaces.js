@@ -103,9 +103,31 @@
         return Math.max(s.r, s.g, s.b) - Math.min(s.r, s.g, s.b) <= 24 && (l >= 0.86 || l <= 0.18 || s.a < 0.2);
       });
     }
-    if (!c || c.a < 0.85) return false;
+    // Translucent ones count too: QQ's colourful theme lays 30–60% white
+    // sheets in cards and pages, which read as a white mask over the glass
+    // (user, 2026-11-15). Hover/selection fills stay below 0.12.
+    if (!c || c.a < 0.12) return false;
     const l = (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
     return Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b) <= 16 && (l >= 0.88 || l <= 0.18);
+  }
+  // Inside a page panel (not a popup): the sections QQ draws as white boxes
+  // become faint rounded cards on the glass instead of being removed.
+  function softCards(outer) {
+    const box = outer.getBoundingClientRect();
+    if (box.width < 200) return;
+    const nodes = outer.querySelectorAll("div, section, ul");
+    if (nodes.length > 1500) return;
+    const marks = [];
+    for (const inner of nodes) {
+      if (inner.hasAttribute("data-liuli-surface") || inner.hasAttribute("data-liuli-soft")) continue;
+      if (inner.closest('button, [role="button"], .q-button, input, textarea, [class*="avatar"], .q-tag')) continue;
+      const css = getComputedStyle(inner);
+      if (!opaqueSheet(css)) continue;
+      const r = inner.getBoundingClientRect();
+      if (r.width < 160 || r.height < 36) continue;
+      marks.push(inner);
+    }
+    for (const node of marks) node.setAttribute("data-liuli-soft", "");
   }
   function clearSheets(outer) {
     const box = outer.getBoundingClientRect();
@@ -234,6 +256,20 @@
       ".container-sidebar,.group-box,.right-sidebar:not(:has(.group-box)),.aio .side-panel,.contact-profile .profile__body",
     ))
       mark(node, "panel");
+    // The main window's right pane when it is not a chat (contacts, group
+    // notices, new friends …): one glass panel, its white boxes soft cards.
+    if (document.body.dataset.liuliScope === "main") {
+      const panes = new Set(D.within(root, ".two-col-layout__main > :not(.aio)"));
+      const host = root.closest?.(".two-col-layout__main > :not(.aio)");
+      if (host) panes.add(host);
+      for (const pane of panes) {
+        const r = pane.getBoundingClientRect();
+        if (r.width < 300 || r.height < 300) continue;
+        if (pane.dataset.liuliSurface !== "panel") mark(pane, "panel");
+        pane.setAttribute("data-liuli-page-pane", "");
+        softCards(pane);
+      }
+    }
     // The group drawer (.aio .side-panel) is one glass owner. Cards and inline
     // selectors inside it are rows of that drawer, not floating surfaces.
     const nested = (node) =>

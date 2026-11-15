@@ -735,3 +735,13 @@ body[data-liuli-autohide-actions] .aio:not([data-liuli-actions-shown]) > .chat-h
     transition: opacity 120ms ease;
   }
 }
+#liuli-actions-sensor {
+  position: fixed;
+  z-index: 3650;
+  background: transparent;
+  -webkit-app-region: no-drag !important;
+}
+body:not([data-liuli-autohide-actions]) #liuli-actions-sensor,
+body:not([data-liuli-scope="main"]) #liuli-actions-sensor {
+  display: none !important;
+}

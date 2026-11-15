@@ -164,7 +164,7 @@
   function drawer() {
     for (const aio of document.querySelectorAll('.aio')) {
       const panel = aio.querySelector('.side-panel');
-      const open = !!panel && panel.getClientRects().length > 0;
+      const open = !!panel && onScreen(panel);
       if (aio.hasAttribute('data-liuli-drawer') !== open) aio.toggleAttribute('data-liuli-drawer', open);
       if (!open) continue;
       const action = aio.querySelector(':scope > .chat-header .panel-header__action')?.getBoundingClientRect();
@@ -190,36 +190,89 @@
   let autoHide = true;
   let hideTimer = 0;
   let pointer = { x: -1, y: -1 };
+  // Really on screen: laid out, inside the window, visible and not faded.
+  // QQ keeps menus and the drawer mounted (invisible) after first use; a
+  // mounted-but-hidden one used to hold the panel open for good.
+  function onScreen(node) {
+    const r = node.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4 || r.right <= 0 || r.bottom <= 0 || r.left >= innerWidth || r.top >= innerHeight) return false;
+    for (let n = node; n && n !== document.body; n = n.parentElement) {
+      const c = getComputedStyle(n);
+      if (c.visibility === 'hidden' || c.display === 'none' || parseFloat(c.opacity) < 0.1) return false;
+    }
+    return true;
+  }
   function held(aio) {
     if (aio.hasAttribute('data-liuli-drawer')) return true;
     for (const inner of aio.querySelectorAll(':scope > .chat-header .bar-more-menu-inner'))
-      if (inner.childElementCount && inner.getClientRects().length) return true;
+      if (inner.childElementCount && onScreen(inner)) return true;
     return false;
   }
-  function inBand(aio) {
-    const header = aio.querySelector(':scope > .chat-header');
-    if (!header) return false;
-    const h = header.getBoundingClientRect();
-    const title = header.querySelector('.panel-header__title')?.getBoundingClientRect();
-    const a = aio.getBoundingClientRect();
-    const left = title ? title.right + 8 : a.left;
-    return pointer.y >= 0 && pointer.y <= h.bottom + 6 && pointer.x >= left && pointer.x <= a.right;
+  // Where the panel rests, without its hidden offset: offsets ignore the
+  // translate that parks it above the window.
+  function restRect(panel) {
+    let x = 0, y = 0;
+    for (let n = panel; n; n = n.offsetParent) {
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      if (getComputedStyle(n).position === 'fixed') break;
+    }
+    return { left: x, top: y, right: x + panel.offsetWidth, bottom: y + panel.offsetHeight };
+  }
+  // The header band is a window-drag region: Windows sends the page no
+  // pointer events there, so a parked panel could only be reached from the
+  // no-drag window controls next to it (user, 2026-11-15). A transparent,
+  // no-drag sensor sits where the panel rests.
+  let sensor = null;
+  function placeSensor(aio, panel) {
+    if (!sensor) {
+      sensor = document.createElement('div');
+      sensor.id = 'liuli-actions-sensor';
+      sensor.setAttribute('aria-hidden', 'true');
+      document.body.append(sensor);
+    }
+    // only while the panel is parked: once shown, the panel itself (no-drag)
+    // takes the pointer and the sensor must not cover its buttons
+    if (!autoHide || !panel || aio.hasAttribute('data-liuli-actions-shown')) {
+      sensor.style.display = 'none';
+      return;
+    }
+    const r = restRect(panel);
+    const pad = 6;
+    Object.assign(sensor.style, {
+      display: 'block',
+      left: Math.round(r.left - pad) + 'px',
+      top: Math.max(0, Math.round(r.top - pad)) + 'px',
+      width: Math.round(r.right - r.left + pad * 2) + 'px',
+      height: Math.round(r.bottom - Math.max(0, r.top - pad) + pad) + 'px'
+    });
+  }
+  function inZone(aio) {
+    const panel = aio.querySelector(':scope > .chat-header .panel-header__action');
+    if (!panel || pointer.x < 0) return false;
+    const r = restRect(panel);
+    return pointer.x >= r.left - 6 && pointer.x <= r.right + 6 && pointer.y >= 0 && pointer.y <= r.bottom + 6;
   }
   function revealPass() {
+    document.body.toggleAttribute('data-liuli-autohide-actions', autoHide);
+    let visiblePane = null;
     for (const aio of document.querySelectorAll('.aio')) {
-      const want = !autoHide || inBand(aio) || held(aio);
+      if (!aio.getClientRects().length) continue;
+      visiblePane = aio;
+      const want = !autoHide || inZone(aio) || held(aio);
       const shown = aio.hasAttribute('data-liuli-actions-shown');
       if (want) {
         clearTimeout(hideTimer);
+        hideTimer = 0;
         if (!shown) aio.setAttribute('data-liuli-actions-shown', '');
       } else if (shown && !hideTimer) {
         hideTimer = setTimeout(() => {
           hideTimer = 0;
-          if (!(inBand(aio) || held(aio)) && autoHide) aio.removeAttribute('data-liuli-actions-shown');
+          if (autoHide && !(inZone(aio) || held(aio))) aio.removeAttribute('data-liuli-actions-shown');
         }, 350);
       }
     }
-    document.body.toggleAttribute('data-liuli-autohide-actions', autoHide);
+    placeSensor(visiblePane, visiblePane?.querySelector(':scope > .chat-header .panel-header__action'));
   }
   let moveFrame = 0;
   addEventListener(

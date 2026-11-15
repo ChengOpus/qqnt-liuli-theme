@@ -249,3 +249,24 @@ body[data-liuli-theme] .q-miracle-background {
 body[data-liuli-theme] .miracle-background:not(.q-miracle-background) {
   background-image: none !important;
 }
+
+/* Main window right pane that is not a chat (surfaces.js): one glass panel,
+ * 8px from the column on its left like every other card. */
+body[data-liuli-scope="main"] [data-liuli-page-pane][data-liuli-surface="panel"]::before {
+  left: var(--ll-dock-gap) !important;
+}
+body[data-liuli-scope="main"] [data-liuli-page-pane] {
+  padding-left: var(--ll-dock-gap) !important;
+  box-sizing: border-box !important;
+}
+body[data-liuli-scope="main"] [data-liuli-page-pane] :is(.q-scroll-view, .panel-header, [class*="__container"], [class*="__scroll"]) {
+  background-color: transparent !important;
+}
+/* QQ's white section boxes in those pages: faint rounded cards. */
+[data-liuli-soft] {
+  background: rgba(var(--ll-on-glass-rgb), 0.045) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}

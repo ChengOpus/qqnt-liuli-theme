@@ -297,6 +297,34 @@ async function run() {
         return res;
       });
       expect("card.no-miracle-background", misc.miracle === "none", misc);
+      // A non-chat right pane (Contacts → 群通知 …): one glass panel; QQ's
+      // translucent white section boxes become soft cards.
+      const pane = await page.evaluate(async () => {
+        const main = document.querySelector(".two-col-layout__main");
+        const aio = main.querySelector(":scope > .aio");
+        aio.style.display = "none";
+        const right = document.createElement("div");
+        right.className = "contact-layout__right-area";
+        right.style.cssText = "height:100%";
+        right.innerHTML = '<div class="sys-notify"><div class="q-scroll-view" style="background:rgba(255,255,255,.6);height:600px"><div class="recommend-list" style="background:rgba(255,247,249,.4);height:120px;margin:20px">更多群聊</div></div></div>';
+        main.append(right);
+        await new Promise((r) => setTimeout(r, 400));
+        const res = {
+          surface: right.dataset.liuliSurface,
+          glass: getComputedStyle(right, "::before").backdropFilter,
+          left: Math.round(right.getBoundingClientRect().left - document.querySelector(".two-col-layout__aside").getBoundingClientRect().right),
+          sheet: getComputedStyle(right.querySelector(".q-scroll-view")).backgroundColor,
+          card: { soft: right.querySelector(".recommend-list").hasAttribute("data-liuli-soft"), radius: getComputedStyle(right.querySelector(".recommend-list")).borderRadius },
+        };
+        right.remove();
+        aio.style.display = "";
+        return res;
+      });
+      expect(
+        "page-pane.glass-and-soft-cards",
+        pane.surface === "panel" && pane.glass !== "none" && pane.card.soft && pane.card.radius === "12px",
+        pane,
+      );
       expect("toolbar.pinned-round-hover-only", misc.activePseudo === "none" && misc.innerFill === "rgba(0, 0, 0, 0)", misc);
       expect("badge.exact-count-instead-of-99plus", !badges || badges.capped === "1234", badges);
       expect("badge.muted-is-faint-grey", !badges || (alphaOf(badges.grey) <= 0.2 && badges.grey !== badges.red), badges);
@@ -1398,10 +1426,20 @@ async function run() {
         row.append(badge);
         const listGrew = LiuliNotice.grew();
         badge.remove();
+        await new Promise((r) => setTimeout(r, 2300));
+        // a member joined: the group's new item is a system notice
+        const summary = row.querySelector('[class*="summary"]');
+        const old = summary ? summary.textContent : "";
+        if (summary) summary.textContent = "某某加入了本群";
+        nav.querySelector(".q-badge-num").textContent = "3";
+        row.append(badge);
+        const joinTip = LiuliNotice.grew();
+        badge.remove();
+        if (summary) summary.textContent = old;
         nav.remove();
-        return { quiet, navGrew, listGrew };
+        return { quiet, navGrew, listGrew, joinTip, hasSummary: !!summary };
       });
-      expect("notice.flash-only-for-new-messages", notice.quiet === false && notice.navGrew === true && notice.listGrew === true, notice);
+      expect("notice.flash-only-for-new-messages", notice.quiet === false && notice.navGrew === true && notice.listGrew === true && notice.joinTip === false && notice.hasSummary, notice);
       // QQ's own telemetry warnings stay out of 「最近错误」; the theme's do not.
       const noise = await page.evaluate(() => {
         const before = window.LiuliDiag.getErrorCount();
@@ -1746,9 +1784,12 @@ async function run() {
       await page.mouse.move(640, 500);
       await page.waitForTimeout(700);
       const hidden = await state();
+      // the parked panel is reached through the no-drag sensor where it rests
+      // (the header band is a window-drag region on Windows)
       const band = await page.evaluate(() => {
-        const a = document.querySelector(".aio").getBoundingClientRect();
-        return { x: Math.round(a.right - 160), y: 20 };
+        const s = document.getElementById("liuli-actions-sensor");
+        const r = s?.getBoundingClientRect();
+        return r && r.width ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), drag: getComputedStyle(s).webkitAppRegion || "" } : { x: -1, y: -1 };
       });
       await page.mouse.move(band.x, band.y);
       await page.waitForTimeout(400);
@@ -1756,8 +1797,15 @@ async function run() {
       await page.mouse.move(640, 500);
       await page.waitForTimeout(800);
       const again = await state();
-      if (!(hidden.bottom <= 0 && hidden.pe === "none" && shown.bottom > 30 && shown.opacity === "1" && shown.pe !== "none" && again.bottom <= 0))
-        failures.push("actions.autohide: " + JSON.stringify({ hidden, shown, again }));
+      // and once more: it must hide every time, not just the first
+      await page.mouse.move(band.x, band.y);
+      await page.waitForTimeout(400);
+      const twice = await state();
+      await page.mouse.move(640, 500);
+      await page.waitForTimeout(800);
+      const again2 = await state();
+      if (!(band.x > 0 && hidden.bottom <= 0 && hidden.pe === "none" && shown.bottom > 30 && shown.opacity === "1" && shown.pe !== "none" && again.bottom <= 0 && twice.bottom > 30 && again2.bottom <= 0))
+        failures.push("actions.autohide: " + JSON.stringify({ band, hidden, shown, again, twice, again2 }));
       if (errors.length) failures.push("actions.errors: " + errors.join("|"));
       results.push({ variant: "actions-autohide", failures });
       failed += failures.length;

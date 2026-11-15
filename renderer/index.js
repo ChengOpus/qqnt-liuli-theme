@@ -1188,28 +1188,46 @@
   }
   // second signal: unread badges on the conversation rows on screen
   // (muted rows excluded — QQ does not flash for them)
-  function llListUnread() {
-    let n = 0;
+  // Conversation rows on screen with a count (muted ones excluded — QQ does
+  // not flash for them): name -> { n, summary }.
+  function llRowUnread() {
+    const rows = new Map();
     for (const badge of document.querySelectorAll('.recent-contact-item .q-badge-num')) {
-      if (badge.closest('.recent-contact-item')?.querySelector('.no-disturb-icon')) continue;
+      const row = badge.closest('.recent-contact-item');
+      if (!row || row.querySelector('.no-disturb-icon') || badge.matches('.q-badge__grey') || badge.closest('.q-badge__grey')) continue;
       const v = parseInt(String(badge.textContent).replace(/[^0-9]/g, ''), 10);
-      n += Number.isFinite(v) ? v : 1;
+      const name = (row.querySelector('[class*="name"]')?.textContent || '').trim();
+      const summary = (row.querySelector('[class*="summary"]')?.textContent || '').trim();
+      if (name) rows.set(name, { n: Number.isFinite(v) ? v : 1, summary });
     }
+    return rows;
+  }
+  function llListUnread(rows = llRowUnread()) {
+    let n = 0;
+    for (const r of rows.values()) n += r.n;
     return n;
   }
+  // A group's new item that is only a system notice (someone joined, left or
+  // was removed, a recall, an admin change, a mute…): QQ counts it as unread
+  // but it is not a message (user, 2026-11-15: new members flashed the
+  // taskbar for an admin).
+  const LL_SYSTEM_TIP = /(加入了?(本)?群|加入群聊|邀请.{0,30}加入|入群|退出了?群|离开了?群|被?移出了?群|撤回了|设置.{0,20}管理员|取消.{0,20}管理员|成为.{0,10}(管理员|群主)|转让|禁言|修改了?群名|更新了?群公告|群头衔|拍了拍)/;
   setInterval(() => {
     if (document.body.dataset.liuliScope !== 'main') return;
-    llUnread.push({ t: Date.now(), n: llUnreadCount(), list: llListUnread() });
+    const rows = llRowUnread();
+    llUnread.push({ t: Date.now(), n: llUnreadCount(), list: llListUnread(rows), rows });
     while (llUnread.length > 8) llUnread.shift();
   }, 1000);
   window.LiuliNotice = Object.freeze({
-    // true: more unread messages than ~1.2 s ago; false: not; null: unknown
+    // true: more unread messages than ~1.2 s ago; false: not (or only system
+    // notices); null: unknown
     grew() {
       const before = [...llUnread].reverse().find(s => Date.now() - s.t >= 1200);
       if (!before) return null;
+      const rows = llRowUnread();
+      const grown = [...rows].filter(([name, r]) => r.n > (before.rows?.get(name)?.n ?? 0));
+      if (grown.length) return grown.some(([, r]) => !LL_SYSTEM_TIP.test(r.summary));
       const nav = llUnreadCount();
-      const list = llListUnread();
-      if (list > before.list) return true;
       if (nav == null || before.n == null) return null;
       return nav > before.n;
     }
