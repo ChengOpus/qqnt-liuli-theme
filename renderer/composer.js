@@ -287,7 +287,8 @@
   // stacked above "+" with the last button lowest, so going from a triangle
   // to a column only the middle one moves.
   let pinIcons = [],
-    rows = 1;
+    rows = 1,
+    moveTimer = 0;
   function slots(n, r) {
     const cols = Math.ceil(n / r);
     const out = [];
@@ -304,6 +305,12 @@
     if (!active) return;
     const n = pinIcons.length + 1;
     r = Math.max(1, Math.min(r, n));
+    if (r !== rows) {
+      active.setAttribute("data-liuli-bar-moving", "");
+      clearTimeout(moveTimer);
+      const host = active;
+      moveTimer = setTimeout(() => host.removeAttribute("data-liuli-bar-moving"), 260);
+    }
     rows = r;
     const { cols, out } = slots(n, r);
     pinIcons.forEach((icon, i) => {
@@ -311,11 +318,36 @@
       variable(icon, "--liuli-pin-col", String(col));
       variable(icon, "--liuli-pin-row", String(row));
     });
-    variable(active, "--liuli-bar-pad", 12 + cols * 32 + "px");
+    variable(active, "--liuli-bar-pad", textInset(cols) + "px");
     if (r > 1) {
       if (active.getAttribute("data-liuli-bar-rows") !== String(r)) active.setAttribute("data-liuli-bar-rows", String(r));
       variable(active, "--liuli-stack-h", 12 + r * 32 + "px");
     } else if (active.hasAttribute("data-liuli-bar-rows")) active.removeAttribute("data-liuli-bar-rows");
+  }
+  // Where the text starts. With the icons in a row or a triangle: 12px after
+  // the last icon. With a column, the text sits as far from the left edge as
+  // it does from the right one (user, 2026-11-15: the two sides differed),
+  // and never closer than 8px to the icons. Measured, so padding QQ's editor
+  // brings of its own is taken into account.
+  function textInset(cols) {
+    const iconsEnd = 8 + cols * 32 - 4;
+    const fallback = cols === 1 ? 48 : iconsEnd + 12;
+    const editor = active?.querySelector(".ProseMirror, [contenteditable]");
+    const input = active?.querySelector(":scope > .msg-input");
+    if (!editor || !input) return fallback;
+    const box = active.getBoundingClientRect();
+    const ed = editor.getBoundingClientRect();
+    if (box.width < 100 || ed.width < 40) return fallback;
+    const ecs = getComputedStyle(editor);
+    const textLeft = ed.left + (parseFloat(ecs.paddingLeft) || 0);
+    const textRight = ed.right - (parseFloat(ecs.paddingRight) || 0);
+    const rightInset = box.right - textRight;
+    const leftInset = textLeft - box.left;
+    const pad = parseFloat(getComputedStyle(input).paddingLeft) || 0;
+    const want = cols === 1 ? Math.max(iconsEnd + 8, rightInset) : iconsEnd + 12;
+    // the part of the inset that is not this padding (QQ's own editor padding)
+    const other = leftInset - pad;
+    return Math.max(0, Math.round(want - other));
   }
   // Lines of text in the editor now, and whether every line would still fit
   // if the text were `less` px narrower (so a step back to a wider icon

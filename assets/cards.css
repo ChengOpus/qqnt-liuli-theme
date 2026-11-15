@@ -1,8 +1,10 @@
 /* Card-type messages: nodes are classified by renderer/cards.js from what they
  * paint, not from template class names. See that file for the rules. */
+[data-liuli-card-sheet]:not([data-liuli-card-keep-image]) {
+  background-image: none !important;
+}
 [data-liuli-card-sheet] {
   background-color: transparent !important;
-  background-image: none !important;
   box-shadow: none !important;
 }
 [data-liuli-ink="1"] {

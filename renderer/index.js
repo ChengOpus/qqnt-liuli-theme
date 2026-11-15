@@ -410,6 +410,7 @@
     jumpBottom: true,
     blockUpdate: true,
     quietFlash: true,
+    directLinks: true,
     pinControls: true,
     moveCalls: true,
     autoHideActions: true,
@@ -535,6 +536,8 @@
     b.toggleAttribute('data-liuli-controls-pinned', llModeCfg.pinControls !== false);
     llSyncUpdateGuard();
     llSyncFlashGuard();
+    llSyncLinkGuard();
+    window.LiuliLinks?.configure({ enabled: llModeCfg.directLinks !== false });
     window.LiuliHeaderTools?.configure({
       autoHide: llModeCfg.autoHideActions !== false,
       moveCalls: llModeCfg.moveCalls !== false,
@@ -1178,6 +1181,17 @@
     window.LiuliHost.flashGuard(want).catch(() => { llFlashSent = null; });
   }
   window.addEventListener('liuli-scope', () => llSyncFlashGuard());
+  // 链接直接用浏览器打开：消息里的链接由 links.js 直接交给宿主打开；其余地方
+  // QQ 交给浏览器的「安全中转页」由宿主拆开（load.js installLinkGuard）。
+  var llLinkSent = null;
+  function llSyncLinkGuard() {
+    if (document.body.dataset.liuliScope !== 'main' || !window.LiuliHost?.linkGuard) return;
+    const want = llModeCfg.directLinks !== false;
+    if (llLinkSent === want) return;
+    llLinkSent = want;
+    window.LiuliHost.linkGuard(want).catch(() => { llLinkSent = null; });
+  }
+  window.addEventListener('liuli-scope', () => llSyncLinkGuard());
   const llUnread = [];
   function llUnreadCount() {
     // the Messages tab is the first item of the navigation
@@ -3061,6 +3075,9 @@
         console.warn('[theme] layout failed:', e && e.message);
       }
       try {
+        window.LiuliLinks?.install();
+      } catch (e) {}
+      try {
         installArkExternal(window.LiuliHost);
       } catch (e) {
         console.warn('[theme] ark external failed:', e && e.message);
@@ -3303,6 +3320,7 @@
     }
     settingSwitch('禁止 QQ 自动更新', 'blockUpdate', settings.blockUpdate !== false);
     settingSwitch('只在新消息时闪任务栏图标', 'quietFlash', settings.quietFlash !== false);
+    settingSwitch('链接直接用浏览器打开（不经过 QQ 的安全提示页）', 'directLinks', settings.directLinks !== false);
     const flashHint = document.createElement('div');
     flashHint.className = 'liuli-field__hint';
     flashHint.textContent = '加群申请、好友申请等通知不再让任务栏里的 QQ 图标闪动；新消息照常闪。关闭后恢复 QQ 原来的行为。';

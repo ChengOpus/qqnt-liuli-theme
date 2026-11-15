@@ -31,6 +31,53 @@ body:not([data-liuli-av])
   border-radius: 12px;
   color: var(--ll-on-glass);
 }
+/* QQ's colourful theme paints menus with its own ::before (a 0.9-alpha
+ * tinted sheet, blur(8px)), and its rule outranked this one: the header's
+ * and the composer's ⌄ menus showed QQ's flat pink frost instead of the
+ * theme's glass (user diagnostics 2026-11-15, recentPopups). The glass here
+ * is the theme's own layer, so it is made to win. */
+[data-liuli-surface="context"]:not(#liuli-none)::before,
+body:not([data-liuli-av]) .q-context-menu:not(.is-pure):not(#liuli-none)::before,
+body:not([data-liuli-av]) .q-context-menu.is-pure:has(> .q-context-menu-item):not(#liuli-none)::before,
+body:not([data-liuli-av]) .q-context-sub-menu__container:not(#liuli-none)::before,
+[data-liuli-surface].bar-more-menu-inner:not(#liuli-none)::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+  background: var(--ll-glass-paint) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
+}
+[data-liuli-surface="context"]:not(#liuli-none)::after,
+body:not([data-liuli-av]) .q-context-menu:not(.is-pure):not(#liuli-none)::after,
+body:not([data-liuli-av]) .q-context-menu.is-pure:has(> .q-context-menu-item):not(#liuli-none)::after,
+body:not([data-liuli-av]) .q-context-sub-menu__container:not(#liuli-none)::after,
+[data-liuli-surface].bar-more-menu-inner:not(#liuli-none)::after {
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+[data-liuli-surface="context"]:not(#liuli-none),
+body:not([data-liuli-av]) .q-context-menu:not(.is-pure):not(#liuli-none),
+body:not([data-liuli-av]) .q-context-menu.is-pure:has(> .q-context-menu-item):not(#liuli-none),
+body:not([data-liuli-av]) .q-context-sub-menu__container:not(#liuli-none),
+[data-liuli-surface].bar-more-menu-inner:not(#liuli-none) {
+  isolation: isolate !important;
+  border-radius: 12px;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 [data-liuli-surface="context"]::before {
   content: "";
   position: absolute;

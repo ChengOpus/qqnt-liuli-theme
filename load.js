@@ -86,6 +86,12 @@ function createMethods(state) {
       globalThis.__snowloraLiuliFlashGuard.enabled = enabled === true;
       return globalThis.__snowloraLiuliFlashGuard.enabled;
     },
+    // 「链接直接打开」：主窗口启动和切换开关时调用，见 installLinkGuard。
+    linkGuard(enabled) {
+      installLinkGuard();
+      globalThis.__snowloraLiuliLinkGuard.enabled = enabled === true;
+      return globalThis.__snowloraLiuliLinkGuard.enabled;
+    },
     // The main window's current look, used to pre-style viewers (below).
     viewerPreset(preset) {
       if (!preset || typeof preset.css !== 'string' || preset.css.length > 3 * 1024 * 1024) return false;
@@ -176,6 +182,73 @@ function installFlashGuard() {
       } catch {}
     }, 500);
   };
+}
+
+// Links. QQ sends a web link to the system browser wrapped in its own safety
+// page (c.pc.qq.com/middlem.html?pfurl=<link>&pfuin=<your QQ number>&…,
+// pc.html?url=…, ios.html?url=…), where the link has to be copied out by
+// hand (user request, 2026-11-15). With the guard on, such a wrapper is
+// unwrapped and the link itself opened. Only http(s) links come out of it;
+// anything else, or a wrapper that cannot be read, is opened as QQ asked.
+// The log keeps host names only (the wrapper carries the QQ number).
+const QQ_WRAP_HOST = /(^|\.)(c\.pc\.qq\.com|c\.mp\.qq\.com|urlsec\.qq\.com)$/i;
+const QQ_WRAP_KEYS = ['pfurl', 'url', 'u', 'target', 'targeturl'];
+function unwrapQQLink(value) {
+  let current = String(value || '');
+  for (let round = 0; round < 3; round++) {
+    let url;
+    try {
+      url = new URL(current);
+    } catch {
+      return null;
+    }
+    if (!QQ_WRAP_HOST.test(url.hostname)) return round ? current : null;
+    let inner = null;
+    for (const key of QQ_WRAP_KEYS) {
+      const raw = url.searchParams.get(key);
+      if (!raw) continue;
+      let candidate = raw.trim();
+      if (!/^[a-z][a-z0-9+.-]*:/i.test(candidate) && /^[\w-]+(\.[\w-]+)+([/?#:]|$)/.test(candidate)) candidate = 'http://' + candidate;
+      try {
+        const parsed = new URL(candidate);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          inner = parsed.href;
+          break;
+        }
+      } catch {}
+    }
+    if (!inner) return null;
+    current = inner;
+  }
+  return current;
+}
+function hostOf(value) {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return '';
+  }
+}
+function installLinkGuard() {
+  if (globalThis.__snowloraLiuliLinkGuard) return;
+  const guard = (globalThis.__snowloraLiuliLinkGuard = { enabled: true, original: shell.openExternal, unwrap: unwrapQQLink });
+  if (typeof guard.original !== 'function') return;
+  const original = guard.original;
+  const patched = function (target, ...rest) {
+    if (guard.enabled) {
+      const inner = unwrapQQLink(target);
+      if (inner) {
+        diagnostics?.log({ event: 'link-open', via: hostOf(target), host: hostOf(inner) });
+        return original.call(this, inner, ...rest);
+      }
+    }
+    return original.call(this, target, ...rest);
+  };
+  try {
+    shell.openExternal = patched;
+  } catch {}
+  guard.installed = shell.openExternal === patched;
+  diagnostics?.log({ event: 'link-guard', installed: guard.installed });
 }
 
 // QQ's picture/video viewer is a pooled blank window routed in place, then

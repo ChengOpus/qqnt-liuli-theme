@@ -660,6 +660,49 @@ async function run() {
       );
       expect("jump-bottom.returns-to-newest", jumpTest.after.fromEnd <= 2 && !jumpTest.after.shown && jumpTest.after.focusKept, jumpTest);
       expect("jump-bottom.setting-off", !jumpTest.off && jumpTest.hiddenAgain, jumpTest);
+      // ── Links in messages open straight away (not through QQ's safety page);
+      // QQ's own handler does not run, plain text and the composer are left alone ──
+      const linkTest = await page.evaluate(async () => {
+        const list = __qa.q(".ml-list");
+        const item = document.createElement("div");
+        item.className = "ml-item";
+        item.innerHTML =
+          '<div class="message"><div class="message-container message-container--others"><div class="avatar-span"></div><div class="message-content__wrapper"><div class="msg-content-container container--others"><div class="message-content">' +
+          '<span class="text-element"><span class="text-normal">see </span><span class="text-link" id="qa-l1">docs.qq.com/sheet/EXAMPLE?tab=AB12</span> ' +
+          '<a class="text-link" id="qa-l2" href="javascript:void(0)">https://example.org/path#x</a> <span class="text-link" id="qa-l3">点这里</span></span></div></div></div></div></div>';
+        list.prepend(item);
+        let qq = 0;
+        for (const id of ["qa-l1", "qa-l2", "qa-l3"]) document.getElementById(id).addEventListener("click", () => qq++);
+        await __qa.frames(2);
+        const before = LiuliLinks.debug().opened;
+        const press = (el) => {
+          const r = el.getBoundingClientRect();
+          const at = { bubbles: true, cancelable: true, button: 0, clientX: r.left + 4, clientY: r.top + 4 };
+          for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup"]) el.dispatchEvent(new (type[0] === "p" ? PointerEvent : MouseEvent)(type, at));
+          el.dispatchEvent(new MouseEvent("click", at));
+        };
+        press(document.getElementById("qa-l1"));
+        const first = { opened: LiuliLinks.debug().opened - before, last: LiuliLinks.debug().last, qq };
+        press(document.getElementById("qa-l2"));
+        const second = { opened: LiuliLinks.debug().opened - before, last: LiuliLinks.debug().last, qq };
+        press(document.getElementById("qa-l3"));
+        const third = { opened: LiuliLinks.debug().opened - before, qq };
+        LiuliLinks.configure({ enabled: false });
+        press(document.getElementById("qa-l1"));
+        const off = { opened: LiuliLinks.debug().opened - before, qq };
+        LiuliLinks.configure({ enabled: true });
+        item.remove();
+        const addr = ["docs.qq.com/x", "https://a.example/b", "javascript:alert(1)", "点这里", "file:///c:/x", "a b.com"].map((t) => LiuliLinks.webAddress(t));
+        return { first, second, third, off, addr };
+      });
+      expect(
+        "links.open-directly",
+        linkTest.first.opened === 1 && linkTest.first.last === "docs.qq.com" && linkTest.first.qq === 0 &&
+          linkTest.second.opened === 2 && linkTest.second.last === "example.org" && linkTest.second.qq === 0 &&
+          linkTest.third.opened === 2 && linkTest.third.qq === 1 && linkTest.off.opened === 2 && linkTest.off.qq === 2 &&
+          linkTest.addr[0] === "http://docs.qq.com/x" && linkTest.addr[1] === "https://a.example/b" && linkTest.addr.slice(2).every((x) => x === ""),
+        linkTest,
+      );
 
       // ── 2. Composer: floats, and stays floating ──
       const floatState = () =>
@@ -1303,7 +1346,22 @@ async function run() {
           noticeBg: css(notice.querySelector(".mannounce-card")).backgroundImage,
           noticeBody: notice.querySelector('[data-role="nbody"]').dataset.liuliInk,
           noticeBodyColor: css(notice.querySelector('[data-role="nbody"]')).color,
+          probe: LiuliCards.notices(),
         };
+        // a card first seen before it has a size (the virtual list measures
+        // rows hidden) is classified once it has one
+        const late = row(
+          "self",
+          '<div class="ark-view-message"><div class="ark-item-container"><div class="late-card" style="background:#fff;border-radius:12px;padding:14px;width:300px"><div style="color:#000">Late card body text</div></div></div></div>',
+          "ark-msg-content-container",
+        );
+        late.style.display = "none";
+        LiuliCards.adapt(late);
+        const lateHidden = late.querySelector(".late-card").hasAttribute("data-liuli-card-sheet");
+        late.style.display = "";
+        LiuliCards.adapt(late);
+        result.late = { hidden: lateHidden, shown: late.querySelector(".late-card").getAttribute("data-liuli-card-sheet") };
+        late.remove();
         await __qa.frames(1);
         window.__cardRows = [mail, file, text, notice];
         return result;
@@ -1325,6 +1383,12 @@ async function run() {
       expect("file.own-row-aligned-with-text-rows", cards.fileGap === cards.textGap, cards);
       expect("card.plain-text-untouched", cards.plainTouched === 0, cards);
       expect("card.group-announcement-is-glass", cards.noticeSheet === "light" && cards.noticeBg === "none" && cards.noticeBody === "1", cards);
+      expect("card.classified-once-laid-out", cards.late.hidden === false && cards.late.shown === "light", cards.late);
+      expect(
+        "diag.notice-probe-structure-only",
+        Array.isArray(cards.probe) && cards.probe.length >= 1 && cards.probe[0].tree.length >= 3 && !/Printer|example\.invalid|群公告/.test(JSON.stringify(cards.probe)),
+        cards.probe,
+      );
 
       // ── New messages: Telegram-style arrival, nothing else animates ──
       const arrival = await page.evaluate(async () => {
@@ -1559,6 +1623,44 @@ async function run() {
         return { passing, releasedAfterSend, stuckHidden, stuckShown, placement, afterHover, afterClick, afterSticker, afterPress, afterHelpers, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
       });
       checks.stickers = stickers;
+      // After a sticker is sent the panel stays while the pointer is over it
+      // and closes when the pointer leaves. QQ hides .sticker-panel with an
+      // inline display:none on the press (v-show; the panel stays mounted).
+      const stickerHold = await page.evaluate(async () => {
+        const panel = document.createElement("div");
+        panel.className = "expression-panel";
+        panel.style.cssText = "position:fixed;left:320px;bottom:120px;width:420px";
+        let grid = "";
+        for (let i = 0; i < 6; i++) grid += '<div class="stickers-item"><img style="width:80px;height:80px;display:block"></div>';
+        panel.innerHTML =
+          '<div class="sticker-panel-ref expression-panel-inner"><div class="sticker-panel" style="display:flex;flex-direction:column;height:300px">' +
+          '<div class="q-scroll-view stickers" style="height:220px;overflow:hidden;display:flex;flex-wrap:wrap">' + grid + "</div>" +
+          '<div><div class="tabs sticker-panel__bar"><div class="tabs-container" style="display:flex">' +
+          [0, 1, 2, 3, 4].map((i) => '<div class="tabs-container-item' + (i === 2 ? " tabs-container-item-active" : "") + '" style="width:40px;height:36px"></div>').join("") +
+          "</div></div></div></div></div>";
+        document.body.append(panel);
+        const sheet = panel.querySelector(".sticker-panel");
+        const tile = panel.querySelector(".stickers-item img");
+        tile.addEventListener("pointerdown", () => (sheet.style.display = "none"));
+        await __qa.frames(2);
+        const r = tile.getBoundingClientRect();
+        const box = panel.querySelector(".expression-panel-inner").getBoundingClientRect();
+        const editor = __qa.q(".ProseMirror");
+        editor.innerHTML = "<p>draft</p>"; // held open even with a draft (not sent then)
+        tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r.left + 10, clientY: r.top + 10 }));
+        await __qa.frames(2);
+        const shownAfterPress = getComputedStyle(sheet).display !== "none" && panel.querySelector(".expression-panel-inner").getBoundingClientRect().height > 100;
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left + 50, clientY: box.top + 50 }));
+        await __qa.frames(1);
+        const shownInside = getComputedStyle(sheet).display !== "none";
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
+        await __qa.frames(1);
+        const closedOutside = getComputedStyle(sheet).display === "none";
+        panel.remove();
+        editor.innerHTML = "<p><br></p>";
+        return { shownAfterPress, shownInside, closedOutside, debug: LiuliChatExtras.debug() };
+      });
+      expect("sticker.panel-stays-while-pointer-over-it", stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.closedOutside && !stickerHold.debug.holding, stickerHold);
 
       // ── A click in the text places the caret ──
       // QQ's send row is natively a full-width bar; emulate that, then click
@@ -1623,7 +1725,7 @@ async function run() {
               column: pins.length >= 1 && pins.every((r) => Math.abs(r.left - plus.left) <= 1),
               ordered: [plus, ...pins].map((r) => Math.round(r.top)).sort((x, y) => x - y).every((t, i, a) => !i || t - a[i - 1] >= 30),
               inside: pins.every((r) => r.top >= box.top),
-              pad: getComputedStyle(input.querySelector(".msg-input")).paddingLeft,
+              insets: [Math.round(ed.getBoundingClientRect().left + parseFloat(getComputedStyle(ed).paddingLeft) - box.left), Math.round(box.right - ed.getBoundingClientRect().right + parseFloat(getComputedStyle(ed).paddingRight))],
             };
           })(),
         };
@@ -1641,8 +1743,21 @@ async function run() {
             const r = n.getBoundingClientRect();
             return [Math.round((r.left - plus.left) / 32), Math.round((plus.top - r.top) / 32)];
           });
-          return { rows: input.getAttribute("data-liuli-bar-rows") || "1", pins: JSON.stringify(pins), pad: getComputedStyle(input.querySelector(".msg-input")).paddingLeft, inside: [...input.querySelectorAll(".bar-icon.liuli-pinned")].every((n) => n.getBoundingClientRect().top >= input.getBoundingClientRect().top - 0.5) };
+          const box = input.getBoundingClientRect();
+          const ed = input.querySelector(".ProseMirror");
+          const er = ed.getBoundingClientRect(), ecs = getComputedStyle(ed);
+          const icons = [document.getElementById("liuli-func-toggle"), ...input.querySelectorAll(".bar-icon.liuli-pinned")].map((n) => n.getBoundingClientRect().right);
+          return {
+            rows: input.getAttribute("data-liuli-bar-rows") || "1",
+            pins: JSON.stringify(pins),
+            left: Math.round(er.left + parseFloat(ecs.paddingLeft) - box.left),
+            right: Math.round(box.right - (er.right - parseFloat(ecs.paddingRight))),
+            gap: Math.round(er.left + parseFloat(ecs.paddingLeft) - Math.max(...icons)),
+            inside: [...input.querySelectorAll(".bar-icon.liuli-pinned")].every((n) => n.getBoundingClientRect().top >= input.getBoundingClientRect().top - 0.5),
+          };
         });
+      // QQ's editor brings a left padding of its own
+      await page.evaluate(() => (__qa.q(".chat-input-area .ProseMirror").style.paddingLeft = "20px"));
       await editorBox.click();
       await page.keyboard.type("one");
       await page.waitForTimeout(400);
@@ -1661,6 +1776,7 @@ async function run() {
       await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
       await page.waitForTimeout(400);
       const f0 = await fold();
+      await page.evaluate(() => (__qa.q(".chat-input-area .ProseMirror").style.paddingLeft = ""));
       const folds = { f1, f2, f3, f2b, f0 };
       // ── The screenshot icon's menu is real glass: QQ's pressed/open state
       // dims the icon and the menu shell; the menu still blurs what is
@@ -1668,7 +1784,12 @@ async function run() {
       const shotMenu = await page.evaluate(async () => {
         const icon = __qa.q('.chat-input-area .bar-icon.liuli-pinned .icon-item[aria-label="截图"]').closest(".bar-icon");
         const style = document.createElement("style");
-        style.textContent = ".qa-shot-open{opacity:.92;filter:brightness(.98)} .qa-shot-open .bar-more-menu{opacity:.99}";
+        // and QQ's colourful theme paints the menu with its own ::before
+        // (user diagnostics: rgba(227,200,201,.9), blur(8px)), important
+        style.textContent =
+          ".qa-shot-open{opacity:.92;filter:brightness(.98)} .qa-shot-open .bar-more-menu{opacity:.99}" +
+          ".chat-func-bar .bar-icon .bar-more-menu .bar-more-menu-inner.q-context-menu::before{content:'';position:absolute;inset:0;background:linear-gradient(rgba(227,200,201,.9),rgba(227,200,201,.9)) !important;background-color:rgba(227,200,201,.9) !important;backdrop-filter:blur(8px) !important}" +
+          ".chat-func-bar .bar-icon .bar-more-menu .bar-more-menu-inner.q-context-menu::after{content:'';position:absolute;inset:0;background:rgba(227,200,201,.5) !important}";
         document.head.append(style);
         icon.classList.add("qa-shot-open", "active");
         const shell = document.createElement("div");
@@ -1691,6 +1812,8 @@ async function run() {
           surface: inner.dataset.liuliSurface || "",
           glass: getComputedStyle(inner, "::before").backdropFilter,
           tint: getComputedStyle(inner.querySelector(".menu-tint")).backgroundColor,
+          beforeBg: getComputedStyle(inner, "::before").backgroundColor,
+          afterBg: getComputedStyle(inner, "::after").backgroundColor,
           chain,
           sample: { x: Math.round(r.left + 100), y: Math.round(r.top + 90) },
         };
@@ -1708,20 +1831,21 @@ async function run() {
       }, shotPng.toString("base64"));
       await page.evaluate(() => {
         document.querySelector(".qa-shot-open .bar-more-menu")?.remove();
+        [...document.head.querySelectorAll("style")].filter((n) => n.textContent.includes("qa-shot-open")).forEach((n) => n.remove());
         document.querySelector(".qa-shot-open")?.classList.remove("qa-shot-open", "active");
         [...document.querySelectorAll(".chat-msg-area > div")].filter((n) => n.style.background === "rgb(0, 0, 255)").forEach((n) => n.remove());
       });
       expect(
         "screenshot-menu.is-glass",
-        shotMenu.surface === "context" && shotMenu.glass !== "none" && shotMenu.tint === "rgba(0, 0, 0, 0)" && !shotMenu.chain.length && shotMenu.pixel[2] - shotMenu.pixel[0] > 30,
+        shotMenu.surface === "context" && /saturate/.test(shotMenu.glass) && shotMenu.beforeBg !== "rgba(227, 200, 201, 0.9)" && shotMenu.afterBg === "rgba(0, 0, 0, 0)" && shotMenu.tint === "rgba(0, 0, 0, 0)" && !shotMenu.chain.length && shotMenu.pixel[2] - shotMenu.pixel[0] > 30,
         shotMenu,
       );
-      expect("composer.long-draft-buttons-stack", tall.stack.on && tall.stack.column && tall.stack.ordered && tall.stack.inside && tall.stack.pad === "44px" && unstacked, { stack: tall.stack, unstacked });
+      expect("composer.long-draft-buttons-stack", tall.stack.on && tall.stack.column && Math.abs(tall.stack.insets[0] - tall.stack.insets[1]) <= 1 && tall.stack.ordered && tall.stack.inside && unstacked, { stack: tall.stack, unstacked });
       expect(
         "composer.buttons-fold-row-triangle-column",
-        f1.rows === "1" && f1.pins === "[[1,0],[2,0]]" && f1.pad === "108px" &&
-          f2.rows === "2" && f2.pins === "[[1,0],[0,1]]" && f2.pad === "76px" && f2.inside &&
-          f3.rows === "3" && f3.pins === "[[0,2],[0,1]]" && f3.pad === "44px" && f3.inside &&
+        f1.rows === "1" && f1.pins === "[[1,0],[2,0]]" && Math.abs(f1.gap - 12) <= 1 &&
+          f2.rows === "2" && f2.pins === "[[1,0],[0,1]]" && Math.abs(f2.gap - 12) <= 1 && f2.inside &&
+          f3.rows === "3" && f3.pins === "[[0,2],[0,1]]" && Math.abs(f3.left - f3.right) <= 1 && f3.gap >= 8 && f3.inside &&
           f2b.rows === "2" && f0.rows === "1" && f0.pins === "[[1,0],[2,0]]",
         folds,
       );

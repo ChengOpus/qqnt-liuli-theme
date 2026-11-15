@@ -57,9 +57,11 @@
   }
   function classify(wrapper) {
     const nodes = [wrapper, ...wrapper.querySelectorAll("*")];
-    if (nodes.length > 600) return;
+    if (nodes.length > 600) return true;
     const box = wrapper.getBoundingClientRect();
-    if (box.width < 40 || box.height < 20) return;
+    // not laid out yet (a row the virtual list is still measuring): try
+    // again on a later pass instead of remembering it as done
+    if (box.width < 40 || box.height < 20) return false;
     // Read everything first, write afterwards: one style/layout pass per card.
     const facts = [],
       byNode = new Map();
@@ -68,6 +70,16 @@
       const css = getComputedStyle(node);
       let bg = css.backgroundImage === "none" ? parse(css.backgroundColor) : null;
       let gradient = false;
+      // a white sheet with a decorative picture on it is still a sheet; the
+      // picture stays (data-liuli-card-keep-image)
+      let keepImage = false;
+      if (!bg && /url\(/.test(css.backgroundImage)) {
+        const c = parse(css.backgroundColor);
+        if (c && c.a >= 0.6) {
+          bg = c;
+          keepImage = true;
+        }
+      }
       // a plain white/black gradient sheet counts as a fill of that colour
       if (!bg && /^linear-gradient/.test(css.backgroundImage) && !/url\(/.test(css.backgroundImage)) {
         const stops = (css.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(parse).filter(Boolean);
@@ -77,7 +89,7 @@
         }
       }
       const rect = bg && bg.a >= 0.6 && neutral(bg) ? node.getBoundingClientRect() : null;
-      const fact = { node, css, bg: gradient ? null : bg, sheetBg: bg, rect, color: css.color };
+      const fact = { node, css, bg: gradient || keepImage ? null : bg, sheetBg: bg, keepImage, rect, color: css.color };
       facts.push(fact);
       byNode.set(node, fact);
     }
@@ -106,9 +118,11 @@
       )
         sheets.set(f.node, l);
     }
-    if (!sheets.size && !rules.length) return;
-    for (const [node, l] of sheets)
+    if (!sheets.size && !rules.length) return true;
+    for (const [node, l] of sheets) {
       set(node, "data-liuli-card-sheet", l < 0.5 ? "dark" : "light");
+      if (byNode.get(node)?.keepImage) set(node, "data-liuli-card-keep-image", "");
+    }
     // Tell the framing bubble directly; a :has() rule for this would be
     // re-evaluated for every bubble on every message change.
     if (sheets.size) {
@@ -153,7 +167,9 @@
       const contrast = Math.abs(light(ink) - sheets.get(sheet)) * (ink.a || 1);
       set(f.node, "data-liuli-ink", contrast > 0.72 ? "1" : contrast > 0.3 ? "2" : "3");
     }
+    return true;
   }
+
   function adapt(root) {
     if (!root || document.body.hasAttribute("data-liuli-av")) return;
     for (const wrapper of D.within(root, ".message-content__wrapper")) {
@@ -162,10 +178,11 @@
       if (wrapper.querySelector(SKIP) || !D.safe(wrapper) || mediaMessage(wrapper)) continue;
       const size = wrapper.getElementsByTagName("*").length;
       if (done.get(wrapper) === size) continue;
-      done.set(wrapper, size);
       try {
-        classify(wrapper);
-      } catch (e) {}
+        if (classify(wrapper) !== false) done.set(wrapper, size);
+      } catch (e) {
+        done.set(wrapper, size);
+      }
     }
   }
   // For diagnostics: visible messages that still paint a large white or black
@@ -210,5 +227,51 @@
     }
     return out;
   }
-  window.LiuliCards = Object.freeze({ adapt, misses });
+  // For diagnostics: messages titled 群公告 (group announcements), found by
+  // that fixed title only; recorded as structure — tags, classes, sizes,
+  // fills, pseudo-element fills, marks — never text. Rows the list keeps off
+  // screen count too.
+  function notices() {
+    const out = [];
+    const titled = [];
+    for (const node of document.querySelectorAll(".ml-item span, .ml-item div, .ml-item p")) {
+      if (titled.length >= 3) break;
+      if (node.children.length === 0 && node.textContent.trim() === "群公告") titled.push(node);
+    }
+    for (const title of titled) {
+      const item = title.closest(".ml-item");
+      const root = title.closest(".message-content__wrapper") || item;
+      const describe = (n) => {
+        const r = n.getBoundingClientRect();
+        const cs = getComputedStyle(n);
+        const pseudo = (which) => {
+          const p = getComputedStyle(n, which);
+          if (p.content === "none" || p.content === "normal") return "";
+          return which + ":" + p.backgroundColor + (p.backgroundImage !== "none" ? "+img" : "") + (p.boxShadow !== "none" ? "+shadow" : "");
+        };
+        const marks = [...n.attributes].filter((a) => a.name.startsWith("data-liuli")).map((a) => a.name.slice(11));
+        return (
+          n.tagName.toLowerCase() + "." + String(n.className && n.className.baseVal !== undefined ? n.className.baseVal : n.className || "").replace(/\d{5,}/g, "#").slice(0, 70) +
+          " [" + Math.round(r.width) + "x" + Math.round(r.height) + "] " + cs.backgroundColor +
+          (cs.backgroundImage !== "none" ? (/url\(/.test(cs.backgroundImage) ? " +url" : " +gradient") : "") +
+          (cs.boxShadow !== "none" ? " +shadow" : "") +
+          (cs.opacity !== "1" ? " op" + cs.opacity : "") +
+          " " + pseudo("::before") + " " + pseudo("::after") +
+          (marks.length ? " {" + marks.join(",") + "}" : "")
+        );
+      };
+      const tree = [];
+      const walk = (n, depth) => {
+        if (depth > 9 || tree.length > 60) return;
+        tree.push("  ".repeat(depth) + describe(n));
+        for (const c of n.children) walk(c, depth + 1);
+      };
+      walk(root, 0);
+      const up = [];
+      for (let n = root.parentElement; n && n !== item?.parentElement && up.length < 8; n = n.parentElement) up.push(describe(n));
+      out.push({ inWrapper: !!title.closest(".message-content__wrapper"), hinted: !!root.querySelector(CARD_HINT), skipped: !!root.querySelector(SKIP), tree, up });
+    }
+    return out;
+  }
+  window.LiuliCards = Object.freeze({ adapt, misses, notices });
 })();

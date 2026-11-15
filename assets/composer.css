@@ -810,14 +810,16 @@ body .chat-input-area > .chat-func-bar.liuli-expanded .bar-icon.liuli-pinned {
   left: calc(6px + var(--liuli-pin-col, calc(var(--liuli-pin-i, 0) + 1)) * 32px) !important;
   top: calc(100% + var(--ll-composer-h, 44px) - 28px - var(--liuli-pin-row, 0) * 32px) !important;
 }
-body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned {
+/* only while the fold changes (composer.js marks it for the duration), not
+ * when "+" opens or closes its grid */
+body .chat-input-area[data-liuli-bar-moving] > .chat-func-bar:not(.liuli-expanded) .bar-icon.liuli-pinned {
   transition:
     left 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
     bottom 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
     background-color 120ms ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned {
+  body .chat-input-area[data-liuli-bar-moving] > .chat-func-bar:not(.liuli-expanded) .bar-icon.liuli-pinned {
     transition: none;
   }
 }
@@ -838,4 +840,11 @@ body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:is(:hover, :active
   mask: none !important;
   clip-path: none !important;
   will-change: auto !important;
+}
+
+/* The sticker panel held open after a send while the pointer is over it
+ * (chat-extras.js): QQ has hidden it (display none, inline); shown with the
+ * display it had until the pointer leaves. */
+.sticker-panel[data-liuli-keep-open] {
+  display: var(--ll-keep-display, block) !important;
 }

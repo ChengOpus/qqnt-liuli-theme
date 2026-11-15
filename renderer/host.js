@@ -24,6 +24,7 @@
     openExternal: url => request('openExternal', url),
     updateGuard: enabled => request('updateGuard', enabled),
     flashGuard: enabled => request('flashGuard', enabled),
+    linkGuard: enabled => request('linkGuard', enabled),
     viewerPreset: preset => request('viewerPreset', preset),
     diagExport: payload => request('diagExport', payload),
     diagOpenPath: path => request('diagOpenPath', path),

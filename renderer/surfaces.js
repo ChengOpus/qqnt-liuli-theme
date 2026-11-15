@@ -83,6 +83,9 @@
       if (c.filter !== "none") out.filter = c.filter.slice(0, 60);
       if (b.content !== "none" && (b.backgroundColor !== "rgba(0, 0, 0, 0)" || b.backgroundImage !== "none"))
         out.before = { bg: b.backgroundColor, bgImage: b.backgroundImage === "none" ? "none" : b.backgroundImage.includes("url(") ? "url" : "gradient", backdrop: b.backdropFilter };
+      const af = getComputedStyle(el, "::after");
+      if (af.content !== "none" && af.content !== "normal" && (af.backgroundColor !== "rgba(0, 0, 0, 0)" || af.backgroundImage !== "none" || af.backdropFilter !== "none"))
+        out.after = { bg: af.backgroundColor, bgImage: af.backgroundImage === "none" ? "none" : af.backgroundImage.includes("url(") ? "url" : "gradient", backdrop: af.backdropFilter };
       for (const a of el.attributes) if (a.name.startsWith("data-liuli")) (out.liuli ||= []).push(a.name.slice(11));
       if (depth > 0 && r.width >= 24 && r.height >= 16) {
         const kids = [...el.children].slice(0, 14).map((k) => shot(k, depth - 1));

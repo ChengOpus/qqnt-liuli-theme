@@ -63,7 +63,7 @@ const all = [main, existingView],
     app,
     BrowserWindow: BrowserWindowDouble,
     webContents: { getAllWebContents: () => all },
-    shell: {},
+    shell: { opened: [], openExternal(url) { this.opened.push(url); return Promise.resolve(); } },
     screen: {},
   };
 const req = (name) => {
@@ -216,10 +216,47 @@ const flush = () => new Promise((r) => setImmediate(r));
   unreadGrew = false;
   win.flashFrame(true);
   assert.deepEqual(win.flashes, [true, true, false, true], "guard off: QQ's behaviour");
+  // Links: QQ's safety page is unwrapped, everything else opens as asked.
+  main.emit("console-message", {
+    message: "[theme-host:anonymous-test]" + JSON.stringify({ id: 0, method: "linkGuard", argument: true }),
+    frame: main.mainFrame,
+  });
+  await flush();
+  const shell = electron.shell;
+  const target = "https://docs.qq.com/sheet/EXAMPLE?tab=AB12";
+  await shell.openExternal(
+    "https://c.pc.qq.com/middlem.html?pfurl=" + encodeURIComponent(target) + "&pfuin=10001&pfto=qq.msg&type=0&gjlevel=15&ADUIN=10001&ADSESSION=1&ADTAG=CLIENT.QQ",
+  );
+  await shell.openExternal("https://c.pc.qq.com/pc.html?url=" + encodeURIComponent("example.org/a?b=1") + "&level=14");
+  await shell.openExternal("https://c.pc.qq.com/ios.html?url=" + encodeURIComponent("javascript:alert(1)"));
+  await shell.openExternal("https://c.pc.qq.com/middlem.html?pfurl=" + encodeURIComponent("https://c.pc.qq.com/pc.html?url=" + encodeURIComponent(target)));
+  await shell.openExternal("https://example.net/x?pfurl=https%3A%2F%2Fevil.example");
+  await shell.openExternal("mailto:someone@example.invalid");
+  assert.deepEqual(
+    shell.opened,
+    [
+      target,
+      "http://example.org/a?b=1",
+      "https://c.pc.qq.com/ios.html?url=" + encodeURIComponent("javascript:alert(1)"),
+      target,
+      "https://example.net/x?pfurl=https%3A%2F%2Fevil.example",
+      "mailto:someone@example.invalid",
+    ],
+    "QQ's safety page unwrapped to http(s) links only",
+  );
+  main.emit("console-message", {
+    message: "[theme-host:anonymous-test]" + JSON.stringify({ id: 0, method: "linkGuard", argument: false }),
+    frame: main.mainFrame,
+  });
+  await flush();
+  shell.opened.length = 0;
+  const wrapped = "https://c.pc.qq.com/middlem.html?pfurl=" + encodeURIComponent(target);
+  await shell.openExternal(wrapped);
+  assert.deepEqual(shell.opened, [wrapped], "guard off: QQ's behaviour");
   assert.equal(main.listenerCount("did-finish-load"), 1);
   assert.equal(pool.listenerCount("did-finish-load"), 1);
   console.log(
-    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and pre-styled, deferred media viewers and the taskbar flash guard passed",
+    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and pre-styled, deferred media viewers, the taskbar flash guard and the link guard passed",
   );
 })().catch((e) => {
   console.error(e);

@@ -128,3 +128,10 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 - **表情包直接发送时不在输入框里露面**：落进输入框前给输入框打 `data-liuli-sticker-sending`，编辑区锁住当前高度、里面的图片不绘制；发出（编辑区清空）后的下一帧撤掉。若没发出去，最迟 2.6 秒撤掉，图片照常显示，不会留下一张看不见的草稿。
 - **输入框里弹出的菜单**（截图 ⌄）：菜单到输入框之间的每一层强制 `opacity:1; filter:none` 等，任何一层带这些属性都会让菜单的背景模糊只模糊它自己。菜单里铺满整个菜单、自带底色（任何颜色）的包装层清掉底色（`menuLayers()`）。
 - **卡片消息**：卡片里的小画布不再让整条消息被跳过（只有铺满一半以上的媒体才算图片消息）；纯白/纯黑的渐变底也算底板；底板透明度门槛 0.6。诊断 `cardMisses` 记录屏幕上仍有大块白底没被接管的消息结构（不含文字）。
+
+## 菜单、链接、表情包面板（.30）
+
+- **QQ 菜单的玻璃**：QQ 多彩主题给菜单的 `::before` 加了自己的底色和模糊，而且优先级比主题高。主题对所有 `.q-context-menu`、子菜单和 `⌄` 菜单内层用 `:not(#liuli-none)` 加 `!important` 强制自己的玻璃，菜单本身和 `::after` 不铺底色（`overlays.css`）。只改这几个元素的底色和模糊，不改位置。
+- **链接**：`renderer/links.js` 拦截消息里链接的左键按下到点击（QQ 自己的处理不再执行），从 href / data-href / data-url / title / 文字本身取 http(s) 地址，经宿主的 `openExternal` 打开；取不到就交给 QQ。卡片消息（ark）仍由 `ark-external.js` 处理。主进程 `installLinkGuard` 包装 `shell.openExternal`：`c.pc.qq.com`、`c.mp.qq.com`、`urlsec.qq.com` 的中转页从 `pfurl/url/u/target/targeturl` 参数取出 http(s) 地址（最多拆三层）再打开，其他一律原样。设置项 `directLinks`。
+- **表情包面板保持打开**：QQ 关面板是给 `.sticker-panel` 写行内 `display:none`。按下表情包时记下面板原来的 display，在 `data-liuli-keep-open` 期间用 `!important` 保持；指针移出面板（6px 余量）、Esc、窗口失焦、点面板外都会撤掉标记。撤掉之后面板回到 QQ 认为的关闭状态，不需要再调用 QQ。
+- **卡片判断的重试**：`cards.js` 的 `classify` 遇到还没有尺寸的消息返回 `false`，这时不记入已处理，下一轮再判断。
