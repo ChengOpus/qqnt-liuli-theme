@@ -407,6 +407,7 @@
     hideEmptyLogo: true,
     hideFileTip: true,
     stickerSend: true,
+    jumpBottom: true,
     blockUpdate: true,
     quietFlash: true,
     pinControls: true,
@@ -543,6 +544,7 @@
       hideFileTip: llModeCfg.hideFileTip !== false,
       stickerSend: llModeCfg.stickerSend !== false
     });
+    window.LiuliJumpBottom?.configure({ enabled: llModeCfg.jumpBottom !== false });
     b.toggleAttribute('data-liuli-hide-empty-logo', llModeCfg.hideEmptyLogo !== false);
     b.dataset.liuliChatStyle = llModeCfg.chatStyle;
     b.dataset.liuliAvatarPosition = llModeCfg.avatarPosition;
@@ -3277,6 +3279,7 @@
     settingSwitch('隐藏纯图片消息的昵称', 'hideImageNames', settings.hideImageNames === true);
     settingSwitch('隐藏顶部的文件接收提示条', 'hideFileTip', settings.hideFileTip !== false);
     settingSwitch('点表情包直接发送', 'stickerSend', settings.stickerSend !== false);
+    settingSwitch('往上翻看时显示「回到最新消息」按钮', 'jumpBottom', settings.jumpBottom !== false);
     settingSwitch('右上角窗口按钮常驻', 'pinControls', settings.pinControls !== false);
     settingSwitch('标题栏操作区自动隐藏（鼠标移到顶部时出现）', 'autoHideActions', settings.autoHideActions !== false);
     settingSwitch('语音、视频、屏幕共享收进群应用菜单', 'moveCalls', settings.moveCalls !== false);

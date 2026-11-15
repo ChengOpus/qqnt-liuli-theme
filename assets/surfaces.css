@@ -270,3 +270,36 @@ body[data-liuli-scope="main"] [data-liuli-page-pane] :is(.q-scroll-view, .panel-
   border-radius: 12px !important;
   box-shadow: none !important;
 }
+
+/* A page that is a <webview> (Channels): the glass panel behind it, with the
+ * usual 8px from the navigation card; the embedded page is made transparent
+ * from inside (surfaces.js). The <webview> itself only gets its gap and
+ * rounded corners. */
+body[data-liuli-scope="main"] [data-liuli-webview-pane] {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--ll-on-glass);
+}
+body[data-liuli-scope="main"] [data-liuli-webview-pane]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 var(--ll-dock-gap);
+  z-index: -1;
+  pointer-events: none;
+  border-radius: var(--ll-panel-radius);
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  box-shadow: var(--ll-popup-edge), var(--ll-shadow-float), var(--ll-surface-halo);
+}
+body[data-liuli-scope="main"] [data-liuli-webview-pane] > webview {
+  background: transparent !important;
+  margin-left: var(--ll-dock-gap);
+  width: calc(100% - var(--ll-dock-gap)) !important;
+  box-sizing: border-box;
+  border-radius: var(--ll-panel-radius);
+  overflow: hidden;
+}

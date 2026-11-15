@@ -267,14 +267,116 @@
   function syncPins() {
     if (!active || !overlay) return;
     const labels = window.LiuliLayout.applyBar();
+    pinIcons = [];
     labels.forEach((label, i) => {
       const icon = window.LiuliLayout.nativeBarItem(label)?.closest(".bar-icon");
       if (icon && icon.style.getPropertyValue("--liuli-pin-i") !== String(i))
         icon.style.setProperty("--liuli-pin-i", String(i));
+      if (icon) pinIcons.push(icon);
     });
-    const pad = 12 + (labels.length + 1) * 32 + "px";
-    if (active.style.getPropertyValue("--liuli-bar-pad") !== pad)
-      active.style.setProperty("--liuli-bar-pad", pad);
+    place(rows);
+  }
+  // A longer draft folds "+" and the pinned icons out of the text's way
+  // (user, 2026-11-15): one line — a row; two lines — the last icon steps up
+  // above "+" (a triangle); three lines — all of them in a column at the
+  // left edge. Each step moves as few icons as possible, and they glide
+  // there (composer.css). The text gets the freed width back.
+  //
+  // rows = how many 32px rows the icons use. Slot of button j (0 = "+"):
+  // the first C buttons along the bottom row (C = columns needed), the rest
+  // stacked above "+" with the last button lowest, so going from a triangle
+  // to a column only the middle one moves.
+  let pinIcons = [],
+    rows = 1;
+  function slots(n, r) {
+    const cols = Math.ceil(n / r);
+    const out = [];
+    for (let j = 0; j < n; j++) {
+      if (j < cols) out.push([j, 0]);
+      else {
+        const idx = n - 1 - j;
+        out.push([Math.floor(idx / (r - 1)), 1 + (idx % (r - 1))]);
+      }
+    }
+    return { cols, out };
+  }
+  function place(r) {
+    if (!active) return;
+    const n = pinIcons.length + 1;
+    r = Math.max(1, Math.min(r, n));
+    rows = r;
+    const { cols, out } = slots(n, r);
+    pinIcons.forEach((icon, i) => {
+      const [col, row] = out[i + 1];
+      variable(icon, "--liuli-pin-col", String(col));
+      variable(icon, "--liuli-pin-row", String(row));
+    });
+    variable(active, "--liuli-bar-pad", 12 + cols * 32 + "px");
+    if (r > 1) {
+      if (active.getAttribute("data-liuli-bar-rows") !== String(r)) active.setAttribute("data-liuli-bar-rows", String(r));
+      variable(active, "--liuli-stack-h", 12 + r * 32 + "px");
+    } else if (active.hasAttribute("data-liuli-bar-rows")) active.removeAttribute("data-liuli-bar-rows");
+  }
+  // Lines of text in the editor now, and whether every line would still fit
+  // if the text were `less` px narrower (so a step back to a wider icon
+  // layout never re-wraps the text and flips the layout back and forth).
+  // Text lines are counted from the text's own line boxes; empty lines and
+  // pictures add theirs. A long draft is simply "many lines".
+  const ZW = /[\s\u200b-\u200f\u2060\ufeff]/g;
+  function measure(editor, less) {
+    if (editor.textContent.length > 600) return { lines: 99, fits: false };
+    const ed = editor.getBoundingClientRect();
+    const limit = ed.right - (parseFloat(getComputedStyle(editor).paddingRight) || 0);
+    const range = document.createRange();
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    const tops = [];
+    let fits = true,
+      node;
+    while ((node = walker.nextNode())) {
+      if (!node.nodeValue.replace(ZW, "")) continue;
+      range.selectNodeContents(node);
+      for (const r of range.getClientRects()) {
+        if (r.width <= 0) continue;
+        if (!tops.some((t) => Math.abs(t - r.top) < Math.max(4, r.height / 2))) tops.push(r.top);
+        if (r.right + less > limit - 2) fits = false;
+      }
+    }
+    let lines = tops.length;
+    for (const block of editor.querySelectorAll("p, div"))
+      if (!block.querySelector("p, div, img:not(.ProseMirror-separator)") && !block.textContent.replace(ZW, "")) lines++;
+    for (const pic of editor.querySelectorAll("img:not(.ProseMirror-separator)")) {
+      const h = pic.getBoundingClientRect().height;
+      if (h > 30) {
+        lines += Math.round(h / 24);
+        fits = fits && pic.getBoundingClientRect().right + less <= limit - 2;
+      }
+    }
+    return { lines: Math.max(1, lines), fits };
+  }
+  function stackBar() {
+    if (!active || !overlay) return;
+    const n = pinIcons.length + 1;
+    const editor = active.querySelector(".ProseMirror, [contenteditable]");
+    if (n < 2 || !editor) return place(1);
+    // the "+" grid is open over the same corner, or a sticker is passing
+    // through the editor unseen: keep what is there
+    if (active.querySelector(":scope > .chat-func-bar.liuli-expanded") || active.hasAttribute("data-liuli-sticker-sending")) return;
+    const empty =
+      editor.textContent.replace(/[\s\u200b-\u200f\u2060\ufeff]/g, "") === "" &&
+      !editor.querySelector("img:not(.ProseMirror-separator), .image-element, .face-element, .file-element");
+    if (empty) return place(1);
+    let next = rows;
+    const { lines } = measure(editor, 0);
+    if (lines > rows) next = Math.min(n, lines);
+    else if (lines < rows) {
+      // step down only as far as the text keeps its lines in the wider layout
+      for (let r = rows - 1; r >= Math.max(1, lines); r--) {
+        const less = (slots(n, r).cols - slots(n, rows).cols) * 32;
+        if (!measure(editor, less).fits) break;
+        next = r;
+      }
+    }
+    if (next !== rows) place(next);
   }
   function expand(open) {
     const next = bar();
@@ -459,6 +561,7 @@
     const clearance = height >= 1 ? Math.ceil(height) + 28 : previous || 76;
     if (height >= 1) variable(pane, "--ll-composer-clearance", clearance + "px");
     if (height >= 1) variable(active, "--ll-composer-h", Math.ceil(height) + "px");
+    if (height >= 1) stackBar();
     if (scroll) {
       const added = fresh ? clearance : Math.max(0, clearance - (previous || clearance));
       const settling =

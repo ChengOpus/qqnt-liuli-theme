@@ -176,7 +176,7 @@
   // the sticker stayed in the editor). The editor is then watched each frame
   // for the picture rather than for one particular mutation shape.
   let pending = null;
-  const debug = { armed: 0, landed: 0, sent: 0, last: '', skipped: '' };
+  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, last: '', skipped: '' };
   // What counts as a picture in the editor. ProseMirror keeps helper nodes in
   // an otherwise empty paragraph — an <img class="ProseMirror-separator"> and
   // a trailing <br> — and QQ pads with zero-width characters; none of those
@@ -255,19 +255,53 @@
     }, 600);
     debug.sent++;
   }
+  // The sticker only passes through the editor on its way out: while it does,
+  // the composer keeps its height and the picture in the editor is not drawn
+  // (user report, 2026-11-15: it visibly landed in the editor first). If it
+  // does not leave — the send did not take — it is shown again so it is never
+  // invisibly left in a draft.
+  let holdTimer = 0;
+  function hold(input, editor) {
+    clearTimeout(holdTimer);
+    const h = Math.round(editor.getBoundingClientRect().height);
+    input.style.setProperty('--ll-sticker-hold', Math.max(h, 20) + 'px');
+    input.setAttribute('data-liuli-sticker-sending', '');
+    holdTimer = setTimeout(() => release(input), 2600);
+  }
+  function release(input) {
+    clearTimeout(holdTimer);
+    holdTimer = 0;
+    if (!input) return;
+    input.removeAttribute('data-liuli-sticker-sending');
+    input.style.removeProperty('--ll-sticker-hold');
+  }
+  // after the send: release as soon as the editor is empty again
+  function releaseWhenSent(input, editor, until) {
+    if (!editor?.isConnected || mediaCount(editor) === 0 || performance.now() > until) {
+      if (editor?.isConnected && mediaCount(editor) > 0) debug.kept++;
+      // one more frame so the cleared editor is laid out before it shows
+      requestAnimationFrame(() => release(input));
+      return;
+    }
+    requestAnimationFrame(() => releaseWhenSent(input, editor, until));
+  }
   function watch() {
     if (!pending) return;
     const { input, until } = pending;
     const editor = editorOf(input);
     if (!editor || performance.now() > until) {
       pending = null;
+      release(input);
       return;
     }
     if (mediaCount(editor) > pending.before && textOf(editor) === '') {
       pending = null;
       debug.landed++;
       // after ProseMirror has finished its own transaction
-      setTimeout(() => press(input), 30);
+      setTimeout(() => {
+        press(input);
+        releaseWhenSent(input, editor, performance.now() + 1400);
+      }, 30);
       return;
     }
     requestAnimationFrame(watch);
@@ -285,6 +319,7 @@
     debug.armed++;
     debug.skipped = '';
     const fresh = !pending;
+    hold(input, editor);
     pending = { input, before: mediaCount(editor), until: performance.now() + 2000 };
     if (fresh) requestAnimationFrame(watch);
   }

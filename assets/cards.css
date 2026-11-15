@@ -2,6 +2,7 @@
  * paint, not from template class names. See that file for the rules. */
 [data-liuli-card-sheet] {
   background-color: transparent !important;
+  background-image: none !important;
   box-shadow: none !important;
 }
 [data-liuli-ink="1"] {

@@ -19,9 +19,25 @@
   const D = window.LiuliDOM;
   const done = new WeakMap(); // wrapper -> descendant count when classified
   const SKIP =
-    "canvas,video,webview,embed,iframe,.lucky-money,.container--personalization,.pic-element,.video-element,.market-face";
+    ".lucky-money,.container--personalization,.pic-element,.video-element,.market-face";
+  // media inside a card (an icon drawn on a canvas, a preview) does not make
+  // the message a picture; only media covering most of it does
+  const MEDIA = "canvas,video,webview,embed,iframe";
+  // Group announcements (群公告, user screenshot 2026-11-15) and other
+  // templates whose names say notice/announce/ark were not hinted before.
   const CARD_HINT =
-    ".ark-view-message,.ark-msg-content-container,.ark-item-container,.rich-ui-app-wrapper,[data-view-id],.forward-msg,.file-element,.normal-file,[class*='file-message'],[class*='card']";
+    ".ark-view-message,.ark-msg-content-container,.ark-item-container,.rich-ui-app-wrapper,[data-view-id],.forward-msg,.file-element,.normal-file,[class*='file-message'],[class*='card'],[class*='ark-'],[class*='notice'],[class*='announce'],[class*='bulletin']";
+  function mediaMessage(wrapper) {
+    const media = wrapper.querySelectorAll(MEDIA);
+    if (!media.length) return false;
+    const box = wrapper.getBoundingClientRect();
+    const area = Math.max(1, box.width * box.height);
+    for (const m of media) {
+      const r = m.getBoundingClientRect();
+      if (r.width * r.height >= area * 0.5) return true;
+    }
+    return false;
+  }
   function parse(color) {
     const m = /rgba?\(([^)]+)\)/.exec(color || "");
     if (!m) return null;
@@ -50,9 +66,18 @@
     for (const node of nodes) {
       if (node.closest(".liuli-owned-ui")) continue;
       const css = getComputedStyle(node);
-      const bg = css.backgroundImage === "none" ? parse(css.backgroundColor) : null;
-      const rect = bg && bg.a >= 0.9 && neutral(bg) ? node.getBoundingClientRect() : null;
-      const fact = { node, css, bg, rect, color: css.color };
+      let bg = css.backgroundImage === "none" ? parse(css.backgroundColor) : null;
+      let gradient = false;
+      // a plain white/black gradient sheet counts as a fill of that colour
+      if (!bg && /^linear-gradient/.test(css.backgroundImage) && !/url\(/.test(css.backgroundImage)) {
+        const stops = (css.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(parse).filter(Boolean);
+        if (stops.length && stops.every((c) => neutral(c) && c.a >= 0.6) && stops.every((c) => (light(c) >= 0.9) === (light(stops[0]) >= 0.9) && (light(c) <= 0.16 || light(c) >= 0.9))) {
+          bg = stops[0];
+          gradient = true;
+        }
+      }
+      const rect = bg && bg.a >= 0.6 && neutral(bg) ? node.getBoundingClientRect() : null;
+      const fact = { node, css, bg: gradient ? null : bg, sheetBg: bg, rect, color: css.color };
       facts.push(fact);
       byNode.set(node, fact);
     }
@@ -67,7 +92,7 @@
         continue;
       }
       if (!f.rect) continue;
-      const l = light(f.bg);
+      const l = light(f.sheetBg);
       // A hairline is a hairline in any grey.
       if (f.rect.height <= 1.5 && f.rect.width >= box.width * 0.4) {
         rules.push(f.node);
@@ -134,7 +159,7 @@
     for (const wrapper of D.within(root, ".message-content__wrapper")) {
       // Plain text bubbles are the overwhelming majority: one query, no reads.
       if (!wrapper.querySelector(CARD_HINT)) continue;
-      if (wrapper.querySelector(SKIP) || !D.safe(wrapper)) continue;
+      if (wrapper.querySelector(SKIP) || !D.safe(wrapper) || mediaMessage(wrapper)) continue;
       const size = wrapper.getElementsByTagName("*").length;
       if (done.get(wrapper) === size) continue;
       done.set(wrapper, size);
@@ -143,5 +168,47 @@
       } catch (e) {}
     }
   }
-  window.LiuliCards = Object.freeze({ adapt });
+  // For diagnostics: visible messages that still paint a large white or black
+  // sheet the classifier did not take — structure only (tags, classes,
+  // sizes, fills), never text.
+  function misses() {
+    const out = [];
+    for (const wrapper of document.querySelectorAll(".message-content__wrapper")) {
+      if (out.length >= 6) break;
+      const box = wrapper.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > innerHeight || box.width < 40) continue;
+      let hit = null;
+      for (const node of wrapper.querySelectorAll("*")) {
+        if (node.hasAttribute("data-liuli-card-sheet")) continue;
+        const bg = parse(getComputedStyle(node).backgroundColor);
+        if (!bg || bg.a < 0.5 || !neutral(bg) || (light(bg) < 0.9 && light(bg) > 0.16)) continue;
+        const r = node.getBoundingClientRect();
+        if (r.width >= box.width * 0.6 && r.height >= 28) {
+          hit = node;
+          break;
+        }
+      }
+      if (!hit) continue;
+      const tree = [];
+      const walk = (n, depth) => {
+        if (depth > 7 || tree.length > 40) return;
+        const r = n.getBoundingClientRect();
+        const cs = getComputedStyle(n);
+        tree.push(
+          "  ".repeat(depth) + n.tagName.toLowerCase() + "." + String(n.className && n.className.baseVal !== undefined ? n.className.baseVal : n.className || "").replace(/\d{5,}/g, "#").slice(0, 70) +
+            " [" + Math.round(r.width) + "x" + Math.round(r.height) + "] " + cs.backgroundColor + (cs.backgroundImage !== "none" ? " +img" : ""),
+        );
+        for (const c of n.children) walk(c, depth + 1);
+      };
+      walk(wrapper, 0);
+      out.push({
+        hinted: !!wrapper.querySelector(CARD_HINT),
+        skipped: !!wrapper.querySelector(SKIP) || mediaMessage(wrapper),
+        safe: D.safe(wrapper),
+        tree,
+      });
+    }
+    return out;
+  }
+  window.LiuliCards = Object.freeze({ adapt, misses });
 })();

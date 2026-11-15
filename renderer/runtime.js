@@ -81,6 +81,7 @@
       } finally {
         window.LiuliChatExtras?.records(records);
         window.LiuliHeaderTools?.records(records);
+        window.LiuliJumpBottom?.schedule();
       }
       for (const record of records) {
         const target = element(record.target);
@@ -253,6 +254,7 @@
     window.LiuliComposer.prime(document.body);
     window.LiuliComposer.install(() => invalidate());
     window.LiuliChatExtras?.install();
+    window.LiuliJumpBottom?.install();
     window.LiuliDock.install();
     refresh();
     return api;

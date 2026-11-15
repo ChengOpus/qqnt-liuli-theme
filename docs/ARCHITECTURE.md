@@ -119,3 +119,12 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 
 左栏玻璃画在 `.two-col-layout__aside::before`（z -1，不建立隔离），顶栏右边贴齐聊天区（`margin-right: 0; width: auto`），窗口按钮展开时操作区让开 `控件宽度 + 8px`。
 
+
+## 内嵌页面、回到最新、输入框按钮折叠（.29）
+
+- **频道页是 `<webview>`**：`.container-content > .guild-layout-wrapper.webview-wrapper > webview.guild-webview`。主窗口的样式进不去，`<webview>` 本身也在 `dom.js` 的受保护列表里，所以外壳不走 `mark()`，只打 `data-liuli-webview-pane`，玻璃画在外壳自己的 `::before` 上（`surfaces.css`），`backdrop.js` 不把它当整窗背景清掉（`SKIP` 含 webview）。内嵌页面里通过 `<webview>` 自己的 `executeJavaScript` 跑 `surfaces.js` 的 `guestTheme`：只改底色——页面大小的白/黑底变透明，较小的白块变淡卡片；按钮、头像、图片、视频、标签不碰。不读文字、不发请求、不碰协议。诊断 `webviewGuests` 只记主机名和计数。
+- **回到最新消息**：`renderer/jump-bottom.js`，按钮挂在当前输入框（`.chat-input-area`）里、浮在右上角上方。只读写消息滚动容器的 `scrollTop`；远处先瞬移到离底部一屏，再平滑滚完；之后 1.2 秒内若行高变化没到底再补一次，用户滚轮/按键/按下即停止。设置项 `jumpBottom`。
+- **输入框左侧按钮折叠**：`composer.js` 的 `stackBar()`。按正文行数分三档：一行横排；两行把最后一个图标挪到「+」上方（三角）；三行以上竖成一列。每个图标的位置是 `--liuli-pin-col/-row`，动画是 `left/bottom` 过渡。往回退一档之前先量一下：变窄后每一行是否还放得下，放不下就不退，所以不会来回跳。表情包正在「穿过」输入框时不改档。
+- **表情包直接发送时不在输入框里露面**：落进输入框前给输入框打 `data-liuli-sticker-sending`，编辑区锁住当前高度、里面的图片不绘制；发出（编辑区清空）后的下一帧撤掉。若没发出去，最迟 2.6 秒撤掉，图片照常显示，不会留下一张看不见的草稿。
+- **输入框里弹出的菜单**（截图 ⌄）：菜单到输入框之间的每一层强制 `opacity:1; filter:none` 等，任何一层带这些属性都会让菜单的背景模糊只模糊它自己。菜单里铺满整个菜单、自带底色（任何颜色）的包装层清掉底色（`menuLayers()`）。
+- **卡片消息**：卡片里的小画布不再让整条消息被跳过（只有铺满一半以上的媒体才算图片消息）；纯白/纯黑的渐变底也算底板；底板透明度门槛 0.6。诊断 `cardMisses` 记录屏幕上仍有大块白底没被接管的消息结构（不含文字）。

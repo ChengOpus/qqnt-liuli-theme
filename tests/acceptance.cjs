@@ -365,6 +365,74 @@ async function run() {
         layout.style.display = "";
         return res;
       });
+      // Channels as QQ 9.9.36 has it (user diagnostics 2026-11-15):
+      // .container-content > .guild-layout-wrapper.webview-wrapper >
+      // webview.guild-webview — an embedded page the window's styles cannot
+      // reach. The wrapper becomes a glass panel; inside the embedded page
+      // (through the webview's executeJavaScript) page sheets turn
+      // transparent and white boxes faint cards; buttons are left alone.
+      const guild = await page.evaluate(async () => {
+        const content = document.querySelector(".container-content");
+        const view = content.querySelector(".container-content-view");
+        view.style.display = "none";
+        const wrap = document.createElement("div");
+        wrap.className = "guild-layout-wrapper webview-wrapper";
+        wrap.style.cssText = "flex:1;height:100%;min-width:0;background:#fff;position:relative";
+        const wv = document.createElement("webview");
+        wv.className = "guild-webview";
+        wv.style.cssText = "display:flex;height:100%";
+        const frame = document.createElement("iframe");
+        frame.style.cssText = "border:0;flex:1;height:100%";
+        frame.srcdoc =
+          '<html style="background:#fff"><body style="margin:0;background:#fff;height:100vh">' +
+          '<div class="guild-main" style="height:100vh;background:#f5f5f5;padding:20px;box-sizing:border-box">' +
+          '<div class="feed" style="width:300px;height:80px;background:#fff">帖子</div>' +
+          '<button style="background:#06c;color:#fff;width:200px;height:40px">加入</button></div></body></html>';
+        wv.append(frame);
+        let calls = 0;
+        wv.executeJavaScript = (code) => {
+          calls++;
+          return Promise.resolve(frame.contentWindow.eval(code));
+        };
+        wv.isLoading = () => !frame.contentDocument || frame.contentDocument.readyState !== "complete";
+        await new Promise((r) => {
+          frame.onload = r;
+          wrap.append(wv);
+          content.append(wrap);
+        });
+        wv.dispatchEvent(new Event("dom-ready"));
+        await new Promise((r) => setTimeout(r, 500));
+        window.LiuliBackdrop?.scan();
+        const d = frame.contentDocument, fw = frame.contentWindow;
+        const res = {
+          panel: wrap.dataset.liuliSurface,
+          pane: wrap.hasAttribute("data-liuli-webview-pane"),
+          cover: wrap.getAttribute("data-liuli-cover"),
+          wrapBg: getComputedStyle(wrap).backgroundColor,
+          glass: getComputedStyle(wrap, "::before").backdropFilter,
+          gap: Math.round(wv.getBoundingClientRect().left - wrap.getBoundingClientRect().left),
+          calls,
+          guestBody: fw.getComputedStyle(d.body).backgroundColor,
+          guestHtml: fw.getComputedStyle(d.documentElement).backgroundColor,
+          sheet: d.querySelector(".guild-main").getAttribute("data-liuli-guest"),
+          sheetBg: fw.getComputedStyle(d.querySelector(".guild-main")).backgroundColor,
+          card: d.querySelector(".feed").getAttribute("data-liuli-guest"),
+          button: fw.getComputedStyle(d.querySelector("button")).backgroundColor,
+          text: d.querySelector(".feed").textContent,
+          report: window.LiuliSurfaces.guestReports()[0] || null,
+        };
+        wrap.remove();
+        view.style.display = "";
+        return res;
+      });
+      expect(
+        "channels.webview-page-is-glass",
+        guild.pane && !guild.cover && guild.wrapBg === "rgba(0, 0, 0, 0)" && guild.glass !== "none" &&
+          guild.gap === 8 && guild.calls >= 1 && guild.guestBody === "rgba(0, 0, 0, 0)" && guild.guestHtml === "rgba(0, 0, 0, 0)" &&
+          guild.sheet === "clear" && guild.sheetBg === "rgba(0, 0, 0, 0)" && guild.card === "card" &&
+          guild.button === "rgb(0, 102, 204)" && guild.text === "帖子" && guild.report && guild.report.clear >= 1 && !("text" in guild.report),
+        guild,
+      );
       const pageRec = await page.evaluate(() => {
         window.LiuliSurfaces.recordPage();
         const list = window.LiuliSurfaces.pageSnapshots();
@@ -534,6 +602,64 @@ async function run() {
       });
       expect("header.first-message-reachable", top.oldest.y >= top.header.b - 1, top);
       expect("header.top-banner-below-panels", top.tip.y >= top.header.b - 1, top);
+      // ── Back to the newest message: a glass button above the composer's
+      // top-right corner while reading far up; one click returns to the end ──
+      const jumpTest = await page.evaluate(async () => {
+        const scroller = __qa.q("[data-liuli-composer-scroll]");
+        const list = __qa.q(".ml-list");
+        const filler = document.createElement("div");
+        filler.className = "ml-item";
+        filler.style.height = "4000px";
+        list.append(filler); // the oldest end of the reversed list
+        scroller.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 120));
+        const btn = () => document.getElementById("liuli-jump-bottom");
+        const vis = () => !!btn() && getComputedStyle(btn()).opacity === "1" && getComputedStyle(btn()).pointerEvents === "auto";
+        const atEnd = vis();
+        scroller.scrollTop = -300; // a little up: still no button
+        await new Promise((r) => setTimeout(r, 260));
+        const nearby = vis();
+        scroller.scrollTop = -3000;
+        await new Promise((r) => setTimeout(r, 260));
+        const far = vis();
+        const composer = __qa.q(".chat-input-area").getBoundingClientRect();
+        const b = btn().getBoundingClientRect();
+        const place = {
+          rightGap: Math.round(composer.right - b.right),
+          above: Math.round(composer.top - b.bottom),
+          size: Math.round(b.width),
+          round: getComputedStyle(btn()).borderRadius,
+          glass: getComputedStyle(btn(), "::before").backdropFilter,
+          inComposer: btn().parentElement === __qa.q(".chat-input-area"),
+        };
+        const editor = __qa.q(".ProseMirror");
+        editor.focus();
+        const r = btn().getBoundingClientRect();
+        const at = { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0 };
+        btn().dispatchEvent(new PointerEvent("pointerdown", at));
+        btn().dispatchEvent(new MouseEvent("click", at));
+        await new Promise((r) => setTimeout(r, 1300));
+        const after = { fromEnd: Math.abs(scroller.scrollTop), shown: vis(), focusKept: document.activeElement === editor || editor.contains(document.activeElement) };
+        // switched off in settings: no button
+        LiuliJumpBottom.configure({ enabled: false });
+        scroller.scrollTop = -3000;
+        await new Promise((r) => setTimeout(r, 260));
+        const off = !!btn() && btn().isConnected;
+        LiuliJumpBottom.configure({ enabled: true });
+        filler.remove();
+        scroller.scrollTop = 0;
+        await new Promise((r) => setTimeout(r, 200));
+        return { atEnd, nearby, far, place, after, off, hiddenAgain: !vis() };
+      });
+      expect("jump-bottom.only-when-far-up", !jumpTest.atEnd && !jumpTest.nearby && jumpTest.far, jumpTest);
+      expect(
+        "jump-bottom.glass-above-composer-right",
+        jumpTest.place.inComposer && jumpTest.place.rightGap >= 0 && jumpTest.place.rightGap <= 8 && jumpTest.place.above >= 6 && jumpTest.place.above <= 14 &&
+          jumpTest.place.size === 36 && jumpTest.place.round === "50%" && jumpTest.place.glass !== "none",
+        jumpTest,
+      );
+      expect("jump-bottom.returns-to-newest", jumpTest.after.fromEnd <= 2 && !jumpTest.after.shown && jumpTest.after.focusKept, jumpTest);
+      expect("jump-bottom.setting-off", !jumpTest.off && jumpTest.hiddenAgain, jumpTest);
 
       // ── 2. Composer: floats, and stays floating ──
       const floatState = () =>
@@ -712,7 +838,7 @@ async function run() {
       // run-to-run noise of this environment with the effects off.
       expect(
         "fx.no-added-frame-cost",
-        paceOn.slow <= paceOff.slow + 3 && paceOn.median <= paceOff.median + 1 && paceOn.max <= 50,
+        paceOn.slow <= paceOff.slow + 3 && paceOn.median <= paceOff.median + 1 && paceOn.max <= Math.max(50, paceOff.max) + 1,
         checks.pacing,
       );
       await page.waitForTimeout(600);
@@ -1140,6 +1266,16 @@ async function run() {
           "",
         );
         const text = row("self", '<div class="message-content"><span class="text-element">ok</span></div>', "x");
+        // Group announcement (群公告): a translucent white gradient sheet with
+        // a small canvas icon in its title row.
+        const notice = row(
+          "others",
+          '<div class="ark-view-message"><div class="ark-item-container"><div class="mannounce-card" style="background:linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92));border-radius:12px;padding:14px;width:320px">' +
+            '<div class="title" style="color:#999"><canvas width="16" height="16" style="width:16px;height:16px"></canvas><span data-role="ntitle">群公告</span></div>' +
+            '<div data-role="nbody" style="color:#000">Printer whitelist sheet https://example.invalid/x</div>' +
+            "</div></div></div>",
+          "ark-msg-content-container",
+        );
         await __qa.frames(6);
         const css = (n) => getComputedStyle(n);
         const role = (r) => mail.querySelector('[data-role="' + r + '"]');
@@ -1163,9 +1299,13 @@ async function run() {
           fileGap: gap(file),
           textGap: gap(text),
           plainTouched: text.querySelectorAll("[data-liuli-card-sheet],[data-liuli-ink]").length,
+          noticeSheet: notice.querySelector(".mannounce-card").getAttribute("data-liuli-card-sheet"),
+          noticeBg: css(notice.querySelector(".mannounce-card")).backgroundImage,
+          noticeBody: notice.querySelector('[data-role="nbody"]').dataset.liuliInk,
+          noticeBodyColor: css(notice.querySelector('[data-role="nbody"]')).color,
         };
         await __qa.frames(1);
-        window.__cardRows = [mail, file, text];
+        window.__cardRows = [mail, file, text, notice];
         return result;
       });
       await page.evaluate(() => (__qa.q("[data-liuli-composer-scroll]").scrollTop = 0));
@@ -1184,6 +1324,7 @@ async function run() {
       expect("file.sheet-is-glass", cards.fileSheet === "rgba(0, 0, 0, 0)" && cards.fileName === "1", cards);
       expect("file.own-row-aligned-with-text-rows", cards.fileGap === cards.textGap, cards);
       expect("card.plain-text-untouched", cards.plainTouched === 0, cards);
+      expect("card.group-announcement-is-glass", cards.noticeSheet === "light" && cards.noticeBg === "none" && cards.noticeBody === "1", cards);
 
       // ── New messages: Telegram-style arrival, nothing else animates ──
       const arrival = await page.evaluate(async () => {
@@ -1279,7 +1420,13 @@ async function run() {
         const native = __qa.q('.chat-func-bar .icon-item[aria-label="表情"]');
         const emojiIcon = native.closest(".bar-icon");
         let sent = 0, nativeClicks = 0;
-        __qa.q(".operation .send-msg").addEventListener("click", () => sent++);
+        // QQ empties the editor once a message is sent
+        __qa.q(".operation .send-msg").addEventListener("click", () => {
+          sent++;
+          const ed = __qa.q(".ProseMirror");
+          if (ed && /image-element/.test(ed.innerHTML)) ed.innerHTML = "<p><br></p>";
+        });
+        let passing = null;
         const opened = [];
         let panelEl = null;
         // QQ's behaviour: the icon toggles the panel.
@@ -1344,13 +1491,21 @@ async function run() {
           setTimeout(() => {
             const pic = document.createElement("span");
             pic.className = "image-element";
-            pic.innerHTML = "<img>";
+            pic.innerHTML = '<img style="width:80px;height:80px;display:block">';
+            const before = Math.round(editor.getBoundingClientRect().height);
             editor.firstElementChild.append(pic);
+            // what the reader sees while it passes through the editor
+            passing = {
+              held: __qa.q(".chat-input-area").hasAttribute("data-liuli-sticker-sending"),
+              opacity: getComputedStyle(pic).opacity,
+              grew: Math.round(editor.getBoundingClientRect().height) - before,
+            };
           }, 40);
         }, { once: true });
         tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
         await new Promise((r) => setTimeout(r, 200));
         const afterPress = sent;
+        const releasedAfterSend = !__qa.q(".chat-input-area").hasAttribute("data-liuli-sticker-sending");
         tile.closest(".stickers-item").style.display = "";
         // an "empty" ProseMirror editor as QQ has it: separator <img>,
         // trailing <br> and a zero-width character
@@ -1375,6 +1530,23 @@ async function run() {
         editor.firstElementChild.append(img.cloneNode());
         await new Promise((r) => setTimeout(r, 120));
         const afterDraft = sent - afterHelpers + afterSticker;
+        // a send that does not take: the sticker is shown again, never left
+        // invisible in the editor
+        const sendBtn = __qa.q(".operation .send-msg");
+        const swallow = (e) => e.stopImmediatePropagation();
+        sendBtn.addEventListener("click", swallow, true);
+        editor.innerHTML = "<p><br></p>";
+        panelEl.querySelector(".stickers-item img").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+        const stuck = document.createElement("span");
+        stuck.className = "image-element";
+        stuck.innerHTML = "<img>";
+        editor.firstElementChild.append(stuck);
+        await new Promise((r) => setTimeout(r, 200));
+        const stuckHidden = getComputedStyle(stuck).opacity;
+        await new Promise((r) => setTimeout(r, 1700));
+        const stuckShown = getComputedStyle(stuck).opacity;
+        sendBtn.removeEventListener("click", swallow, true);
+        editor.innerHTML = "<p><br></p>";
         // expanding "+" keeps both icons where they were
         document.getElementById("liuli-func-toggle").click();
         await __qa.frames(3);
@@ -1384,7 +1556,7 @@ async function run() {
         LiuliComposer.expand(false);
         panelEl?.remove();
         editor.innerHTML = "<p><br></p>";
-        return { placement, afterHover, afterClick, afterSticker, afterPress, afterHelpers, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
+        return { passing, releasedAfterSend, stuckHidden, stuckShown, placement, afterHover, afterClick, afterSticker, afterPress, afterHelpers, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
       });
       checks.stickers = stickers;
 
@@ -1442,10 +1614,117 @@ async function run() {
           // the scrollbar runs along the glass edge, styled (not the system one)
           edgeGap: Math.round(box.right - ed.getBoundingClientRect().right),
           scrollbarWidth: getComputedStyle(ed).scrollbarWidth,
+          // the left buttons in a column, the text given the row's width back
+          stack: (() => {
+            const plus = document.getElementById("liuli-func-toggle").getBoundingClientRect();
+            const pins = [...input.querySelectorAll(".bar-icon.liuli-pinned")].map((n) => n.getBoundingClientRect());
+            return {
+              on: input.getAttribute("data-liuli-bar-rows") === "3",
+              column: pins.length >= 1 && pins.every((r) => Math.abs(r.left - plus.left) <= 1),
+              ordered: [plus, ...pins].map((r) => Math.round(r.top)).sort((x, y) => x - y).every((t, i, a) => !i || t - a[i - 1] >= 30),
+              inside: pins.every((r) => r.top >= box.top),
+              pad: getComputedStyle(input.querySelector(".msg-input")).paddingLeft,
+            };
+          })(),
         };
       });
       await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(400);
+      const unstacked = await page.evaluate(() => !__qa.q(".chat-input-area").hasAttribute("data-liuli-bar-rows"));
+      // Step by step: one line — a row; two — the last icon above "+" (a
+      // triangle); three — a column. Deleting steps back.
+      const fold = async () =>
+        page.evaluate(() => {
+          const input = __qa.q(".chat-input-area");
+          const plus = document.getElementById("liuli-func-toggle").getBoundingClientRect();
+          const pins = [...input.querySelectorAll(".bar-icon.liuli-pinned")].map((n) => {
+            const r = n.getBoundingClientRect();
+            return [Math.round((r.left - plus.left) / 32), Math.round((plus.top - r.top) / 32)];
+          });
+          return { rows: input.getAttribute("data-liuli-bar-rows") || "1", pins: JSON.stringify(pins), pad: getComputedStyle(input.querySelector(".msg-input")).paddingLeft, inside: [...input.querySelectorAll(".bar-icon.liuli-pinned")].every((n) => n.getBoundingClientRect().top >= input.getBoundingClientRect().top - 0.5) };
+        });
+      await editorBox.click();
+      await page.keyboard.type("one");
+      await page.waitForTimeout(400);
+      const f1 = await fold();
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("two");
+      await page.waitForTimeout(400);
+      const f2 = await fold();
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("three");
+      await page.waitForTimeout(400);
+      const f3 = await fold();
+      for (let i = 0; i < 6; i++) await page.keyboard.press("Backspace");
+      await page.waitForTimeout(400);
+      const f2b = await fold();
+      await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
+      await page.waitForTimeout(400);
+      const f0 = await fold();
+      const folds = { f1, f2, f3, f2b, f0 };
+      // ── The screenshot icon's menu is real glass: QQ's pressed/open state
+      // dims the icon and the menu shell; the menu still blurs what is
+      // behind it (a red block shows through, tinted) ──
+      const shotMenu = await page.evaluate(async () => {
+        const icon = __qa.q('.chat-input-area .bar-icon.liuli-pinned .icon-item[aria-label="截图"]').closest(".bar-icon");
+        const style = document.createElement("style");
+        style.textContent = ".qa-shot-open{opacity:.92;filter:brightness(.98)} .qa-shot-open .bar-more-menu{opacity:.99}";
+        document.head.append(style);
+        icon.classList.add("qa-shot-open", "active");
+        const shell = document.createElement("div");
+        shell.className = "bar-more-menu";
+        shell.innerHTML = '<div class="bar-more-menu-inner q-context-menu" style="position:fixed;left:0;bottom:36px;width:220px;height:180px"><div class="menu-tint" style="width:100%;height:100%;background:rgba(240,200,210,.95)"><div class="q-context-menu-item"><span class="q-context-menu-item__label">截图</span></div></div></div>';
+        icon.append(shell);
+        await __qa.frames(4);
+        const inner = shell.firstElementChild;
+        const r = inner.getBoundingClientRect();
+        const red = document.createElement("div");
+        red.style.cssText = "position:fixed;z-index:1;background:#00f;left:" + (r.left + 60) + "px;top:" + (r.top + 50) + "px;width:80px;height:80px";
+        __qa.q(".chat-msg-area").append(red);
+        await __qa.frames(3);
+        const chain = [];
+        for (let n = inner.parentElement; n && !n.matches(".chat-input-area"); n = n.parentElement) {
+          const cs = getComputedStyle(n);
+          if (cs.opacity !== "1" || cs.filter !== "none" || cs.mixBlendMode !== "normal") chain.push(n.className + ":" + cs.opacity + "/" + cs.filter);
+        }
+        return {
+          surface: inner.dataset.liuliSurface || "",
+          glass: getComputedStyle(inner, "::before").backdropFilter,
+          tint: getComputedStyle(inner.querySelector(".menu-tint")).backgroundColor,
+          chain,
+          sample: { x: Math.round(r.left + 100), y: Math.round(r.top + 90) },
+        };
+      });
+      const shotPng = await page.screenshot({ clip: { x: shotMenu.sample.x, y: shotMenu.sample.y, width: 1, height: 1 } });
+      shotMenu.pixel = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = "data:image/png;base64," + b64;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = c.height = 1;
+        const x = c.getContext("2d");
+        x.drawImage(img, 0, 0);
+        return [...x.getImageData(0, 0, 1, 1).data];
+      }, shotPng.toString("base64"));
+      await page.evaluate(() => {
+        document.querySelector(".qa-shot-open .bar-more-menu")?.remove();
+        document.querySelector(".qa-shot-open")?.classList.remove("qa-shot-open", "active");
+        [...document.querySelectorAll(".chat-msg-area > div")].filter((n) => n.style.background === "rgb(0, 0, 255)").forEach((n) => n.remove());
+      });
+      expect(
+        "screenshot-menu.is-glass",
+        shotMenu.surface === "context" && shotMenu.glass !== "none" && shotMenu.tint === "rgba(0, 0, 0, 0)" && !shotMenu.chain.length && shotMenu.pixel[2] - shotMenu.pixel[0] > 30,
+        shotMenu,
+      );
+      expect("composer.long-draft-buttons-stack", tall.stack.on && tall.stack.column && tall.stack.ordered && tall.stack.inside && tall.stack.pad === "44px" && unstacked, { stack: tall.stack, unstacked });
+      expect(
+        "composer.buttons-fold-row-triangle-column",
+        f1.rows === "1" && f1.pins === "[[1,0],[2,0]]" && f1.pad === "108px" &&
+          f2.rows === "2" && f2.pins === "[[1,0],[0,1]]" && f2.pad === "76px" && f2.inside &&
+          f3.rows === "3" && f3.pins === "[[0,2],[0,1]]" && f3.pad === "44px" && f3.inside &&
+          f2b.rows === "2" && f0.rows === "1" && f0.pins === "[[1,0],[2,0]]",
+        folds,
+      );
       expect("composer.long-draft-scrolls-inside", tall.height <= tall.cap && tall.editorScrolls && tall.caretInside && !tall.scrolled.length && tall.headerTop >= 0 && tall.edgeGap <= 1 && tall.scrollbarWidth === "auto", tall);
       const P = stickers.placement;
       expect("toolbar.native-emoji-and-screenshot-beside-plus", P.sameRow && P.emojiGap >= 2 && P.emojiGap <= 6 && P.shotGap >= 2 && P.shotGap <= 6 && P.proxies === 1, stickers);
@@ -1455,6 +1734,8 @@ async function run() {
       expect("sticker.click-keeps-panel-open", stickers.afterClick.open && stickers.afterClick.nativeClicks === 1, stickers);
       expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
       expect("sticker.sends-when-qq-inserts-on-press", stickers.afterPress === 2, stickers);
+      expect("sticker.not-drawn-in-editor-on-its-way", !!stickers.passing && stickers.passing.held && stickers.passing.opacity === "0" && stickers.passing.grew <= 1 && stickers.releasedAfterSend, stickers);
+      expect("sticker.shown-again-if-send-does-not-take", stickers.stuckHidden === "0" && stickers.stuckShown === "1", stickers);
       expect("sticker.sends-from-editor-with-prosemirror-helpers", stickers.afterHelpers === 3, stickers);
       expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
       expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);

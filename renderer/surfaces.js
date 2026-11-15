@@ -182,6 +182,25 @@
     }
     for (const node of marks) node.setAttribute("data-liuli-soft", "");
   }
+  const MENU_SURFACES =
+    '.bar-more-menu-inner, .q-context-menu[data-liuli-surface], .q-context-sub-menu__container[data-liuli-surface], .pulldown-menu[data-liuli-surface], .q-pulldown-menu-wrapper[data-liuli-surface]';
+  function menuLayers(menu) {
+    if (!menu.hasAttribute("data-liuli-surface")) return;
+    const box = menu.getBoundingClientRect();
+    if (box.width < 40 || box.height < 30) return;
+    const nodes = menu.querySelectorAll("div, ul, section");
+    if (nodes.length > 300) return;
+    for (const inner of nodes) {
+      if (inner.hasAttribute("data-liuli-surface-inner") || inner.hasAttribute("data-liuli-surface")) continue;
+      const r = inner.getBoundingClientRect();
+      if (r.width < box.width * 0.85 || r.height < box.height * 0.85) continue;
+      const css = getComputedStyle(inner);
+      const m = /rgba?\(([^)]+)\)/.exec(css.backgroundColor || "");
+      const alpha = m ? (m[1].split(/[,\s/]+/).filter(Boolean).length > 3 ? Number(m[1].split(/[,\s/]+/).filter(Boolean)[3]) : 1) : 0;
+      const gradient = css.backgroundImage !== "none" && !/url\(/.test(css.backgroundImage);
+      if (alpha > 0.04 || gradient || (css.backdropFilter && css.backdropFilter !== "none")) clear(inner);
+    }
+  }
   function clearSheets(outer) {
     const box = outer.getBoundingClientRect();
     if (box.width < 40 || box.height < 30) return;
@@ -353,6 +372,7 @@
           queue.push(...el.children);
         }
       }
+      webviewPages(root === document.documentElement ? document.body : root.closest?.(".webview-wrapper, .guild-layout-wrapper") || root);
       const panes = new Set(D.within(root, ".two-col-layout__main > :not(.aio)"));
       const host = root.closest?.(".two-col-layout__main > :not(.aio)");
       if (host) panes.add(host);
@@ -392,6 +412,15 @@
       ".q-context-menu:not(.is-pure),.q-context-menu.is-pure:has(> .q-context-menu-item),.q-context-sub-menu__container",
     ))
       mark(node, "context");
+    // Menus: a wrapper inside that covers the whole menu and paints its own
+    // fill — in QQ's colourful theme a tinted, nearly opaque one — sits over
+    // the glass and made the screenshot menu a flat pink sheet (user
+    // screenshot, 2026-11-15). Any colour, since it is never content; rows
+    // and separators are smaller and keep theirs.
+    const menus = new Set(D.within(root, MENU_SURFACES));
+    const inMenu = root.closest?.(MENU_SURFACES);
+    if (inMenu) menus.add(inMenu);
+    for (const menu of menus) menuLayers(menu);
     const profileNodes = new Set(D.within(root, profiles));
     const profileParent = root.closest?.(profiles);
     if (profileParent) profileNodes.add(profileParent);
@@ -536,10 +565,104 @@
     pages.push({ hash, at: new Date().toISOString(), layers: out });
     while (pages.length > 5) pages.shift();
   }
+  // ── Pages that are a <webview> (Channels: .guild-layout-wrapper >
+  // webview.guild-webview, user diagnostics 2026-11-15) ─────────────────
+  // The main window's styles cannot reach into an embedded page. The wrapper
+  // becomes a glass panel behind it, and inside the embedded page the same
+  // sheet handling as everywhere else runs through the webview's own API:
+  // page-sized white/black sheets become transparent (the glass shows
+  // through), smaller white boxes faint rounded cards. Fills only.
+  function guestTheme(o) {
+    if (window.__liuliGuest) return window.__liuliGuest(o);
+    let opts = o;
+    const fill = (css) => {
+      const m = /rgba?\(([^)]+)\)/.exec(css.backgroundColor || "");
+      if (!m) return false;
+      const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+      const a = p.length > 3 ? p[3] : 1;
+      if (a < 0.12) return false;
+      const l = (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255;
+      return Math.max(p[0], p[1], p[2]) - Math.min(p[0], p[1], p[2]) <= 24 && (l >= 0.8 || l <= 0.2);
+    };
+    const pass = () => {
+      const W = innerWidth, H = innerHeight;
+      const out = { host: location.hostname, clear: 0, card: 0, nodes: 0 };
+      for (const n of [document.documentElement, document.body]) if (n) n.style.setProperty("background", "transparent", "important");
+      const nodes = document.querySelectorAll("div, section, main, header, ul, li, article, aside");
+      out.nodes = nodes.length;
+      if (nodes.length > 4000) return out;
+      for (const el of nodes) {
+        const was = el.getAttribute("data-liuli-guest");
+        if (was) {
+          out[was]++;
+          continue;
+        }
+        if (el.closest("button, [role='button'], input, textarea, img, video, [class*='avatar'], [class*='image'], [class*='video'], [class*='tag']")) continue;
+        const css = getComputedStyle(el);
+        if (!fill(css)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width >= W * 0.6 && r.height >= H * 0.5) {
+          el.setAttribute("data-liuli-guest", "clear");
+          el.style.setProperty("background", "transparent", "important");
+          el.style.setProperty("box-shadow", "none", "important");
+          out.clear++;
+        } else if (r.width >= 160 && r.height >= 36) {
+          el.setAttribute("data-liuli-guest", "card");
+          el.style.setProperty("background", opts.card, "important");
+          el.style.setProperty("border-radius", "12px", "important");
+          el.style.setProperty("box-shadow", "none", "important");
+          el.style.setProperty("border-color", "transparent", "important");
+          out.card++;
+        }
+      }
+      return out;
+    };
+    let timer = 0;
+    const later = () => {
+      if (!timer) timer = setTimeout(() => ((timer = 0), pass()), 250);
+    };
+    window.__liuliGuest = (next) => {
+      opts = next;
+      return pass();
+    };
+    new MutationObserver(later).observe(document.documentElement, { childList: true, subtree: true });
+    addEventListener("resize", later);
+    return pass();
+  }
+  const guestReports = [];
+  const guests = new WeakSet();
+  function webviewPages(root) {
+    for (const wrap of D.within(root, ".webview-wrapper, .guild-layout-wrapper")) {
+      if (!wrap.getClientRects().length) continue;
+      // Not mark(): the wrapper holds a <webview>, which the theme never
+      // restyles; only an attribute here, the glass is the wrapper's own
+      // ::before (surfaces.css) and its fill is cleared.
+      if (!wrap.hasAttribute("data-liuli-webview-pane")) wrap.setAttribute("data-liuli-webview-pane", "");
+      const view = wrap.querySelector("webview");
+      if (!view || guests.has(view) || typeof view.executeJavaScript !== "function") continue;
+      guests.add(view);
+      const rgb = getComputedStyle(document.body).getPropertyValue("--ll-on-glass-rgb").trim() || "0, 0, 0";
+      const run = () =>
+        Promise.resolve()
+          .then(() => view.executeJavaScript("(" + guestTheme.toString() + ")(" + JSON.stringify({ card: "rgba(" + rgb + ", 0.05)" }) + ")"))
+          .then((r) => {
+            guestReports.unshift({ at: Date.now(), ...(r || {}) });
+            guestReports.length = Math.min(guestReports.length, 6);
+          })
+          .catch((e) => {
+            guestReports.unshift({ at: Date.now(), error: String((e && e.message) || e).slice(0, 120) });
+            guestReports.length = Math.min(guestReports.length, 6);
+          });
+      view.addEventListener("dom-ready", run);
+      try {
+        if (!view.isLoading()) run();
+      } catch (e) {}
+    }
+  }
   let pageTimer = 0;
   addEventListener("hashchange", () => {
     clearTimeout(pageTimer);
     pageTimer = setTimeout(recordPage, 1500);
   });
-  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups, pageSnapshots: () => pages.slice(), recordPage });
+  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups, pageSnapshots: () => pages.slice(), recordPage, guestTheme, guestReports: () => guestReports.slice() });
 })();

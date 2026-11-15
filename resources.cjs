@@ -26,6 +26,7 @@ const SCRIPTS = [
   'renderer/dock.js',
   'renderer/composer.js',
   'renderer/chat-extras.js',
+  'renderer/jump-bottom.js',
   'renderer/header-tools.js',
   'renderer/popup-windows.js',
   'renderer/runtime.js',

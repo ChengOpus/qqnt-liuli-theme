@@ -23,7 +23,7 @@
 
   // the theme's own layers and surfaces, and QQ's transient full-window
   // masks (dialogs, viewers) are never cleared
-  const SKIP = /dialog|modal|mask|overlay|popup|viewer|toast|mini-buddy|drawer/i;
+  const SKIP = /dialog|modal|mask|overlay|popup|viewer|toast|mini-buddy|drawer|webview/i;
   function own(el) {
     if (el.id && el.id.indexOf('liuli-') === 0) return true;
     if (el.closest?.('[id^="liuli-"]')) return true;

@@ -695,3 +695,147 @@ body
     display: none;
   }
 }
+
+/* Back to the newest message (jump-bottom.js): a round glass button floating
+ * above the composer's top-right corner while the reader is far up the
+ * conversation. */
+#liuli-jump-bottom {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 10px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  isolation: isolate;
+  background: transparent;
+  color: var(--ll-on-glass-2);
+  box-shadow:
+    var(--ll-popup-edge),
+    0 6px 18px -8px rgba(var(--ll-shadow-rgb), 0.28),
+    var(--ll-surface-halo);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(6px) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 120ms ease;
+}
+#liuli-jump-bottom::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ll-glass-paint);
+  backdrop-filter: var(--ll-material-blur);
+  -webkit-backdrop-filter: var(--ll-material-blur);
+  pointer-events: none;
+}
+#liuli-jump-bottom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: transparent;
+  transition: background-color 120ms ease;
+  pointer-events: none;
+}
+#liuli-jump-bottom[data-shown] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+#liuli-jump-bottom:hover {
+  color: var(--ll-link);
+}
+#liuli-jump-bottom:hover::after {
+  background: rgba(var(--ll-brand-rgb), 0.14);
+}
+#liuli-jump-bottom:active::after {
+  background: rgba(var(--ll-brand-rgb), 0.24);
+}
+#liuli-jump-bottom:focus-visible {
+  outline: 2px solid rgba(var(--ll-brand-rgb), 0.6);
+  outline-offset: 2px;
+}
+#liuli-jump-bottom svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+/* the expanded tool row opens over the same corner */
+.chat-input-area:has(> .chat-func-bar.liuli-expanded) > #liuli-jump-bottom {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #liuli-jump-bottom {
+    transition: opacity 120ms ease;
+    transform: none;
+  }
+}
+
+/* A sticker on its way out (chat-extras.js): the editor keeps its height and
+ * the picture is not drawn while it passes through. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area[data-liuli-sticker-sending]:has(> .msg-input) :is(.ProseMirror, [contenteditable]) {
+  max-height: var(--ll-sticker-hold, 22px) !important;
+  overflow: hidden !important;
+}
+.chat-input-area[data-liuli-sticker-sending] :is(.ProseMirror, [contenteditable]) :is(img, .image-element, .pic-element, [class*="image-element"], [class*="market-face"]):not(.ProseMirror-separator) {
+  opacity: 0 !important;
+}
+
+/* A longer draft (composer.js stackBar): the icons fold out of the text's
+ * way — row, triangle, column. Each icon's slot is --liuli-pin-col/-row;
+ * "+" stays in the bottom-left corner. While folded the composer is at least
+ * as tall as the icons; they glide between slots. */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area[data-liuli-bar-rows]:has(> .msg-input) {
+  min-height: var(--liuli-stack-h, 76px);
+}
+body .chat-input-area > .chat-func-bar:not(.liuli-expanded) .bar-icon.liuli-pinned {
+  left: calc(8px + var(--liuli-pin-col, calc(var(--liuli-pin-i, 0) + 1)) * 32px) !important;
+  bottom: calc(8px + var(--liuli-pin-row, 0) * 32px) !important;
+}
+body .chat-input-area > .chat-func-bar.liuli-expanded .bar-icon.liuli-pinned {
+  left: calc(6px + var(--liuli-pin-col, calc(var(--liuli-pin-i, 0) + 1)) * 32px) !important;
+  top: calc(100% + var(--ll-composer-h, 44px) - 28px - var(--liuli-pin-row, 0) * 32px) !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned {
+  transition:
+    left 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    bottom 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned {
+    transition: none;
+  }
+}
+
+/* The screenshot icon's menu (截图 ⌄) opens from inside the composer. QQ dims
+ * or filters the icon (and the menu shell) while it is pressed or open; an
+ * ancestor with opacity, a filter, a mask or a blend mode bounds what a
+ * backdrop blur can see, so the menu's glass blurred only itself and read
+ * as a flat frost (user screenshot, 2026-11-15). Nothing between the menu
+ * and the composer may do that; the icon's hover/press states are fills. */
+body .chat-input-area > .chat-func-bar,
+body .chat-input-area > .chat-func-bar :is(.chat-func-bar__left, .func-bar-native, .bar-icon.liuli-pinned, .bar-icon.liuli-pinned > .arrow, .bar-more-menu),
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:is(:hover, :active, .active, .is-active, .selected) {
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  clip-path: none !important;
+  will-change: auto !important;
+}
