@@ -266,6 +266,38 @@ async function run() {
         return res;
       });
       const alphaOf = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); const p = m ? m[1].split(",").map(Number) : []; return p.length > 3 ? p[3] : 1; };
+      // QQ's colourful-theme "miracle background" inside a card is not drawn;
+      // the pinned 表情 button has no inner fill even in QQ's active state.
+      const misc = await page.evaluate(async () => {
+        const style = document.createElement("style");
+        style.textContent =
+          ".qa-active::before{content:'';position:absolute;inset:4px;border-radius:6px;background:#000}" +
+          ".qa-inner{background:#000}";
+        document.head.append(style);
+        const card = document.createElement("div");
+        card.className = "q-float-card";
+        card.style.cssText = "position:fixed;left:400px;top:80px;width:300px;height:200px";
+        card.innerHTML = '<div class="q-miracle-background miracle" style="position:absolute;inset:0;background:linear-gradient(#f0f,#0ff)"></div><div>群资料</div>';
+        document.body.append(card);
+        const emoji = __qa.q('.chat-func-bar .bar-icon.liuli-pinned:has([aria-label="表情"])');
+        emoji.classList.add("qa-active");
+        const inner = document.createElement("span");
+        inner.className = "qa-inner";
+        emoji.querySelector(".icon-item").append(inner);
+        await new Promise((r) => setTimeout(r, 200));
+        const res = {
+          miracle: getComputedStyle(card.querySelector(".q-miracle-background")).display,
+          activePseudo: getComputedStyle(emoji, "::before").content,
+          innerFill: getComputedStyle(inner).backgroundColor,
+        };
+        card.remove();
+        emoji.classList.remove("qa-active");
+        inner.remove();
+        style.remove();
+        return res;
+      });
+      expect("card.no-miracle-background", misc.miracle === "none", misc);
+      expect("toolbar.pinned-round-hover-only", misc.activePseudo === "none" && misc.innerFill === "rgba(0, 0, 0, 0)", misc);
       expect("badge.exact-count-instead-of-99plus", !badges || badges.capped === "1234", badges);
       expect("badge.muted-is-faint-grey", !badges || (alphaOf(badges.grey) <= 0.2 && badges.grey !== badges.red), badges);
       expect("aside.glass", edges.asideGlass.content !== "none" && edges.asideGlass.backdrop !== "none" && edges.asideGlass.bg && edges.asideGlass.pe === "none", edges);
@@ -1696,6 +1728,38 @@ async function run() {
       }
       if (errors.length) failures.push("video.errors: " + errors.join("|"));
       results.push({ variant: "video-wallpaper-" + variant, failures, v });
+      failed += failures.length;
+      await context.close();
+    }
+
+    // ── Auto-hiding action panel (the default) ──
+    {
+      const failures = [];
+      const { page, context, errors } = await h.open({ settings: { autoHideActions: true } });
+      await page.waitForTimeout(500);
+      const state = () =>
+        page.evaluate(() => {
+          const a = document.querySelector(".aio > .chat-header .panel-header__action");
+          const r = a.getBoundingClientRect();
+          return { bottom: Math.round(r.bottom), opacity: getComputedStyle(a).opacity, pe: getComputedStyle(a).pointerEvents };
+        });
+      await page.mouse.move(640, 500);
+      await page.waitForTimeout(700);
+      const hidden = await state();
+      const band = await page.evaluate(() => {
+        const a = document.querySelector(".aio").getBoundingClientRect();
+        return { x: Math.round(a.right - 160), y: 20 };
+      });
+      await page.mouse.move(band.x, band.y);
+      await page.waitForTimeout(400);
+      const shown = await state();
+      await page.mouse.move(640, 500);
+      await page.waitForTimeout(800);
+      const again = await state();
+      if (!(hidden.bottom <= 0 && hidden.pe === "none" && shown.bottom > 30 && shown.opacity === "1" && shown.pe !== "none" && again.bottom <= 0))
+        failures.push("actions.autohide: " + JSON.stringify({ hidden, shown, again }));
+      if (errors.length) failures.push("actions.errors: " + errors.join("|"));
+      results.push({ variant: "actions-autohide", failures });
       failed += failures.length;
       await context.close();
     }

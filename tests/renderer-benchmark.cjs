@@ -53,6 +53,7 @@ const output = path.join(current, "out", "ui-qa");
               opacity: 0.15,
               chatStyle: "tg",
               pinGroup: true,
+              autoHideActions: false,
             }),
           );
           const original = document.querySelector(".aio");

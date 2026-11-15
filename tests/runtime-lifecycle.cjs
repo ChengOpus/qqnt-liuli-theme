@@ -38,6 +38,7 @@ const root = path.resolve(__dirname, "..");
             opacity: 0.15,
             chatStyle: "tg",
             pinGroup: true,
+            autoHideActions: false,
           }),
         );
         const original = document.querySelector(".aio");

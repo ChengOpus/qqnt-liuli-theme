@@ -47,7 +47,7 @@ if (!author)
         );
         localStorage.setItem(
           "liuli-dsh-settings",
-          JSON.stringify({ blur: 18, opacity: 0.15, pinGroup: true }),
+          JSON.stringify({ blur: 18, opacity: 0.15, pinGroup: true, autoHideActions: false }),
         );
         const shell = document.querySelector("#app");
         for (let i = 0; i < 2; i++) {

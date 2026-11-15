@@ -236,3 +236,16 @@ body .aio .side-panel :is(input, textarea)::placeholder {
 body .aio .side-panel :is(.field-title, .field-body, .field-body *) {
   color: var(--ll-on-glass-2) !important;
 }
+
+/* QQ's colourful theme ("miracle background"): a pre-blurred copy of QQ's
+ * theme picture inside cards, panels and the input box, so each looked like
+ * "its own page" instead of glass over what is behind (user, 2026-11-15:
+ * group info card). The theme's glass replaces it everywhere; the layer is
+ * decorative (no pointer events). The full-window one in the main window was
+ * the cover cleared by backdrop.js. */
+body[data-liuli-theme] .q-miracle-background {
+  display: none !important;
+}
+body[data-liuli-theme] .miracle-background:not(.q-miracle-background) {
+  background-image: none !important;
+}

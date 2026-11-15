@@ -93,6 +93,7 @@ async function start() {
             opacity: 0.15,
             chatStyle: "tg",
             pinGroup: true,
+            autoHideActions: false,
             pinColor: false,
             ...settings,
           }),

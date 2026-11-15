@@ -411,6 +411,7 @@
     quietFlash: true,
     pinControls: true,
     moveCalls: true,
+    autoHideActions: true,
     headerMenuHidden: ['群作业', '群视频', '群课堂'],
     chatStyle: 'tg',
     avatarPosition: 'bottom',
@@ -534,6 +535,7 @@
     llSyncUpdateGuard();
     llSyncFlashGuard();
     window.LiuliHeaderTools?.configure({
+      autoHide: llModeCfg.autoHideActions !== false,
       moveCalls: llModeCfg.moveCalls !== false,
       hidden: Array.isArray(llModeCfg.headerMenuHidden) ? llModeCfg.headerMenuHidden : ['群作业', '群视频', '群课堂']
     });
@@ -3256,6 +3258,7 @@
     settingSwitch('隐藏顶部的文件接收提示条', 'hideFileTip', settings.hideFileTip !== false);
     settingSwitch('点表情包直接发送', 'stickerSend', settings.stickerSend !== false);
     settingSwitch('右上角窗口按钮常驻', 'pinControls', settings.pinControls !== false);
+    settingSwitch('标题栏操作区自动隐藏（鼠标移到顶部时出现）', 'autoHideActions', settings.autoHideActions !== false);
     settingSwitch('语音、视频、屏幕共享收进群应用菜单', 'moveCalls', settings.moveCalls !== false);
     {
       // 群应用菜单（标题栏 ∨ 那个下拉）里显示哪些

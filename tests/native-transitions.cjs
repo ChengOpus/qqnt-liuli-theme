@@ -41,7 +41,7 @@ const repo = path.resolve(process.argv[2] || path.join(__dirname, ".."));
         document.body.setAttribute("q-theme", dark ? "dark" : "light");
         localStorage.setItem(
           "liuli-dsh-settings",
-          JSON.stringify({ blur: 18, opacity: 0.15, pinGroup: true }),
+          JSON.stringify({ blur: 18, opacity: 0.15, pinGroup: true, autoHideActions: false }),
         );
         localStorage.setItem(
           "liuli-layout",

@@ -61,6 +61,7 @@ const readResources = require("../resources.cjs");
             opacity: 0.15,
             chatStyle: "tg",
             pinGroup: true,
+            autoHideActions: false,
             pinColor: false,
           }),
         );

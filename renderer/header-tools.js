@@ -183,11 +183,67 @@
       }
     }
   }
+  // ── Auto-hiding action panel ────────────────────────────────────────────
+  // Hidden by default; it drops down from the top while the pointer is in the
+  // header band right of the title (or on the panel), and stays while its
+  // dropdown or the group drawer is open. Setting: autoHideActions.
+  let autoHide = true;
+  let hideTimer = 0;
+  let pointer = { x: -1, y: -1 };
+  function held(aio) {
+    if (aio.hasAttribute('data-liuli-drawer')) return true;
+    for (const inner of aio.querySelectorAll(':scope > .chat-header .bar-more-menu-inner'))
+      if (inner.childElementCount && inner.getClientRects().length) return true;
+    return false;
+  }
+  function inBand(aio) {
+    const header = aio.querySelector(':scope > .chat-header');
+    if (!header) return false;
+    const h = header.getBoundingClientRect();
+    const title = header.querySelector('.panel-header__title')?.getBoundingClientRect();
+    const a = aio.getBoundingClientRect();
+    const left = title ? title.right + 8 : a.left;
+    return pointer.y >= 0 && pointer.y <= h.bottom + 6 && pointer.x >= left && pointer.x <= a.right;
+  }
+  function revealPass() {
+    for (const aio of document.querySelectorAll('.aio')) {
+      const want = !autoHide || inBand(aio) || held(aio);
+      const shown = aio.hasAttribute('data-liuli-actions-shown');
+      if (want) {
+        clearTimeout(hideTimer);
+        if (!shown) aio.setAttribute('data-liuli-actions-shown', '');
+      } else if (shown && !hideTimer) {
+        hideTimer = setTimeout(() => {
+          hideTimer = 0;
+          if (!(inBand(aio) || held(aio)) && autoHide) aio.removeAttribute('data-liuli-actions-shown');
+        }, 350);
+      }
+    }
+    document.body.toggleAttribute('data-liuli-autohide-actions', autoHide);
+  }
+  let moveFrame = 0;
+  addEventListener(
+    'pointermove',
+    e => {
+      pointer = { x: e.clientX, y: e.clientY };
+      if (!moveFrame)
+        moveFrame = requestAnimationFrame(() => {
+          moveFrame = 0;
+          revealPass();
+        });
+    },
+    { passive: true, capture: true }
+  );
+  document.addEventListener('pointerleave', () => {
+    pointer = { x: -1, y: -1 };
+    revealPass();
+  });
   function apply() {
     frame = 0;
     markTools();
     processMenus();
     drawer();
+    revealPass();
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(apply);
@@ -206,6 +262,7 @@
   }
   addEventListener('resize', schedule);
   function configure(next) {
+    autoHide = next.autoHide !== false;
     settings = {
       moveCalls: next.moveCalls !== false,
       hidden: Array.isArray(next.hidden) ? next.hidden.map(String) : settings.hidden

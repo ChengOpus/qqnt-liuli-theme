@@ -716,3 +716,22 @@ body[data-liuli-scope="main"][data-liuli-tb="native"]
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+/* Auto-hiding action panel (header-tools.js): parked above the window edge,
+ * drops down while the pointer is in the header band or a menu/drawer of it
+ * is open. */
+body[data-liuli-autohide-actions] .aio > .chat-header .panel-header__action {
+  transition:
+    translate 200ms var(--ll-ui-ease),
+    opacity 160ms ease;
+}
+body[data-liuli-autohide-actions] .aio:not([data-liuli-actions-shown]) > .chat-header .panel-header__action {
+  translate: 0 calc(-100% - 12px);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-liuli-autohide-actions] .aio > .chat-header .panel-header__action {
+    transition: opacity 120ms ease;
+  }
+}

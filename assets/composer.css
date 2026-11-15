@@ -338,6 +338,20 @@ body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item:is(:h
 body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item::before {
   content: none !important;
 }
+/* …including QQ's "active" state of 表情 while its panel is open (hover
+ * opens it), drawn on the icon's pseudo-elements or an inner wrapper: the
+ * square was still there in .23 for 表情 only. Nothing inside the round
+ * button paints a fill except the screenshot arrow badge. */
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned::before,
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned::after,
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item *::before,
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item *::after {
+  content: none !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item * {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
 body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:is(:hover, :has(> .icon-item:focus-visible)) {
   background: rgba(var(--ll-brand-rgb), 0.18) !important;
 }
