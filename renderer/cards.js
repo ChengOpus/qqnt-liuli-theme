@@ -170,8 +170,96 @@
     return true;
   }
 
+  // ── Card messages QQ draws on a canvas ────────────────────────────────
+  // QQ 9.9.36 renders ark cards (群公告 and other templates) as pixels:
+  // .ark-item-container > canvas.ark-view-message (user diagnostics
+  // 2026-11-15, cardRows). There is nothing inside to restyle, so the white
+  // sheet becomes see-through with a colour-to-alpha filter: the paler a
+  // pixel, the more transparent (white fully), its colour unchanged — text
+  // stays dark, icons keep their hue, and the bubble's glass shows where the
+  // white was. A dark card (QQ in dark mode) the same with black. Only cards
+  // that are mostly plain white/black are filtered: a card showing a picture
+  // (a link preview, a mini-program cover) stays as it is, and a canvas QQ
+  // drew a remote picture into cannot be sampled and is left alone too.
+  const ARK_K = 1.5;
+  function arkFilters() {
+    if (document.getElementById("liuli-ark-filters")) return;
+    const k = ARK_K, t = (k / 3).toFixed(4);
+    const box = document.createElement("div");
+    box.id = "liuli-ark-filters";
+    box.className = "liuli-owned-ui";
+    box.setAttribute("aria-hidden", "true");
+    box.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none";
+    box.innerHTML =
+      '<svg width="0" height="0" focusable="false">' +
+      '<filter id="liuli-ark-light" color-interpolation-filters="sRGB" x="0" y="0" width="1" height="1">' +
+      '<feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -' + t + " -" + t + " -" + t + " 0 " + k + '" result="m"/>' +
+      '<feComposite in="m" in2="SourceAlpha" operator="in"/></filter>' +
+      '<filter id="liuli-ark-dark" color-interpolation-filters="sRGB" x="0" y="0" width="1" height="1">' +
+      '<feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  ' + t + " " + t + " " + t + ' 0 0" result="m"/>' +
+      '<feComposite in="m" in2="SourceAlpha" operator="in"/></filter></svg>';
+    document.body.append(box);
+  }
+  const arkTries = new WeakMap();
+  let sampler = null;
+  // "light" | "dark" | "keep" (a picture, or cannot be read) | null (not drawn yet)
+  function arkKind(canvas) {
+    if (!canvas.width || !canvas.height) return null;
+    sampler ||= document.createElement("canvas");
+    sampler.width = 24;
+    sampler.height = 16;
+    const ctx = sampler.getContext("2d", { willReadFrequently: true });
+    let data;
+    try {
+      ctx.clearRect(0, 0, 24, 16);
+      ctx.drawImage(canvas, 0, 0, 24, 16);
+      data = ctx.getImageData(0, 0, 24, 16).data;
+    } catch (e) {
+      return "keep";
+    }
+    let opaque = 0, white = 0, black = 0, colour = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      opaque++;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const hi = Math.max(r, g, b), lo = Math.min(r, g, b);
+      if (lo >= 232) white++;
+      else if (hi <= 44) black++;
+      if (hi - lo > 70) colour++;
+    }
+    if (opaque < 40) return null;
+    if (colour / opaque > 0.18) return "keep";
+    if (white / opaque >= 0.55) return "light";
+    if (black / opaque >= 0.55) return "dark";
+    return "keep";
+  }
+  // The list reuses rows: a canvas now showing another message is looked at
+  // again.
+  const arkKeys = new WeakMap();
+  function arkCanvas(canvas) {
+    const key = (canvas.closest(".ml-item")?.id || "") + ":" + canvas.width + "x" + canvas.height;
+    if (arkKeys.get(canvas) !== key) {
+      arkKeys.set(canvas, key);
+      arkTries.delete(canvas);
+      canvas.removeAttribute("data-liuli-ark-glass");
+    }
+    if (canvas.hasAttribute("data-liuli-ark-glass")) return;
+    const kind = arkKind(canvas);
+    if (kind) {
+      if (kind !== "keep") arkFilters();
+      canvas.setAttribute("data-liuli-ark-glass", kind);
+      const bubble = canvas.closest(".msg-content-container");
+      if (bubble && kind !== "keep") set(bubble, "data-liuli-card", "");
+      return;
+    }
+    // not drawn yet: look again a few times
+    const n = (arkTries.get(canvas) || 0) + 1;
+    arkTries.set(canvas, n);
+    if (n <= 8) setTimeout(() => canvas.isConnected && arkKeys.get(canvas) === key && arkCanvas(canvas), 150 * n);
+  }
   function adapt(root) {
     if (!root || document.body.hasAttribute("data-liuli-av")) return;
+    for (const canvas of D.within(root, "canvas.ark-view-message")) arkCanvas(canvas);
     for (const wrapper of D.within(root, ".message-content__wrapper")) {
       // Plain text bubbles are the overwhelming majority: one query, no reads.
       if (!wrapper.querySelector(CARD_HINT)) continue;
@@ -273,5 +361,11 @@
     }
     return out;
   }
-  window.LiuliCards = Object.freeze({ adapt, misses, notices });
+  function arks() {
+    return [...document.querySelectorAll("canvas.ark-view-message")].slice(0, 12).map((c) => {
+      const r = c.getBoundingClientRect();
+      return { size: [c.width, c.height], rect: [Math.round(r.width), Math.round(r.height)], glass: c.getAttribute("data-liuli-ark-glass") || "", filter: getComputedStyle(c).filter.slice(0, 40) };
+    });
+  }
+  window.LiuliCards = Object.freeze({ adapt, misses, notices, arks });
 })();

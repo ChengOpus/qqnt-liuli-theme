@@ -135,3 +135,9 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 - **链接**：`renderer/links.js` 拦截消息里链接的左键按下到点击（QQ 自己的处理不再执行），从 href / data-href / data-url / title / 文字本身取 http(s) 地址，经宿主的 `openExternal` 打开；取不到就交给 QQ。卡片消息（ark）仍由 `ark-external.js` 处理。主进程 `installLinkGuard` 包装 `shell.openExternal`：`c.pc.qq.com`、`c.mp.qq.com`、`urlsec.qq.com` 的中转页从 `pfurl/url/u/target/targeturl` 参数取出 http(s) 地址（最多拆三层）再打开，其他一律原样。设置项 `directLinks`。
 - **表情包面板保持打开**：QQ 关面板是给 `.sticker-panel` 写行内 `display:none`。按下表情包时记下面板原来的 display，在 `data-liuli-keep-open` 期间用 `!important` 保持；指针移出面板（6px 余量）、Esc、窗口失焦、点面板外都会撤掉标记。撤掉之后面板回到 QQ 认为的关闭状态，不需要再调用 QQ。
 - **卡片判断的重试**：`cards.js` 的 `classify` 遇到还没有尺寸的消息返回 `false`，这时不记入已处理，下一轮再判断。
+
+## 画在画布上的卡片（.31）
+
+QQ 9.9.36 的 ark 卡片（群公告等）是 `canvas.ark-view-message`。`cards.js` 的 `arkCanvas()` 把画布缩到 24×16 取样（`drawImage` + `getImageData`）：不透明像素里 55% 以上近白（或近黑）、彩色不超过 18% 的，打 `data-liuli-ark-glass="light"`（或 `dark`），CSS 用 SVG 滤镜 `#liuli-ark-light`：`feColorMatrix` 让透明度 = 1.5 ×（1 − RGB 平均），颜色不变，再用 `feComposite in SourceAlpha` 保留原来透明的角。深色同理（透明度 = 1.5 × RGB 平均）。读不到像素（画了网络图片）或带图片的标 `keep`，不加滤镜。还没画出来的画布最多再看 8 次（间隔递增）。键是「消息行 id + 画布尺寸」，变了就重判。滤镜定义在 `#liuli-ark-filters`（`liuli-owned-ui`）。
+
+表情包面板的「按住」只被用户真实的点击（`isTrusted`）放掉，主题自己替 QQ 按发送键不算。

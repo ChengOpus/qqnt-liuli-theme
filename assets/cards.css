@@ -58,3 +58,12 @@
 [data-liuli-file-strip] {
   display: none !important;
 }
+
+/* Card messages QQ draws on a canvas (cards.js arkCanvas): the white (or, in
+ * dark mode, black) sheet becomes see-through, the bubble's glass shows. */
+canvas.ark-view-message[data-liuli-ark-glass="light"] {
+  filter: url(#liuli-ark-light);
+}
+canvas.ark-view-message[data-liuli-ark-glass="dark"] {
+  filter: url(#liuli-ark-dark);
+}

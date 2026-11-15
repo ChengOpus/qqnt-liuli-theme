@@ -1348,6 +1348,39 @@ async function run() {
           noticeBodyColor: css(notice.querySelector('[data-role="nbody"]')).color,
           probe: LiuliCards.notices(),
         };
+        // 群公告 as QQ 9.9.36 has it: a card drawn on a canvas
+        const drawn = (paint) => {
+          const item = row("others", '<div><div><div class="ark-item-container"><canvas class="ark-view-message" width="500" height="252" style="width:250px;height:126px;display:block"></canvas></div></div></div>', "ark-msg-content-container");
+          const canvas = item.querySelector("canvas");
+          paint(canvas.getContext("2d"));
+          return item;
+        };
+        const arkWhite = drawn((c) => {
+          c.fillStyle = "#fff"; c.beginPath(); c.roundRect(4, 4, 492, 244, 20); c.fill();
+          c.fillStyle = "rgb(0,190,255)"; c.fillRect(40, 40, 30, 24);
+          c.fillStyle = "#000"; c.font = "28px sans-serif"; c.fillText("Printer sheet", 40, 140);
+        });
+        const arkPicture = drawn((c) => {
+          const g = c.createLinearGradient(0, 0, 500, 0); g.addColorStop(0, "#e33"); g.addColorStop(1, "#33e");
+          c.fillStyle = g; c.fillRect(0, 0, 500, 252);
+        });
+        const arkLater = drawn(() => {});
+        LiuliCards.adapt(list);
+        setTimeout(() => {
+          const c = arkLater.querySelector("canvas").getContext("2d");
+          c.fillStyle = "#fff"; c.fillRect(0, 0, 500, 252); c.fillStyle = "#000"; c.fillRect(40, 100, 200, 30);
+        }, 100);
+        await new Promise((res) => setTimeout(res, 700));
+        result.ark = {
+          white: arkWhite.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
+          whiteFilter: getComputedStyle(arkWhite.querySelector("canvas")).filter,
+          filterDefined: !!document.getElementById("liuli-ark-light"),
+          picture: arkPicture.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
+          pictureFilter: getComputedStyle(arkPicture.querySelector("canvas")).filter,
+          later: arkLater.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
+          probe: LiuliCards.arks().length,
+        };
+        for (const n of [arkWhite, arkPicture, arkLater]) n.remove();
         // a card first seen before it has a size (the virtual list measures
         // rows hidden) is classified once it has one
         const late = row(
@@ -1383,6 +1416,12 @@ async function run() {
       expect("file.own-row-aligned-with-text-rows", cards.fileGap === cards.textGap, cards);
       expect("card.plain-text-untouched", cards.plainTouched === 0, cards);
       expect("card.group-announcement-is-glass", cards.noticeSheet === "light" && cards.noticeBg === "none" && cards.noticeBody === "1", cards);
+      expect(
+        "card.canvas-drawn-card-is-glass",
+        cards.ark.white === "light" && /liuli-ark-light/.test(cards.ark.whiteFilter) && cards.ark.filterDefined &&
+          cards.ark.picture === "keep" && cards.ark.pictureFilter === "none" && cards.ark.later === "light" && cards.ark.probe >= 3,
+        cards.ark,
+      );
       expect("card.classified-once-laid-out", cards.late.hidden === false && cards.late.shown === "light", cards.late);
       expect(
         "diag.notice-probe-structure-only",
@@ -1641,14 +1680,27 @@ async function run() {
         document.body.append(panel);
         const sheet = panel.querySelector(".sticker-panel");
         const tile = panel.querySelector(".stickers-item img");
-        tile.addEventListener("pointerdown", () => (sheet.style.display = "none"));
+        const editor = __qa.q(".ProseMirror");
+        // QQ: hide the panel on the press and put the sticker in the editor
+        tile.addEventListener("pointerdown", () => {
+          sheet.style.display = "none";
+          setTimeout(() => {
+            const pic = document.createElement("span");
+            pic.className = "image-element";
+            pic.innerHTML = "<img>";
+            editor.firstElementChild.append(pic);
+          }, 30);
+        });
         await __qa.frames(2);
         const r = tile.getBoundingClientRect();
         const box = panel.querySelector(".expression-panel-inner").getBoundingClientRect();
-        const editor = __qa.q(".ProseMirror");
-        editor.innerHTML = "<p>draft</p>"; // held open even with a draft (not sent then)
+        editor.innerHTML = "<p><br></p>";
+        const sentBefore = LiuliChatExtras.debug().sent;
         tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r.left + 10, clientY: r.top + 10 }));
-        await __qa.frames(2);
+        // the sticker is sent (the theme presses QQ's send button) …
+        await new Promise((res) => setTimeout(res, 400));
+        const sent = LiuliChatExtras.debug().sent - sentBefore;
+        // … and the panel is still there
         const shownAfterPress = getComputedStyle(sheet).display !== "none" && panel.querySelector(".expression-panel-inner").getBoundingClientRect().height > 100;
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left + 50, clientY: box.top + 50 }));
         await __qa.frames(1);
@@ -1658,9 +1710,9 @@ async function run() {
         const closedOutside = getComputedStyle(sheet).display === "none";
         panel.remove();
         editor.innerHTML = "<p><br></p>";
-        return { shownAfterPress, shownInside, closedOutside, debug: LiuliChatExtras.debug() };
+        return { sent, shownAfterPress, shownInside, closedOutside, debug: LiuliChatExtras.debug() };
       });
-      expect("sticker.panel-stays-while-pointer-over-it", stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.closedOutside && !stickerHold.debug.holding, stickerHold);
+      expect("sticker.panel-stays-while-pointer-over-it", stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.closedOutside && !stickerHold.debug.holding, stickerHold);
 
       // ── A click in the text places the caret ──
       // QQ's send row is natively a full-width bar; emulate that, then click
