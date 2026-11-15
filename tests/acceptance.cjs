@@ -1091,18 +1091,29 @@ async function run() {
         await new Promise((r) => setTimeout(r, 200));
         const afterPress = sent;
         tile.closest(".stickers-item").style.display = "";
+        // an "empty" ProseMirror editor as QQ has it: separator <img>,
+        // trailing <br> and a zero-width character
+        editor.innerHTML = '<p>\u200b<img class="ProseMirror-separator" alt=""><br class="ProseMirror-trailingBreak"></p>';
+        panelEl.querySelector(".stickers-item img").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+        await __qa.frames(2);
+        const pic2 = document.createElement("span");
+        pic2.className = "image-element";
+        pic2.innerHTML = "<img>";
+        editor.firstElementChild.prepend(pic2);
+        await new Promise((r) => setTimeout(r, 200));
+        const afterHelpers = sent;
         editor.innerHTML = "<p><br></p>";
         panelEl.querySelector(".emoji-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         const face = document.createElement("img");
         face.className = "face-element";
         editor.firstElementChild.append(face);
         await new Promise((r) => setTimeout(r, 120));
-        const afterEmoji = sent - afterPress + afterSticker;
+        const afterEmoji = sent - afterHelpers + afterSticker;
         editor.innerHTML = "<p>写了一半</p>";
         panelEl.querySelector(".stickers-item img").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         editor.firstElementChild.append(img.cloneNode());
         await new Promise((r) => setTimeout(r, 120));
-        const afterDraft = sent - afterPress + afterSticker;
+        const afterDraft = sent - afterHelpers + afterSticker;
         // expanding "+" keeps both icons where they were
         document.getElementById("liuli-func-toggle").click();
         await __qa.frames(3);
@@ -1112,7 +1123,7 @@ async function run() {
         LiuliComposer.expand(false);
         panelEl?.remove();
         editor.innerHTML = "<p><br></p>";
-        return { placement, afterHover, afterClick, afterSticker, afterPress, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
+        return { placement, afterHover, afterClick, afterSticker, afterPress, afterHelpers, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
       });
       checks.stickers = stickers;
 
@@ -1145,6 +1156,33 @@ async function run() {
       caret.expected = line.indexOf("k");
       await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
       expect("composer.click-places-caret", caret.inEditor && Math.abs(caret.offset - caret.expected) <= 1, caret);
+
+      // ── Many line breaks: the editor scrolls, the page does not move ──
+      await editorBox.click();
+      for (let i = 0; i < 40; i++) await page.keyboard.press("Enter");
+      await page.keyboard.type("last line");
+      await page.waitForTimeout(400);
+      const tall = await page.evaluate(() => {
+        const input = __qa.q(".chat-input-area");
+        const ed = __qa.q(".chat-input-area .ProseMirror");
+        const box = input.getBoundingClientRect();
+        const sel = getSelection().getRangeAt(0).getBoundingClientRect();
+        const scrolled = [];
+        for (let n = input.parentElement; n && n !== document.body; n = n.parentElement)
+          if (n.scrollTop > 0 && !n.matches("[data-liuli-composer-scroll]")) scrolled.push(n.className);
+        const header = __qa.q(".aio > .chat-header").getBoundingClientRect();
+        return {
+          height: Math.round(box.height),
+          cap: Math.round(Math.min(innerHeight * 0.36, 300) + 20),
+          editorScrolls: ed.scrollHeight > ed.clientHeight + 4,
+          caretInside: sel.bottom <= box.bottom + 1 && sel.top >= box.top - 1,
+          scrolled,
+          headerTop: Math.round(header.top),
+        };
+      });
+      await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
+      await page.waitForTimeout(200);
+      expect("composer.long-draft-scrolls-inside", tall.height <= tall.cap && tall.editorScrolls && tall.caretInside && !tall.scrolled.length && tall.headerTop >= 0, tall);
       const P = stickers.placement;
       expect("toolbar.native-emoji-and-screenshot-beside-plus", P.sameRow && P.emojiGap >= 2 && P.emojiGap <= 6 && P.shotGap >= 2 && P.shotGap <= 6 && P.proxies === 1, stickers);
       expect("toolbar.rest-stay-in-plus-menu", P.othersHidden, stickers);
@@ -1153,6 +1191,7 @@ async function run() {
       expect("sticker.click-keeps-panel-open", stickers.afterClick.open && stickers.afterClick.nativeClicks === 1, stickers);
       expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
       expect("sticker.sends-when-qq-inserts-on-press", stickers.afterPress === 2, stickers);
+      expect("sticker.sends-from-editor-with-prosemirror-helpers", stickers.afterHelpers === 3, stickers);
       expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
       expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);
       // Send button: light at rest, a light tint when ready, arrow visible.
@@ -1188,6 +1227,35 @@ async function run() {
         !!probe?.layers?.app && !!probe.layers.container && probe.layers.points?.length === 3 && typeof probe.layers.containerInApp === "boolean",
         Object.keys(probe?.layers || {}),
       );
+      // Taskbar flash decision: did the unread message count just go up?
+      const notice = await page.evaluate(async () => {
+        // QQ's navigation: the Messages tab first, its badge 2
+        const nav = document.createElement("div");
+        nav.className = "sidebar__nav";
+        nav.innerHTML = '<div class="nav-item"><span class="q-badge-num">2</span></div><div class="nav-item"></div>';
+        nav.style.cssText = "position:fixed;left:-99px;top:0";
+        document.body.append(nav);
+        let row = document.querySelector(".recent-contact-item");
+        if (!row) {
+          row = document.createElement("div");
+          row.className = "recent-contact-item";
+          document.querySelector(".recent-contact").append(row);
+        }
+        await new Promise((r) => setTimeout(r, 2300));
+        const quiet = LiuliNotice.grew(); // a join request: nothing grew
+        nav.querySelector(".q-badge-num").textContent = "3";
+        const navGrew = LiuliNotice.grew();
+        nav.querySelector(".q-badge-num").textContent = "2";
+        const badge = document.createElement("span");
+        badge.className = "q-badge-num";
+        badge.textContent = "1";
+        row.append(badge);
+        const listGrew = LiuliNotice.grew();
+        badge.remove();
+        nav.remove();
+        return { quiet, navGrew, listGrew };
+      });
+      expect("notice.flash-only-for-new-messages", notice.quiet === false && notice.navGrew === true && notice.listGrew === true, notice);
       // QQ's own telemetry warnings stay out of 「最近错误」; the theme's do not.
       const noise = await page.evaluate(() => {
         const before = window.LiuliDiag.getErrorCount();

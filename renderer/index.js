@@ -395,6 +395,7 @@
     hideFileTip: true,
     stickerSend: true,
     blockUpdate: true,
+    quietFlash: true,
     chatStyle: 'tg',
     avatarPosition: 'bottom',
     messageFontSize: 14,
@@ -514,6 +515,7 @@
     b.style.setProperty('--ll-glow-strength', String(llModeCfg.glow));
     b.toggleAttribute('data-liuli-hide-image-names', llModeCfg.hideImageNames === true);
     llSyncUpdateGuard();
+    llSyncFlashGuard();
     window.LiuliChatExtras?.configure({
       hideFileTip: llModeCfg.hideFileTip !== false,
       stickerSend: llModeCfg.stickerSend !== false
@@ -1138,6 +1140,57 @@
       .catch(() => { llUpdateGuardSent = null; });
   }
   window.addEventListener('liuli-scope', () => llSyncUpdateGuard());
+
+  // 任务栏闪烁只留给新消息（加群申请、好友申请等通知不闪）。QQ 通过 Electron
+  // 的 flashFrame 闪任务栏，不带原因；主进程拦下后问这里：消息页的未读数在
+  // 这之前一秒多是多少、现在是多少。只有涨了才放行（load.js）。
+  var llFlashSent = null;
+  function llSyncFlashGuard() {
+    if (document.body.dataset.liuliScope !== 'main' || !window.LiuliHost?.flashGuard) return;
+    const want = llModeCfg.quietFlash !== false;
+    if (llFlashSent === want) return;
+    llFlashSent = want;
+    window.LiuliHost.flashGuard(want).catch(() => { llFlashSent = null; });
+  }
+  window.addEventListener('liuli-scope', () => llSyncFlashGuard());
+  const llUnread = [];
+  function llUnreadCount() {
+    // the Messages tab is the first item of the navigation
+    const nav = document.querySelector('.sidebar__nav .nav-item, .sidebar-nav .nav-item, .nav-item');
+    if (!nav) return null;
+    const badge = nav.querySelector('.q-badge-num, [class*="badge-num"], [class*="badge"]');
+    if (!badge) return 0;
+    const n = parseInt(String(badge.textContent).replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(n) ? n : badge.getClientRects().length ? 1 : 0;
+  }
+  // second signal: unread badges on the conversation rows on screen
+  // (muted rows excluded — QQ does not flash for them)
+  function llListUnread() {
+    let n = 0;
+    for (const badge of document.querySelectorAll('.recent-contact-item .q-badge-num')) {
+      if (badge.closest('.recent-contact-item')?.querySelector('.no-disturb-icon')) continue;
+      const v = parseInt(String(badge.textContent).replace(/[^0-9]/g, ''), 10);
+      n += Number.isFinite(v) ? v : 1;
+    }
+    return n;
+  }
+  setInterval(() => {
+    if (document.body.dataset.liuliScope !== 'main') return;
+    llUnread.push({ t: Date.now(), n: llUnreadCount(), list: llListUnread() });
+    while (llUnread.length > 8) llUnread.shift();
+  }, 1000);
+  window.LiuliNotice = Object.freeze({
+    // true: more unread messages than ~1.2 s ago; false: not; null: unknown
+    grew() {
+      const before = [...llUnread].reverse().find(s => Date.now() - s.t >= 1200);
+      if (!before) return null;
+      const nav = llUnreadCount();
+      const list = llListUnread();
+      if (list > before.list) return true;
+      if (nav == null || before.n == null) return null;
+      return nav > before.n;
+    }
+  });
 
   // Picture/video viewer: the host themes it only after QQ has shown and
   // sized it (load.js). So that it does not show QQ's own look meanwhile, the
@@ -3158,6 +3211,11 @@
     settingSwitch('隐藏顶部的文件接收提示条', 'hideFileTip', settings.hideFileTip !== false);
     settingSwitch('点表情包直接发送', 'stickerSend', settings.stickerSend !== false);
     settingSwitch('禁止 QQ 自动更新', 'blockUpdate', settings.blockUpdate !== false);
+    settingSwitch('只在新消息时闪任务栏图标', 'quietFlash', settings.quietFlash !== false);
+    const flashHint = document.createElement('div');
+    flashHint.className = 'liuli-field__hint';
+    flashHint.textContent = '加群申请、好友申请等通知不再让任务栏里的 QQ 图标闪动；新消息照常闪。关闭后恢复 QQ 原来的行为。';
+    host.appendChild(flashHint);
     const updateHint = document.createElement('div');
     updateHint.className = 'liuli-field__hint';
     updateHint.textContent = '把 QQ 的版本配置固定为当前版本并设为只读，后台下载的新版本不会被加载。关闭后恢复可写，QQ 下次检查时照常更新。';

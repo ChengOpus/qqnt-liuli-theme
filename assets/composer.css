@@ -86,14 +86,21 @@
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .qq-msg-editor {
   --qq-editor-height: auto !important;
   height: auto !important;
-  max-height: 44vh;
+  max-height: none !important;
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ExEditor-qq-msg-editor {
   height: auto !important;
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror {
   min-height: 44px !important;
-  max-height: 44vh !important;
+  /* Long drafts scroll inside the editor. Before, the cap had no overflow
+   * rule: extra lines ran out of the glass and dragged the page (and the
+   * header) with them (user screenshot, 2026-11-15). */
+  max-height: min(36vh, 300px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding-top: 11px !important;
   padding-bottom: 10px !important;
   box-sizing: border-box;

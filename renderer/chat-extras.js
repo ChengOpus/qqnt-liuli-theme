@@ -176,18 +176,33 @@
   // the sticker stayed in the editor). The editor is then watched each frame
   // for the picture rather than for one particular mutation shape.
   let pending = null;
-  const debug = { armed: 0, landed: 0, sent: 0, last: '' };
+  const debug = { armed: 0, landed: 0, sent: 0, last: '', skipped: '' };
+  // What counts as a picture in the editor. ProseMirror keeps helper nodes in
+  // an otherwise empty paragraph — an <img class="ProseMirror-separator"> and
+  // a trailing <br> — and QQ pads with zero-width characters; none of those
+  // is content (they made an empty editor look like a draft).
+  const HELPER = '.ProseMirror-separator, .ProseMirror-trailingBreak, .ProseMirror-widget, [data-placeholder]';
   const MEDIA_IN_EDITOR = 'img, .image-element, .pic-element, [class*="image-element"], [class*="market-face"]';
   function editorOf(input) {
     return input?.querySelector('.ProseMirror, [contenteditable="true"], [contenteditable]') || null;
   }
+  function textOf(editor) {
+    return editor.textContent.replace(/[\s​-‏⁠﻿]/g, '');
+  }
+  // pictures, attachments and faces actually in the message
+  function mediaCount(editor) {
+    let n = 0;
+    for (const node of editor.querySelectorAll(MEDIA_IN_EDITOR + ', .file-element, .face-element')) {
+      if (node.matches(HELPER) || node.closest(HELPER)) continue;
+      // an <img> inside an element already counted is the same picture
+      if (node.parentElement?.closest('.image-element, .pic-element, [class*="image-element"], [class*="market-face"], .file-element, .face-element')) continue;
+      n++;
+    }
+    return n;
+  }
   function editorEmpty(input) {
     const editor = editorOf(input);
-    return (
-      !!editor &&
-      editor.textContent.trim() === '' &&
-      !editor.querySelector('img, .image-element, .file-element, .face-element')
-    );
+    return !!editor && textOf(editor) === '' && mediaCount(editor) === 0;
   }
   function activeTab(strip) {
     return strip ? strip.items.findIndex(item => item.classList.contains('tabs-container-item-active')) : -1;
@@ -232,7 +247,7 @@
     // Still there well after (no button, or it did not take): Enter, the key
     // the user sends with. Late enough that a send in flight has cleared it.
     setTimeout(() => {
-      if (!editor?.isConnected || !editor.querySelector(MEDIA_IN_EDITOR)) return;
+      if (!editor?.isConnected || mediaCount(editor) === 0) return;
       editor.focus();
       for (const type of ['keydown', 'keypress', 'keyup'])
         editor.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
@@ -248,7 +263,7 @@
       pending = null;
       return;
     }
-    if (editor.querySelector(MEDIA_IN_EDITOR)) {
+    if (mediaCount(editor) > pending.before && textOf(editor) === '') {
       pending = null;
       debug.landed++;
       // after ProseMirror has finished its own transaction
@@ -259,13 +274,18 @@
   }
   function onPress(event) {
     if (event.button !== 0 || !settings.stickerSend) return;
+    if (!event.target.closest?.(PANEL)) return;
     const tile = stickerTile(event);
-    if (!tile) return;
+    if (!tile) return void (debug.skipped = 'not-a-sticker-tile');
     const input = window.LiuliComposer.area();
-    if (!input || !editorEmpty(input)) return; // keep a half-written message
+    const editor = editorOf(input);
+    if (!editor) return void (debug.skipped = 'no-editor');
+    // keep a half-written message
+    if (!editorEmpty(input)) return void (debug.skipped = 'draft:' + textOf(editor).length + 'ch/' + mediaCount(editor) + 'media');
     debug.armed++;
+    debug.skipped = '';
     const fresh = !pending;
-    pending = { input, until: performance.now() + 1500 };
+    pending = { input, before: mediaCount(editor), until: performance.now() + 2000 };
     if (fresh) requestAnimationFrame(watch);
   }
   function onClick(event) {
@@ -284,6 +304,7 @@
     document.addEventListener("click", onEmojiClick, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("pointerdown", onPress, true);
+    document.addEventListener("mousedown", (e) => { if (!pending) onPress(e); }, true);
     document.addEventListener("pointerover", onOver, true);
     document.addEventListener("pointerout", onOut, true);
   }

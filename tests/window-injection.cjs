@@ -47,13 +47,21 @@ const browserWindow = {
 };
 const app = new EventEmitter();
 app.getVersion = () => "9.9.36";
+// Electron's BrowserWindow: flashFrame lives on the prototype.
+function BrowserWindowDouble() {}
+BrowserWindowDouble.prototype.flashFrame = function (flag) {
+  this.flashes.push(flag);
+};
+BrowserWindowDouble.getAllWindows = () => [browserWindow];
+BrowserWindowDouble.fromWebContents = (wc) => (wc === main ? browserWindow : wc.window || null);
+let unreadGrew = null;
+const mainExec = main.executeJavaScript.bind(main);
+main.executeJavaScript = (script) =>
+  script.includes("LiuliNotice") ? Promise.resolve(unreadGrew) : mainExec(script);
 const all = [main, existingView],
   electron = {
     app,
-    BrowserWindow: {
-      getAllWindows: () => [browserWindow],
-      fromWebContents: (wc) => (wc === main ? browserWindow : wc.window || null),
-    },
+    BrowserWindow: BrowserWindowDouble,
     webContents: { getAllWebContents: () => all },
     shell: {},
     screen: {},
@@ -177,10 +185,41 @@ const flush = () => new Promise((r) => setImmediate(r));
   await new Promise((r) => setTimeout(r, 400));
   await flush();
   assert.equal(quiet.calls.length, 1, "no window object: themed after a short quiet period");
+  // Taskbar flash: only when the unread message count went up.
+  main.emit("console-message", {
+    message: "[theme-host:anonymous-test]" + JSON.stringify({ id: 0, method: "flashGuard", argument: true }),
+    frame: main.mainFrame,
+  });
+  await flush();
+  const win = new BrowserWindowDouble();
+  win.flashes = [];
+  win.isDestroyed = () => false;
+  win.isFocused = () => false;
+  const attempt = async (grew) => {
+    unreadGrew = grew;
+    win.flashFrame(true);
+    await new Promise((r) => setTimeout(r, 650));
+  };
+  await attempt(false);
+  assert.deepEqual(win.flashes, [], "a join request (no new message) does not flash");
+  await attempt(true);
+  assert.deepEqual(win.flashes, [true], "a new message flashes");
+  await attempt(null);
+  assert.deepEqual(win.flashes, [true, true], "unknown: flash as QQ would");
+  win.flashFrame(false);
+  assert.deepEqual(win.flashes, [true, true, false], "stopping a flash is immediate");
+  main.emit("console-message", {
+    message: "[theme-host:anonymous-test]" + JSON.stringify({ id: 0, method: "flashGuard", argument: false }),
+    frame: main.mainFrame,
+  });
+  await flush();
+  unreadGrew = false;
+  win.flashFrame(true);
+  assert.deepEqual(win.flashes, [true, true, false, true], "guard off: QQ's behaviour");
   assert.equal(main.listenerCount("did-finish-load"), 1);
   assert.equal(pool.listenerCount("did-finish-load"), 1);
   console.log(
-    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and pre-styled, deferred media viewers passed",
+    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and pre-styled, deferred media viewers and the taskbar flash guard passed",
   );
 })().catch((e) => {
   console.error(e);

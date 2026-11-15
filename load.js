@@ -80,6 +80,12 @@ function createMethods(state) {
       diagnostics?.log({ event: 'update-guard', ...report });
       return report;
     },
+    // 「只在新消息时闪任务栏图标」：主窗口启动和切换开关时调用。
+    flashGuard(enabled) {
+      installFlashGuard();
+      globalThis.__snowloraLiuliFlashGuard.enabled = enabled === true;
+      return globalThis.__snowloraLiuliFlashGuard.enabled;
+    },
     // The main window's current look, used to pre-style viewers (below).
     viewerPreset(preset) {
       if (!preset || typeof preset.css !== 'string' || preset.css.length > 3 * 1024 * 1024) return false;
@@ -132,6 +138,44 @@ async function onConsole(state, details) {
       )
       .catch(() => {});
   }
+}
+
+// Taskbar flashing. QQ flashes the taskbar button through Electron's
+// flashFrame for new messages and for notices alike (join requests, friend
+// requests), with no reason attached. With the guard on, a flash request is
+// held for half a second and the main window is asked whether its unread
+// message count went up just before (renderer: LiuliNotice.grew). Only then
+// does the button flash. Unknown (no main window, no answer) flashes as before.
+function mainState() {
+  for (const state of windows.values()) {
+    if (state.applied && /#\/main(?:[/?]|$)/.test(stateUrl(state))) return state;
+  }
+  return null;
+}
+function installFlashGuard() {
+  if (globalThis.__snowloraLiuliFlashGuard) return;
+  let proto = BrowserWindow.prototype;
+  while (proto && !Object.prototype.hasOwnProperty.call(proto, 'flashFrame')) proto = Object.getPrototypeOf(proto);
+  const guard = (globalThis.__snowloraLiuliFlashGuard = { enabled: true, original: proto?.flashFrame || null });
+  if (!proto || typeof guard.original !== 'function') return;
+  proto.flashFrame = function (flag) {
+    if (!flag || !guard.enabled) return guard.original.call(this, flag);
+    const win = this;
+    setTimeout(async () => {
+      let grew = null;
+      const main = mainState();
+      if (main && !main.wc.isDestroyed()) {
+        grew = await main.wc
+          .executeJavaScript('window.LiuliNotice ? window.LiuliNotice.grew() : null')
+          .catch(() => null);
+      }
+      diagnostics?.log({ event: 'taskbar-flash', grew });
+      if (grew === false) return;
+      try {
+        if (!win.isDestroyed() && !win.isFocused()) guard.original.call(win, true);
+      } catch {}
+    }, 500);
+  };
 }
 
 // QQ's picture/video viewer is a pooled blank window routed in place, then
