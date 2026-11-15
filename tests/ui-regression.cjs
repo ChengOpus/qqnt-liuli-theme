@@ -172,12 +172,15 @@ const readResources = require("../resources.cjs");
       await page.waitForTimeout(750);
       // Over the chat-header action buttons only the 8px top edge reveals the
       // window controls (reaching for a button must not summon them).
+      // (With the controls pinned — the default since .22 — they are always
+      // there, so revealing them has nothing left to decide.)
       await page.mouse.move(variant.width - 20, 15);
       await page.waitForTimeout(280);
-      assert.equal(
-        await page.evaluate(() => document.body.hasAttribute("data-liuli-r-r")),
-        false,
-      );
+      if (!(await page.evaluate(() => document.body.hasAttribute("data-liuli-controls-pinned"))))
+        assert.equal(
+          await page.evaluate(() => document.body.hasAttribute("data-liuli-r-r")),
+          false,
+        );
       await page.mouse.move(variant.width - 20, 3);
       await page.waitForTimeout(280);
       result.rightReveal = await page.evaluate(() => ({

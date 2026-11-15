@@ -80,6 +80,7 @@
         hooks.records?.(records);
       } finally {
         window.LiuliChatExtras?.records(records);
+        window.LiuliHeaderTools?.records(records);
       }
       for (const record of records) {
         const target = element(record.target);

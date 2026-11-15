@@ -75,7 +75,9 @@
   max-height: 50vh !important;
   height: auto !important;
   margin: 0 !important;
-  padding: 0 48px 0 var(--liuli-bar-pad, 44px) !important;
+  /* No right padding: the editor (and its scrollbar) reaches the glass edge;
+   * the room for the send button is the editor's own padding below. */
+  padding: 0 0 0 var(--liuli-bar-pad, 44px) !important;
   box-sizing: border-box;
   overflow: visible;
   border: 0 !important;
@@ -100,10 +102,37 @@
   overflow-y: auto !important;
   overflow-x: hidden !important;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
   padding-top: 11px !important;
   padding-bottom: 10px !important;
+  padding-right: 48px !important;
   box-sizing: border-box;
+}
+/* The theme's scrollbar (foundation.css .q-scroll-view): thin, theme colour,
+ * no arrows, along the glass edge and stopping above the send button. No
+ * `scrollbar-width` here — setting it switches the styled scrollbar off and
+ * brings back the system one with arrows (user screenshot, 2026-11-15). */
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror::-webkit-scrollbar {
+  width: 10px;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 12px 0 46px;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--ll-brand) 50%, transparent);
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ll-brand) 72%, transparent);
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .ProseMirror::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--ll-brand) 90%, transparent);
 }
 /* Messages pass behind the editor: the real scroll container (found by the
  * controller) keeps its full height and reserves the editor as end padding. */

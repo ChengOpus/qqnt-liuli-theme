@@ -1391,6 +1391,7 @@
         });
       });
     }, null);
+    probe.headerTools = safe(() => (w.LiuliHeaderTools ? w.LiuliHeaderTools.report() : null), null);
     probe.stickerSend = safe(() => (w.LiuliChatExtras && w.LiuliChatExtras.debug ? w.LiuliChatExtras.debug() : null), null);
     probe.bigLayers = safe(() => {
       const W = w.innerWidth, H = w.innerHeight, out = [];

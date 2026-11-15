@@ -72,7 +72,7 @@
 
 在本仓库 [Releases](https://github.com/LilycleHeart/qqnt-liuli-theme/releases) 下载 `qqnt-liuli-theme-<版本>.zip`（SnowLora 版的 release tag 形如 `v1.3.5+snowlora.4`），到 QQ 设置 → SnowLora → 插件管理 → 本地安装，选择 zip 文件。
 
-本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.21`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
+本轮 UI 改版的最新测试版本为 **`1.3.5+snowlora.22`**。开发分支中的测试 ZIP 可用同一方式安装；安装前先备份当前插件目录，升级后在 QQ 设置 → SnowLora 检查插件版本。完整的验收、性能对比与回退清单见 [UI 改版验收](docs/UI-REWORK.md)，维护约定见 [交互与材质架构](docs/ARCHITECTURE.md)，本轮逐项源码核对见 [作者版本对齐记录](docs/AUTHOR-ALIGNMENT.md)。
 
 ### 方式三：在线安装
 
@@ -116,6 +116,7 @@ renderer/cards.js     卡片类消息（邮箱提醒、分享卡片、文件卡�
 renderer/rows.js      消息行的几项事实（自己/对方、多选、卡片）写成属性，代替逐行 :has()
 renderer/chat-extras.js 隐藏顶部文件接收提示条、表情图标悬停/点击打开表情包页、点表情包直接发送
 renderer/backdrop.js    主窗口里找出并清掉 QQ 自己铺在壁纸上面的整窗背景（多彩主题等）
+renderer/header-tools.js 标题栏工具：语音/视频/屏幕共享收进群应用菜单，菜单项可在设置里隐藏
 css-optimize.cjs      加载时把 `X :is(.a, .b)` 展开成等价的选择器列表，匹配结果不变、匹配更快
 update-guard.cjs      「禁止 QQ 自动更新」：把 versions/config.json 固定为当前版本并设为只读
 renderer/pin-groups.js 原生置顶状态与轻量图钉标记

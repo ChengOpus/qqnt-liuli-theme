@@ -20,14 +20,12 @@ body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
   gap: 4px !important;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
 }
 body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
   :is(.search-result, .search-result-list) {
   min-height: 0 !important;
   max-height: calc(100vh - 170px);
   overflow-y: auto;
-  scrollbar-width: thin;
 }
 body[data-liuli-scope='search'] :is(.main-search, .search-layout, .search-page)
   :is(.search-result-item, .search-item) {

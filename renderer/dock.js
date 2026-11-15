@@ -197,6 +197,12 @@
         shield.setAttribute("aria-hidden", "true");
         document.body.append(shield);
       }
+      // Pinned controls take the member panel's width, so their left edge
+      // lines up with the panel below (shell.css); 0 without one.
+      variable(
+        "--ll-side-col",
+        right ? Math.round(right.getBoundingClientRect().width) + "px" : "0px",
+      );
       const r = controls.getBoundingClientRect();
       // The header action panel steps aside by exactly this much (shell.css).
       if (r.width > 0)

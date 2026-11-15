@@ -530,6 +530,28 @@ body[data-liuli-scope="main"][data-liuli-r-r]:not([data-liuli-tb="native"])
   .panel-header__action {
   margin-right: calc(var(--ll-controls-width, 112px) + var(--ll-dock-gap));
 }
+/* Window controls always shown (setting, on by default): same row, height
+ * and top as the two header panels, as wide as the member panel below them
+ * when there is one, buttons to the right; the action panel keeps its place
+ * beside them for good. */
+body[data-liuli-controls-pinned][data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .window-title-bar
+  .window-control-area {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  min-width: var(--ll-side-col, 0px) !important;
+  justify-content: flex-end !important;
+}
+body[data-liuli-controls-pinned][data-liuli-scope="main"]:not([data-liuli-tb="native"])
+  .aio
+  > .chat-header
+  .panel-header__action {
+  margin-right: calc(var(--ll-controls-width, 112px) + var(--ll-dock-gap));
+  transition: none;
+}
+body[data-liuli-controls-pinned] #liuli-top-hint-r {
+  display: none !important;
+}
 #liuli-ctl-shield {
   position: fixed;
   pointer-events: none;
@@ -660,4 +682,15 @@ body[data-liuli-scope="main"][data-liuli-tb="native"]
   .aio > .chat-header .panel-header__action {
     transition: none !important;
   }
+}
+
+/* Header tools (renderer/header-tools.js): call icons moved into the
+ * group-apps dropdown, dropdown rows the user hid. */
+.aio > .chat-header .panel-header__action [data-liuli-tool-moved],
+.aio > .chat-header .panel-header__action [data-liuli-menu-hidden] {
+  display: none !important;
+}
+.aio > .chat-header .panel-header__action .liuli-menu-icon {
+  flex: none;
+  display: block;
 }

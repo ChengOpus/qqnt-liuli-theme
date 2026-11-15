@@ -396,6 +396,9 @@
     stickerSend: true,
     blockUpdate: true,
     quietFlash: true,
+    pinControls: true,
+    moveCalls: true,
+    headerMenuHidden: ['群作业', '群视频', '群课堂'],
     chatStyle: 'tg',
     avatarPosition: 'bottom',
     messageFontSize: 14,
@@ -514,8 +517,13 @@
     b.style.setProperty('--ll-material-opacity', String(llModeCfg.opacity));
     b.style.setProperty('--ll-glow-strength', String(llModeCfg.glow));
     b.toggleAttribute('data-liuli-hide-image-names', llModeCfg.hideImageNames === true);
+    b.toggleAttribute('data-liuli-controls-pinned', llModeCfg.pinControls !== false);
     llSyncUpdateGuard();
     llSyncFlashGuard();
+    window.LiuliHeaderTools?.configure({
+      moveCalls: llModeCfg.moveCalls !== false,
+      hidden: Array.isArray(llModeCfg.headerMenuHidden) ? llModeCfg.headerMenuHidden : ['群作业', '群视频', '群课堂']
+    });
     window.LiuliChatExtras?.configure({
       hideFileTip: llModeCfg.hideFileTip !== false,
       stickerSend: llModeCfg.stickerSend !== false
@@ -1278,7 +1286,7 @@
     const runtime = window.LiuliRuntime.install({
       root: root => window.LiuliSurfaces.apply(root),
       structure: () => llApplyPinGroups(),
-      layout: () => { mountSettingsEntry(); llLayoutPass(); window.LiuliBackdrop?.scan(); },
+      layout: () => { mountSettingsEntry(); llLayoutPass(); window.LiuliBackdrop?.scan(); window.LiuliHeaderTools?.schedule(); },
       geometry: () => {
         const nodes = window.LiuliComposer.refresh();
         window.LiuliDock.refresh();
@@ -3210,6 +3218,26 @@
     settingSwitch('隐藏纯图片消息的昵称', 'hideImageNames', settings.hideImageNames === true);
     settingSwitch('隐藏顶部的文件接收提示条', 'hideFileTip', settings.hideFileTip !== false);
     settingSwitch('点表情包直接发送', 'stickerSend', settings.stickerSend !== false);
+    settingSwitch('右上角窗口按钮常驻', 'pinControls', settings.pinControls !== false);
+    settingSwitch('语音、视频、屏幕共享收进群应用菜单', 'moveCalls', settings.moveCalls !== false);
+    {
+      // 群应用菜单（标题栏 ∨ 那个下拉）里显示哪些
+      const title = document.createElement('div');
+      title.className = 'liuli-field__hint';
+      title.textContent = '群应用菜单里显示的项目（关闭 = 不显示）。语音、视频、屏幕共享只在上面那项开启时出现在菜单里。';
+      host.appendChild(title);
+      const labels = ['群文件', '群相册', '群作业', '群精华', '群视频', '群课堂', '语音通话', '视频通话', '屏幕共享'];
+      const hiddenNow = () => (Array.isArray(settings.headerMenuHidden) ? settings.headerMenuHidden : ['群作业', '群视频', '群课堂']);
+      for (const label of labels) {
+        const row = llBuildSwitchRow(host, '菜单：' + label, !hiddenNow().includes(label), on => {
+          const set = new Set(hiddenNow());
+          if (on) set.delete(label);
+          else set.add(label);
+          persist('headerMenuHidden', [...set]);
+        });
+        row.dataset.liuliSetting = 'headerMenu:' + label;
+      }
+    }
     settingSwitch('禁止 QQ 自动更新', 'blockUpdate', settings.blockUpdate !== false);
     settingSwitch('只在新消息时闪任务栏图标', 'quietFlash', settings.quietFlash !== false);
     const flashHint = document.createElement('div');

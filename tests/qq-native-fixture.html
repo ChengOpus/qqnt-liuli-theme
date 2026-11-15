@@ -666,9 +666,13 @@
                     <span id="chatHeaderMembersCount">(24)</span>
                   </div>
                   <div class="panel-header__action">
-                    <button class="icon-item" aria-label="群应用">▦</button>
-                    <button class="icon-item" aria-label="搜索">⌕</button>
-                    <button class="icon-item" aria-label="更多">⋯</button>
+                    <div class="func-bar-native func-bar-top">
+                      <div class="bar-icon"><button class="icon-item" aria-label="语音通话">☎</button></div>
+                      <div class="bar-icon"><button class="icon-item" aria-label="视频通话">▶</button></div>
+                      <div class="bar-icon"><button class="icon-item" aria-label="屏幕共享">⎚</button></div>
+                      <div class="bar-icon" data-fixture="apps"><button class="icon-item" aria-label="群应用">▦</button><div class="arrow">⌄</div><div class="bar-more-menu q-float-card"><div class="bar-more-menu-inner"></div></div></div>
+                      <div class="bar-icon"><button class="icon-item" aria-label="更多">⋯</button></div>
+                    </div>
                   </div>
                 </div>
                 <div class="group-panel">
@@ -776,6 +780,21 @@
     </div>
   </div>
 </div>
+<script>
+  // QQ's group-apps dropdown: rendered when opened, removed when closed.
+  document.addEventListener("click", (e) => {
+    const apps = e.target.closest?.('[data-fixture="apps"] > .icon-item');
+    if (!apps) return;
+    const inner = apps.parentElement.querySelector(".bar-more-menu-inner");
+    if (inner.childElementCount) { inner.replaceChildren(); return; }
+    inner.innerHTML =
+      '<div class="menu-list" style="position:fixed;right:40px;top:60px;width:160px;background:#fff">' +
+      ["群文件", "群相册", "群作业", "群精华", "群视频", "群课堂"]
+        .map((t) => '<div class="menu-item" style="display:flex;gap:8px;height:32px;align-items:center"><i class="q-svg-icon" style="width:18px;height:18px;display:block;background:#888"></i><span class="menu-item__text">' + t + "</span></div>")
+        .join("") +
+      "</div>";
+  });
+</script>
 <script>
   const tools = ["表情", "截图", "文件", "图片", "红包", "语音", "翻译", "聊天记录"];
   for (const bar of document.querySelectorAll(".chat-func-bar"))

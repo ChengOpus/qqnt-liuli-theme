@@ -35,7 +35,6 @@
   background: var(--ll-surface-low);
   color: var(--ll-on-glass);
   box-shadow: var(--ll-shadow-float);
-  scrollbar-width: thin;
   -webkit-app-region: no-drag;
 }
 #liuli-settings-dialog::backdrop {

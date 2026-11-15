@@ -156,7 +156,53 @@ async function run() {
           asideGlass: { content: aside.content, backdrop: aside.backdropFilter, bg: aside.backgroundImage !== "none", pe: aside.pointerEvents, z: aside.zIndex },
         };
       });
-      expect("header.action-aligned-with-side-panel", edges.side == null || Math.abs(edges.action - edges.side) <= 1, edges);
+      // (with the window controls pinned, they hold that edge instead —
+      // checked as controls.pinned-and-aligned)
+      edges.pinned = await page.evaluate(() => document.body.hasAttribute("data-liuli-controls-pinned"));
+      expect("header.action-aligned-with-side-panel", edges.pinned || edges.side == null || Math.abs(edges.action - edges.side) <= 1, edges);
+      // Header tools: calls leave the header and appear in the group-apps
+      // dropdown after 群精华; 群作业/群视频/群课堂 are not shown.
+      const tools = await page.evaluate(async () => {
+        const panel = __qa.q(".aio > .chat-header .panel-header__action");
+        if (!panel.querySelector('[aria-label="语音通话"]')) return null; // the C2C pane has none
+        let voice = 0;
+        panel.querySelector('[aria-label="语音通话"]').addEventListener("click", () => voice++);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const shown = (l) => getComputedStyle(panel.querySelector('[aria-label="' + l + '"]').closest(".bar-icon")).display !== "none";
+        const header = { voice: shown("语音通话"), video: shown("视频通话"), screen: shown("屏幕共享"), apps: shown("群应用") };
+        panel.querySelector('[aria-label="群应用"]').click();
+        await new Promise((r) => setTimeout(r, 120));
+        const rows = [...panel.querySelectorAll(".bar-more-menu-inner .menu-list > *")]
+          .filter((r) => getComputedStyle(r).display !== "none")
+          .map((r) => r.textContent.trim());
+        const extra = panel.querySelector('[data-liuli-menu-extra="voice"]');
+        const iconSize = extra?.querySelector("svg")?.getBoundingClientRect().width;
+        extra?.click();
+        await new Promise((r) => setTimeout(r, 120));
+        const closed = !panel.querySelector(".bar-more-menu-inner").childElementCount;
+        return { header, rows, iconSize, voice, closed };
+      });
+      expect(
+        "header.calls-in-apps-menu",
+        !tools ||
+          (!tools.header.voice && !tools.header.video && !tools.header.screen && tools.header.apps &&
+            tools.rows.join() === "群文件,群相册,群精华,语音通话,视频通话,屏幕共享" &&
+            tools.iconSize === 18 && tools.voice === 1 && tools.closed),
+        tools,
+      );
+      // Window controls pinned: shown, beside the action panel, as wide as
+      // the member panel and level with the header panels.
+      const pinned = await page.evaluate(() => {
+        const c = document.querySelector(".window-title-bar .window-control-area");
+        if (!c) return null;
+        const r = c.getBoundingClientRect(), a = __qa.q(".panel-header__action").getBoundingClientRect(), g = document.querySelector(".group-box")?.getBoundingClientRect();
+        return { opacity: getComputedStyle(c).opacity, gap: Math.round(r.left - a.right), top: Math.round(r.top - a.top), bottom: Math.round(r.bottom - a.bottom), left: g ? Math.round(r.left - g.left) : null, right: g ? Math.round(r.right - g.right) : null };
+      });
+      expect(
+        "controls.pinned-and-aligned",
+        !pinned || (pinned.opacity === "1" && pinned.gap === 8 && pinned.top === 0 && pinned.bottom === 0 && (pinned.left == null || (Math.abs(pinned.left) <= 1 && Math.abs(pinned.right) <= 1))),
+        pinned,
+      );
       expect("aside.glass", edges.asideGlass.content !== "none" && edges.asideGlass.backdrop !== "none" && edges.asideGlass.bg && edges.asideGlass.pe === "none", edges);
       // Top-row glass is lit evenly: no corner wash that darkens the lower
       // edge, and no drop shadow — only the inset edge light (user: 顶部阴影).
@@ -1178,11 +1224,14 @@ async function run() {
           caretInside: sel.bottom <= box.bottom + 1 && sel.top >= box.top - 1,
           scrolled,
           headerTop: Math.round(header.top),
+          // the scrollbar runs along the glass edge, styled (not the system one)
+          edgeGap: Math.round(box.right - ed.getBoundingClientRect().right),
+          scrollbarWidth: getComputedStyle(ed).scrollbarWidth,
         };
       });
       await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
       await page.waitForTimeout(200);
-      expect("composer.long-draft-scrolls-inside", tall.height <= tall.cap && tall.editorScrolls && tall.caretInside && !tall.scrolled.length && tall.headerTop >= 0, tall);
+      expect("composer.long-draft-scrolls-inside", tall.height <= tall.cap && tall.editorScrolls && tall.caretInside && !tall.scrolled.length && tall.headerTop >= 0 && tall.edgeGap <= 1 && tall.scrollbarWidth === "auto", tall);
       const P = stickers.placement;
       expect("toolbar.native-emoji-and-screenshot-beside-plus", P.sameRow && P.emojiGap >= 2 && P.emojiGap <= 6 && P.shotGap >= 2 && P.shotGap <= 6 && P.proxies === 1, stickers);
       expect("toolbar.rest-stay-in-plus-menu", P.othersHidden, stickers);
