@@ -60,8 +60,60 @@
       write(node, key, key === "background" ? "transparent" : "none");
     delete node.dataset.liuliSurfaceStatic;
   }
+  // Diagnostics: the structure of the last few popups/cards that opened —
+  // class names, sizes, fills, blur; no text. A card is usually closed by the
+  // time a diagnostics bundle is exported, so it is recorded when it opens.
+  const recent = [];
+  function snapshot(node) {
+    const shot = (el, depth) => {
+      const r = el.getBoundingClientRect();
+      const c = getComputedStyle(el);
+      const b = getComputedStyle(el, "::before");
+      const out = {
+        tag: el.tagName.toLowerCase(),
+        cls: String(typeof el.className === "string" ? el.className : "").replace(/\d{5,}/g, "#").slice(0, 80),
+        rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+        pos: c.position,
+      };
+      if (c.backgroundColor !== "rgba(0, 0, 0, 0)") out.bg = c.backgroundColor;
+      if (c.backgroundImage !== "none") out.bgImage = c.backgroundImage.includes("url(") ? "url" : c.backgroundImage.slice(0, 120);
+      if (c.backdropFilter !== "none") out.backdrop = c.backdropFilter;
+      if (c.opacity !== "1") out.opacity = c.opacity;
+      if (c.filter !== "none") out.filter = c.filter.slice(0, 60);
+      if (b.content !== "none" && (b.backgroundColor !== "rgba(0, 0, 0, 0)" || b.backgroundImage !== "none"))
+        out.before = { bg: b.backgroundColor, bgImage: b.backgroundImage === "none" ? "none" : b.backgroundImage.includes("url(") ? "url" : "gradient", backdrop: b.backdropFilter };
+      for (const a of el.attributes) if (a.name.startsWith("data-liuli")) (out.liuli ||= []).push(a.name.slice(11));
+      if (depth > 0 && r.width >= 24 && r.height >= 16) {
+        const kids = [...el.children].slice(0, 14).map((k) => shot(k, depth - 1));
+        if (kids.length) out.children = kids;
+      }
+      return out;
+    };
+    const chain = [];
+    for (let n = node.parentElement; n && n !== document.body && chain.length < 8; n = n.parentElement) {
+      const c = getComputedStyle(n);
+      chain.push(String(typeof n.className === "string" ? n.className : n.tagName).slice(0, 50) + " pos=" + c.position + " z=" + c.zIndex + (c.isolation !== "auto" ? " iso" : "") + (c.filter !== "none" ? " filter" : "") + (c.backdropFilter !== "none" ? " backdrop" : "") + (c.opacity !== "1" ? " op=" + c.opacity : "") + (c.transform !== "none" ? " transform" : "") + (c.willChange !== "auto" ? " will=" + c.willChange : ""));
+    }
+    return { at: new Date().toISOString(), tree: shot(node, 6), chain };
+  }
+  function remember(node, kind) {
+    if (kind === "panel" || recent.some((r) => r.node === node)) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (!node.isConnected || !node.getClientRects().length) return;
+        try {
+          recent.push({ node, kind, ...snapshot(node) });
+          while (recent.length > 5) recent.shift();
+        } catch (e) {}
+      }),
+    );
+  }
+  function recentPopups() {
+    return recent.map(({ node, ...rest }) => rest);
+  }
   function mark(node, kind) {
     if (!D.safe(node)) return;
+    remember(node, kind);
     // Read native positioning before any paint writes, and do not repeatedly
     // rewrite our own marker when an existing surface receives an update.
     const needsPosition =
@@ -259,6 +311,12 @@
     // The main window's right pane when it is not a chat (contacts, group
     // notices, new friends …): one glass panel, its white boxes soft cards.
     if (document.body.dataset.liuliScope === "main") {
+      // The left column already is one glass sheet (shell.css); QQ's own
+      // translucent white panel inside it read as a second frame (Contacts).
+      const asides = new Set(D.within(root, ".two-col-layout > .two-col-layout__aside"));
+      const aside = root.closest?.(".two-col-layout > .two-col-layout__aside");
+      if (aside) asides.add(aside);
+      for (const node of asides) if (node.getClientRects().length) clearSheets(node);
       const panes = new Set(D.within(root, ".two-col-layout__main > :not(.aio)"));
       const host = root.closest?.(".two-col-layout__main > :not(.aio)");
       if (host) panes.add(host);
@@ -406,5 +464,5 @@
       clearSheets(node);
     }
   }
-  window.LiuliSurfaces = Object.freeze({ apply, floating });
+  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups });
 })();

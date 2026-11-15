@@ -297,6 +297,26 @@ async function run() {
         return res;
       });
       expect("card.no-miracle-background", misc.miracle === "none", misc);
+      // cards are recorded for diagnostics when they open (no text)
+      const recorded = await page.evaluate(() => {
+        const list = window.LiuliSurfaces.recentPopups();
+        return { n: list.length, text: /群资料/.test(JSON.stringify(list)), hasTree: !!list[0]?.tree?.cls !== undefined };
+      });
+      expect("diag.recent-popups-recorded", recorded.n >= 1 && !recorded.text, recorded);
+      // Contacts: QQ's translucent white panel inside the left column is
+      // cleared (the column already is one glass sheet)
+      const asideSheet = await page.evaluate(async () => {
+        const aside = document.querySelector(".two-col-layout > .two-col-layout__aside");
+        const inner = document.createElement("div");
+        inner.className = "contact-list";
+        inner.style.cssText = "background:rgba(255,255,255,.5);height:400px";
+        aside.append(inner);
+        await new Promise((r) => setTimeout(r, 300));
+        const bg = getComputedStyle(inner).backgroundColor;
+        inner.remove();
+        return bg;
+      });
+      expect("aside.no-second-frame", asideSheet === "rgba(0, 0, 0, 0)", asideSheet);
       // A non-chat right pane (Contacts → 群通知 …): one glass panel; QQ's
       // translucent white section boxes become soft cards.
       const pane = await page.evaluate(async () => {
