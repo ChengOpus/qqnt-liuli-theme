@@ -137,7 +137,14 @@ const flush = () => new Promise((r) => setImmediate(r));
   }
   // Picture viewer: a pooled window QQ routes, sizes and then shows. The
   // theme waits until it is shown and has kept its size for 400 ms.
+  // The main window's look, handed over earlier through the host bridge.
+  context.__snowloraLiuliViewerPreset = { css: "body{--qa:1}", attrs: { liuliTheme: "dsh" }, vars: { "--ll-brand": "#aa3341" } };
   const viewer = new Contents(ui("blank"), "window");
+  const order = [];
+  viewer.insertCSS = (css) => (order.push("insert:" + css), Promise.resolve("key-1"));
+  viewer.removeInsertedCSS = (key) => (order.push("remove:" + key), Promise.resolve());
+  const exec = viewer.executeJavaScript.bind(viewer);
+  viewer.executeJavaScript = (script) => (order.push(script.includes("liuliScope='aux'") ? "attrs" : "theme"), exec(script));
   const viewerWindow = new EventEmitter();
   let shown = false;
   viewerWindow.isDestroyed = () => false;
@@ -148,17 +155,18 @@ const flush = () => new Promise((r) => setImmediate(r));
   viewer.url = ui("image-viewer?data=%7B%7D");
   viewer.emit("did-navigate-in-page", {}, viewer.url, true);
   await new Promise((r) => setTimeout(r, 600));
-  assert.equal(viewer.calls.length, 0, "viewer is not themed while hidden");
+  assert.deepEqual(order, ["insert:body{--qa:1}", "attrs"], "viewer wears the theme's CSS at once");
+  assert.equal(viewer.calls.filter((c) => !c.includes("liuliScope='aux'")).length, 0, "viewer is not themed while hidden");
   viewerWindow.emit("resize");
   shown = true;
   viewerWindow.emit("show");
   await new Promise((r) => setTimeout(r, 200));
   viewerWindow.emit("resize"); // QQ sizing it to the picture
   await new Promise((r) => setTimeout(r, 250));
-  assert.equal(viewer.calls.length, 0, "viewer is not themed while QQ sizes it");
+  assert.equal(order.length, 2, "viewer is not themed while QQ sizes it");
   await new Promise((r) => setTimeout(r, 400));
   await flush();
-  assert.equal(viewer.calls.length, 1, "viewer is themed once shown and settled");
+  assert.deepEqual(order.slice(2), ["theme", "remove:key-1"], "themed once shown and settled, then the pre-style is dropped");
   // a viewer that never reports anything is themed after the cap
   const quiet = new Contents(ui("blank"), "window");
   app.emit("web-contents-created", {}, quiet);
@@ -172,7 +180,7 @@ const flush = () => new Promise((r) => setImmediate(r));
   assert.equal(main.listenerCount("did-finish-load"), 1);
   assert.equal(pool.listenerCount("did-finish-load"), 1);
   console.log(
-    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and deferred media viewers passed",
+    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and pre-styled, deferred media viewers passed",
   );
 })().catch((e) => {
   console.error(e);

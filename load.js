@@ -80,6 +80,22 @@ function createMethods(state) {
       diagnostics?.log({ event: 'update-guard', ...report });
       return report;
     },
+    // The main window's current look, used to pre-style viewers (below).
+    viewerPreset(preset) {
+      if (!preset || typeof preset.css !== 'string' || preset.css.length > 3 * 1024 * 1024) return false;
+      const clean = (object, test) =>
+        Object.fromEntries(
+          Object.entries(object && typeof object === 'object' ? object : {}).filter(
+            ([k, v]) => test.test(k) && typeof v === 'string' && v.length < 4096
+          )
+        );
+      globalThis.__snowloraLiuliViewerPreset = {
+        css: preset.css,
+        attrs: clean(preset.attrs, /^liuli[A-Za-z]{1,40}$/),
+        vars: clean(preset.vars, /^--ll-[a-z0-9-]{1,60}$/)
+      };
+      return true;
+    },
     diagLog: entry => diagnostics.log(entry),
     diagExport: payload => diagnostics.exportReport(payload),
     diagOpenPath: file => diagnostics.openPath(file)
@@ -174,12 +190,39 @@ function settled(state) {
   });
 }
 
+// While a viewer waits for QQ to size it (settled), it already wears the
+// theme: the stylesheet and wallpaper rule the main window built, plus its
+// theme attributes and colour variables on <body>. Plain CSS and a few
+// attribute writes, nothing that runs for long. Removed once the theme proper
+// is in, which writes the same things itself.
+async function preStyle(state) {
+  const preset = globalThis.__snowloraLiuliViewerPreset;
+  const wc = state.wc;
+  if (!preset || state.presetKey || wc.isDestroyed()) return;
+  try {
+    state.presetKey = await wc.insertCSS(preset.css);
+    await wc.executeJavaScript(
+      `(()=>{const b=document.body;if(!b)return;const a=${JSON.stringify(preset.attrs)};` +
+        `for(const k in a)b.dataset[k]=a[k];b.dataset.liuliScope='aux';b.dataset.hash=location.hash;` +
+        `const v=${JSON.stringify(preset.vars)};for(const k in v)b.style.setProperty(k,v[k]);})()`
+    );
+  } catch (error) {
+    diagnostics?.log({ event: 'viewer-prestyle', error: error?.message ?? String(error) });
+  }
+}
+function dropPreStyle(state) {
+  const key = state.presetKey;
+  state.presetKey = null;
+  if (key && !state.wc.isDestroyed()) state.wc.removeInsertedCSS(key).catch(() => {});
+}
+
 async function apply(state, generation = state.generation) {
   const wc = state.wc;
   if (wc.isDestroyed() || generation !== state.generation) return false;
   let url = stateUrl(state);
   if (!eligible(url)) return false;
   if (mediaViewer(url)) {
+    await preStyle(state);
     await settled(state);
     if (wc.isDestroyed() || generation !== state.generation) return false;
     url = stateUrl(state);
@@ -214,6 +257,7 @@ async function apply(state, generation = state.generation) {
     return false;
   }
   state.applied = true;
+  dropPreStyle(state);
   diagnostics.log({ event: 'theme-ready', window: wc.id, url: url.slice(0, 120) });
   return true;
 }
@@ -244,6 +288,7 @@ function onLoad(state) {
   // A fresh document: any previous injection is gone.
   const generation = ++state.generation;
   state.applied = false;
+  state.presetKey = null; // inserted CSS went with the old document
   const url = stateUrl(state);
   if (!eligible(url)) {
     logSkip(state, url);

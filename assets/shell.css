@@ -155,10 +155,16 @@ body[data-liuli-r-nav]
  * it no longer owns a row of the pane. The chat column slides under it, so
  * neither the title nor the action panel can move the message viewport.
  * Its empty band takes no pointer events; only the two panels do. */
+/* Right edge flush with the pane, like the member panel beside the chat:
+ * the action panel and 群公告 end on the same line (user, 2026-11-15; QQ
+ * also narrowed the header by 6px natively, hence width/max-width). */
 .aio > .chat-header {
   position: relative !important;
   z-index: 200 !important;
-  margin: 0 8px 8px !important;
+  margin: 0 0 8px 8px !important;
+  width: auto !important;
+  max-width: none !important;
+  align-self: stretch !important;
   padding: 0 !important;
   height: auto !important;
   min-height: var(--ll-top-h);
@@ -481,6 +487,33 @@ body[data-liuli-scope="main"]:not([data-liuli-tb="native"])
   padding-top: 0;
   transition: padding-top 200ms var(--ll-ui-ease);
 }
+/* The search and conversation column on one glass sheet, the same material
+ * as the member panel on the right (user, 2026-11-15: hard to read on a busy
+ * wallpaper). Painted on the column's own pseudo-element behind its content:
+ * no isolation, so the search dropdown keeps its native stacking. The chat
+ * pane's own content starts 8px further right, which is the usual gap; it
+ * starts below the revealed profile capsule. */
+body[data-liuli-scope="main"] .two-col-layout > .two-col-layout__aside {
+  position: relative !important;
+}
+body[data-liuli-scope="main"] .two-col-layout > .two-col-layout__aside::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0;
+  z-index: -1 !important;
+  border-radius: var(--ll-panel-radius) !important;
+  pointer-events: none !important;
+  background: var(--ll-glass-paint) !important;
+  backdrop-filter: var(--ll-material-blur) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur) !important;
+  box-shadow: var(--ll-popup-edge) !important;
+  transition: top 200ms var(--ll-ui-ease);
+}
+body[data-liuli-scope="main"][data-liuli-r-l]:not([data-liuli-tb="native"])
+  .two-col-layout
+  > .two-col-layout__aside::before {
+  top: calc(var(--ll-top-h) + var(--ll-dock-gap));
+}
 body[data-liuli-r-l]:not([data-liuli-tb="native"]) .two-col-layout__aside {
   padding-top: calc(var(--ll-top-h) + var(--ll-dock-gap));
 }
@@ -495,7 +528,7 @@ body[data-liuli-scope="main"][data-liuli-r-r]:not([data-liuli-tb="native"])
   .aio
   > .chat-header
   .panel-header__action {
-  margin-right: var(--ll-controls-width, 112px);
+  margin-right: calc(var(--ll-controls-width, 112px) + var(--ll-dock-gap));
 }
 #liuli-ctl-shield {
   position: fixed;

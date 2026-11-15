@@ -170,57 +170,120 @@
 
   // Click on a sticker → once it lands in an empty editor, press QQ's own send.
   // Emoji (small inline faces) are left alone: they belong in the text.
+  //
+  // Armed on pointerdown: QQ inserts the sticker and closes the panel on the
+  // press, so a click on the tile may never arrive (user report, 2026-11-15:
+  // the sticker stayed in the editor). The editor is then watched each frame
+  // for the picture rather than for one particular mutation shape.
   let pending = null;
+  const debug = { armed: 0, landed: 0, sent: 0, last: '' };
+  const MEDIA_IN_EDITOR = 'img, .image-element, .pic-element, [class*="image-element"], [class*="market-face"]';
+  function editorOf(input) {
+    return input?.querySelector('.ProseMirror, [contenteditable="true"], [contenteditable]') || null;
+  }
   function editorEmpty(input) {
-    const editor = input?.querySelector(".ProseMirror, [contenteditable]");
+    const editor = editorOf(input);
     return (
       !!editor &&
-      editor.textContent.trim() === "" &&
-      !editor.querySelector("img, .image-element, .file-element, .face-element")
+      editor.textContent.trim() === '' &&
+      !editor.querySelector('img, .image-element, .file-element, .face-element')
     );
+  }
+  function activeTab(strip) {
+    return strip ? strip.items.findIndex(item => item.classList.contains('tabs-container-item-active')) : -1;
+  }
+  // The tile pressed, if it is a sticker (not an emoji, not a tab).
+  function stickerTile(event) {
+    const root = event.target.closest?.(PANEL);
+    if (!root) return null;
+    const strip = tabs(root);
+    if (strip?.row.contains(event.target)) return null;
+    const tile =
+      event.target.closest('.stickers-item, [class*="stickers-item"], [class*="sticker-item"]') ||
+      event.target.closest('img');
+    if (!tile || !root.contains(tile)) return null;
+    const tab = activeTab(strip);
+    if (tab === EMOJI_TAB) return null;
+    if (tab < 0) {
+      const r = tile.getBoundingClientRect();
+      if (r.width < 40 || r.height < 40) return null; // unknown layout: an emoji
+    }
+    return tile;
+  }
+  function sendButton(input) {
+    // the innermost control first: QQ's handler sits on the button itself
+    return (
+      input.querySelector('.operation .send-msg') ||
+      input.querySelector('.send-msg') ||
+      input.querySelector('.operation .send') ||
+      input.querySelector('.send-btn-wrap button, .send-btn-wrap [role="button"]') ||
+      input.querySelector('.send-btn-wrap')
+    );
+  }
+  function press(input) {
+    const button = sendButton(input);
+    const editor = editorOf(input);
+    if (button) {
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup'])
+        button.dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, { bubbles: true, cancelable: true, view: window, button: 0 }));
+      button.click();
+      debug.last = 'button';
+    }
+    // Still there well after (no button, or it did not take): Enter, the key
+    // the user sends with. Late enough that a send in flight has cleared it.
+    setTimeout(() => {
+      if (!editor?.isConnected || !editor.querySelector(MEDIA_IN_EDITOR)) return;
+      editor.focus();
+      for (const type of ['keydown', 'keypress', 'keyup'])
+        editor.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+      debug.last = button ? 'button+enter' : 'enter';
+    }, 600);
+    debug.sent++;
+  }
+  function watch() {
+    if (!pending) return;
+    const { input, until } = pending;
+    const editor = editorOf(input);
+    if (!editor || performance.now() > until) {
+      pending = null;
+      return;
+    }
+    if (editor.querySelector(MEDIA_IN_EDITOR)) {
+      pending = null;
+      debug.landed++;
+      // after ProseMirror has finished its own transaction
+      setTimeout(() => press(input), 30);
+      return;
+    }
+    requestAnimationFrame(watch);
+  }
+  function onPress(event) {
+    if (event.button !== 0 || !settings.stickerSend) return;
+    const tile = stickerTile(event);
+    if (!tile) return;
+    const input = window.LiuliComposer.area();
+    if (!input || !editorEmpty(input)) return; // keep a half-written message
+    debug.armed++;
+    const fresh = !pending;
+    pending = { input, until: performance.now() + 1500 };
+    if (fresh) requestAnimationFrame(watch);
   }
   function onClick(event) {
     const root = event.target.closest?.(PANEL);
     if (!root) return;
     const strip = tabs(root);
     if (strip?.row.contains(event.target)) return remember(event);
-    if (!settings.stickerSend) return;
-    const tile = event.target.closest("img, [class*='sticker'], [class*='item'], [class*='emoji']") || event.target;
-    const r = tile.getBoundingClientRect();
-    if (r.width < 44 || r.height < 44) return; // an emoji, not a sticker
-    const input = window.LiuliComposer.area();
-    if (!input || !editorEmpty(input)) return; // keep a half-written message
-    clearTimeout(pending?.timer);
-    pending = {
-      input,
-      timer: setTimeout(() => (pending = null), 1200),
-    };
+    // a click without a press first (keyboard, synthetic): arm here
+    if (!pending && event.detail === 0) onPress({ target: event.target, button: 0 });
   }
   // Called with the mutation records of each batch (runtime.js).
-  function records(list) {
-    if (!pending) return;
-    const { input } = pending;
-    for (const record of list) {
-      if (record.type !== "childList" || !input.contains(record.target)) continue;
-      for (const node of record.addedNodes) {
-        if (!(node instanceof Element)) continue;
-        if (!(node.matches("img, .image-element") || node.querySelector("img, .image-element"))) continue;
-        clearTimeout(pending.timer);
-        pending = null;
-        // the innermost control first: QQ's handler sits on the button itself
-        const send =
-          input.querySelector(".operation .send-msg") ||
-          input.querySelector(".operation .send") ||
-          input.querySelector(".send-btn-wrap");
-        // after ProseMirror has finished its own transaction
-        setTimeout(() => send?.click(), 0);
-        return;
-      }
-    }
+  function records() {
+    if (pending) watch();
   }
   function install() {
     document.addEventListener("click", onEmojiClick, true);
     document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerdown", onPress, true);
     document.addEventListener("pointerover", onOver, true);
     document.addEventListener("pointerout", onOut, true);
   }
@@ -235,5 +298,6 @@
     scanTips,
     records,
     openStickers,
+    debug: () => ({ ...debug, pending: !!pending }),
   });
 })();

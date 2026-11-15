@@ -115,3 +115,7 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 
 图片/视频查看器（路由含 viewer/player/preview/media/video）在窗口显示且 0.4 秒内尺寸不再变化后才注入（最多 2.5 秒，`load.js` 的 `settled()`），不和 QQ 按媒体尺寸调整窗口撞在一起。
 
+查看器预置样式（.19）：主窗口在主题样式、壁纸或颜色变量变化后（防抖 1.5 秒、内容不变不重发）把「样式表全文 + 壁纸规则 + body 上的主题属性和 `--ll-*` 变量」经宿主桥交给 `load.js`（`viewerPreset`）。查看器路由时宿主先 `insertCSS` 这份内容并写入属性和变量，等窗口稳定后注入主题本体，再 `removeInsertedCSS`。
+
+左栏玻璃画在 `.two-col-layout__aside::before`（z -1，不建立隔离），顶栏右边贴齐聊天区（`margin-right: 0; width: auto`），窗口按钮展开时操作区让开 `控件宽度 + 8px`。
+

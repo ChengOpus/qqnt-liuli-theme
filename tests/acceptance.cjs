@@ -145,6 +145,19 @@ async function run() {
         };
       }, { x: (rest.title.r + rest.action.x) / 2, y: rest.header.y + rest.header.h / 2 });
       expect("header.blank-band-not-intercepting", !band.header && band.messages, band);
+      // the action panel and the member panel end on one line; the left
+      // column carries the same glass
+      const edges = await page.evaluate(() => {
+        const r = (s) => document.querySelector(s)?.getBoundingClientRect();
+        const aside = getComputedStyle(document.querySelector(".two-col-layout__aside"), "::before");
+        return {
+          action: r(".panel-header__action")?.right,
+          side: r(".group-box")?.right,
+          asideGlass: { content: aside.content, backdrop: aside.backdropFilter, bg: aside.backgroundImage !== "none", pe: aside.pointerEvents, z: aside.zIndex },
+        };
+      });
+      expect("header.action-aligned-with-side-panel", edges.side == null || Math.abs(edges.action - edges.side) <= 1, edges);
+      expect("aside.glass", edges.asideGlass.content !== "none" && edges.asideGlass.backdrop !== "none" && edges.asideGlass.bg && edges.asideGlass.pe === "none", edges);
       // Top-row glass is lit evenly: no corner wash that darkens the lower
       // edge, and no drop shadow — only the inset edge light (user: 顶部阴影).
       const topPaint = await page.evaluate(() =>
@@ -1054,18 +1067,34 @@ async function run() {
         editor.firstElementChild.append(img);
         await new Promise((r) => setTimeout(r, 120));
         const afterSticker = sent;
+        // QQ inserting on the press and closing the panel: no click arrives
+        editor.innerHTML = "<p><br></p>";
+        const tile = panelEl.querySelector(".stickers-item img");
+        tile.addEventListener("pointerdown", () => {
+          tile.closest(".stickers-item").style.display = "none";
+          setTimeout(() => {
+            const pic = document.createElement("span");
+            pic.className = "image-element";
+            pic.innerHTML = "<img>";
+            editor.firstElementChild.append(pic);
+          }, 40);
+        }, { once: true });
+        tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+        await new Promise((r) => setTimeout(r, 200));
+        const afterPress = sent;
+        tile.closest(".stickers-item").style.display = "";
         editor.innerHTML = "<p><br></p>";
         panelEl.querySelector(".emoji-tile").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         const face = document.createElement("img");
         face.className = "face-element";
         editor.firstElementChild.append(face);
         await new Promise((r) => setTimeout(r, 120));
-        const afterEmoji = sent;
+        const afterEmoji = sent - afterPress + afterSticker;
         editor.innerHTML = "<p>写了一半</p>";
         panelEl.querySelector(".stickers-item img").dispatchEvent(new MouseEvent("click", { bubbles: true }));
         editor.firstElementChild.append(img.cloneNode());
         await new Promise((r) => setTimeout(r, 120));
-        const afterDraft = sent;
+        const afterDraft = sent - afterPress + afterSticker;
         // expanding "+" keeps both icons where they were
         document.getElementById("liuli-func-toggle").click();
         await __qa.frames(3);
@@ -1075,7 +1104,7 @@ async function run() {
         LiuliComposer.expand(false);
         panelEl?.remove();
         editor.innerHTML = "<p><br></p>";
-        return { placement, afterHover, afterClick, afterSticker, afterEmoji, afterDraft, expandedKept, gridHasEmoji };
+        return { placement, afterHover, afterClick, afterSticker, afterPress, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
       });
       checks.stickers = stickers;
       const P = stickers.placement;
@@ -1085,6 +1114,7 @@ async function run() {
       expect("sticker.hover-opens-sticker-tab", stickers.afterHover.open && stickers.afterHover.tab[0] === 2, stickers);
       expect("sticker.click-keeps-panel-open", stickers.afterClick.open && stickers.afterClick.nativeClicks === 1, stickers);
       expect("sticker.sends-at-once", stickers.afterSticker === 1, stickers);
+      expect("sticker.sends-when-qq-inserts-on-press", stickers.afterPress === 2, stickers);
       expect("sticker.emoji-not-sent", stickers.afterEmoji === 1, stickers);
       expect("sticker.draft-not-sent", stickers.afterDraft === 1, stickers);
       // Send button: light at rest, a light tint when ready, arrow visible.

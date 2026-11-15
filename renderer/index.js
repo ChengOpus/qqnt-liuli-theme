@@ -1138,6 +1138,51 @@
       .catch(() => { llUpdateGuardSent = null; });
   }
   window.addEventListener('liuli-scope', () => llSyncUpdateGuard());
+
+  // Picture/video viewer: the host themes it only after QQ has shown and
+  // sized it (load.js). So that it does not show QQ's own look meanwhile, the
+  // main window hands the host what the theme looks like right now — the
+  // built stylesheet, the wallpaper rule, the theme attributes and colour
+  // variables on <body> — and the host applies that as plain CSS the moment a
+  // viewer is routed, before any script runs there.
+  const LL_PRESET_SKIP = new Set([
+    'liuliScope', 'hash', 'pathname', 'liuliVideoWallpaper', 'liuliRNav', 'liuliRL', 'liuliRR',
+    'liuliNavPin', 'liuliNavMoving', 'liuliAv', 'liuliHeader'
+  ]);
+  let llPresetTimer = 0;
+  let llPresetLast = '';
+  function llPresetSnapshot() {
+    const body = document.body;
+    const css = document.getElementById(STYLE_ID)?.textContent || '';
+    if (!css) return null;
+    const attrs = {};
+    for (const key of Object.keys(body.dataset))
+      if (key.indexOf('liuli') === 0 && !LL_PRESET_SKIP.has(key)) attrs[key] = body.dataset[key];
+    const vars = {};
+    for (let i = 0; i < body.style.length; i++) {
+      const name = body.style[i];
+      if (name.indexOf('--ll-') === 0) vars[name] = body.style.getPropertyValue(name);
+    }
+    const wallpaper = document.getElementById('liuli-wallpaper-style')?.textContent || '';
+    return { css: css + '\n' + wallpaper, attrs, vars };
+  }
+  function llPublishPreset() {
+    clearTimeout(llPresetTimer);
+    llPresetTimer = setTimeout(() => {
+      if (document.body.dataset.liuliScope !== 'main') return;
+      const preset = llPresetSnapshot();
+      if (!preset) return;
+      const key = preset.css.length + '|' + JSON.stringify(preset.attrs) + JSON.stringify(preset.vars) + preset.css.slice(-256);
+      if (key === llPresetLast) return;
+      llPresetLast = key;
+      window.LiuliHost.viewerPreset(preset).catch(() => {});
+    }, 1500);
+  }
+  try {
+    new MutationObserver(llPublishPreset).observe(document.body, { attributes: true, attributeFilter: ['style', 'data-liuli-dark', 'data-liuli-theme', 'data-liuli-mode', 'data-liuli-chat-style'] });
+    new MutationObserver(llPublishPreset).observe(document.head || document.documentElement, { childList: true, subtree: true, characterData: true });
+  } catch (e) {}
+  window.addEventListener('liuli-scope', llPublishPreset);
   var llPaneIds = new WeakMap(),
     llPaneSeq = 0;
   function llMsgId(el) {

@@ -1378,6 +1378,7 @@
     // 盖住窗口六成以上的所有元素（含不接收点击的、含伪元素绘制），以及
     // backdrop.js 认定并清掉的那几层。只记类名、几何与样式。
     probe.covers = safe(() => (w.LiuliBackdrop ? w.LiuliBackdrop.report() : null), null);
+    probe.stickerSend = safe(() => (w.LiuliChatExtras && w.LiuliChatExtras.debug ? w.LiuliChatExtras.debug() : null), null);
     probe.bigLayers = safe(() => {
       const W = w.innerWidth, H = w.innerHeight, out = [];
       for (const el of d.body.querySelectorAll('*')) {
