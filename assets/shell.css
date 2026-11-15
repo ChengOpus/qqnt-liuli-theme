@@ -540,7 +540,8 @@ body[data-liuli-controls-pinned][data-liuli-scope="main"]:not([data-liuli-tb="na
   opacity: 1 !important;
   pointer-events: auto !important;
   min-width: var(--ll-side-col, 0px) !important;
-  justify-content: flex-end !important;
+  /* buttons spread over the whole capsule, no empty left part */
+  justify-content: space-evenly !important;
 }
 body[data-liuli-controls-pinned][data-liuli-scope="main"]:not([data-liuli-tb="native"])
   .aio
@@ -693,4 +694,25 @@ body[data-liuli-scope="main"][data-liuli-tb="native"]
 .aio > .chat-header .panel-header__action .liuli-menu-icon {
   flex: none;
   display: block;
+}
+
+/* Group drawer under the top row (header-tools.js sets the variables). */
+.aio[data-liuli-drawer][style*="--ll-drawer-top"] .side-panel {
+  position: fixed !important;
+  top: var(--ll-drawer-top) !important;
+  left: var(--ll-drawer-left) !important;
+  width: var(--ll-drawer-width) !important;
+  right: auto !important;
+  bottom: var(--ll-dock-gap) !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+/* …and the member panel steps out while it is open. */
+.aio .group-box {
+  transition: opacity 160ms ease;
+}
+.aio[data-liuli-drawer] .group-box {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }

@@ -90,9 +90,22 @@
         body.dataset.liuliScope = scope;
         window.dispatchEvent(new Event('liuli-scope'));
       }
+      // Small QQ popup windows (group/profile cards, toolbar menus) are
+      // separate windows over the main one. Painting the wallpaper inside
+      // them made each look like "its own page" instead of glass over what is
+      // behind. With QQ's acrylic on, they paint no wallpaper or base and
+      // Windows blurs what is really underneath (auxiliary.css).
+      const popup =
+        scope === 'aux' &&
+        body.classList.contains('acrylic') &&
+        !/^#\/(chat|image-viewer|video|notice)/.test(hash) &&
+        (!!document.querySelector('#app > .standalone-mini-profile-container') ||
+          (innerWidth <= 520 && innerHeight <= 760));
+      if (body.hasAttribute('data-liuli-popup-window') !== popup) body.toggleAttribute('data-liuli-popup-window', popup);
     };
     sync();
     addEventListener('liuli-route', sync);
+    addEventListener('resize', sync);
     const titleNode = document.querySelector('title');
     if (titleNode) new MutationObserver(sync).observe(titleNode, { childList: true, characterData: true, subtree: true });
   }
@@ -1282,6 +1295,30 @@
     } catch (e) {}
   }
 
+  // Unread bubbles show the exact number instead of QQ's "99+". The number
+  // comes from the row's component (LiuliQQ.unreadCounts); QQ's own text node
+  // is rewritten in place, so its later updates still land.
+  function llBadgeCounts() {
+    const capped = [...document.querySelectorAll('.recent-contact-item .q-badge-num')].filter(b => b.textContent.includes('+'));
+    if (!capped.length) return;
+    let counts;
+    try {
+      counts = window.LiuliQQ.unreadCounts(document.querySelector('.recent-contact'));
+    } catch (e) {
+      return;
+    }
+    for (const badge of capped) {
+      const n = counts.get(badge.closest('.recent-contact-item'));
+      if (!(n > 99)) continue;
+      const walker = document.createTreeWalker(badge, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode())
+        if (t.nodeValue.includes('+')) {
+          if (t.nodeValue !== String(n)) t.nodeValue = String(n);
+          break;
+        }
+    }
+  }
+
   function installPageObserver() {
     const runtime = window.LiuliRuntime.install({
       root: root => window.LiuliSurfaces.apply(root),
@@ -1297,7 +1334,7 @@
         liuliMessagePass(topLevelRoots(changed.map(root => root.closest('.ml-item') || root)));
         llMotionPass(added);
       },
-      side: () => { llGroupMembersPass(); window.__liuliPinGroups.sync(); },
+      side: () => { llGroupMembersPass(); window.__liuliPinGroups.sync(); llBadgeCounts(); },
       records: records => window.LiuliComposer.records(records),
       hidden: () => { llMsgSeen.chat = null; }
     });

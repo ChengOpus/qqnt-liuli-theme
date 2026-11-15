@@ -85,13 +85,13 @@ body {
  * 要 !important：下面「中间容器全部打透」那条 #app { background: transparent !important } 会压掉它。 */
 body[data-liuli-dark="0"]:not([data-hash^="#/av"]):not([data-liuli-av]):not(
     [data-hash^="#/mini-fishing"]
-  )
+  ):not([data-liuli-popup-window])
   #app {
   background-color: #ffffff !important;
 }
 body[data-liuli-dark="1"]:not([data-hash^="#/av"]):not([data-liuli-av]):not(
     [data-hash^="#/mini-fishing"]
-  )
+  ):not([data-liuli-popup-window])
   #app {
   background-color: #000000 !important;
 }

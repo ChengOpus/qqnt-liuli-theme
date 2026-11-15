@@ -203,6 +203,71 @@ async function run() {
         !pinned || (pinned.opacity === "1" && pinned.gap === 8 && pinned.top === 0 && pinned.bottom === 0 && (pinned.left == null || (Math.abs(pinned.left) <= 1 && Math.abs(pinned.right) <= 1))),
         pinned,
       );
+      // Group drawer from the header's ⋯: under the top row, aligned with the
+      // action panel and the window controls; the member panel steps out.
+      const drawerCheck = await page.evaluate(async () => {
+        const aio = __qa.pane();
+        if (!aio.querySelector(".group-box")) return null;
+        const panel = document.createElement("div");
+        panel.className = "side-panel";
+        panel.style.cssText = "position:absolute;right:0;top:44px;width:340px;height:500px;background:#fff";
+        panel.innerHTML = '<div class="group-profile-card">群资料</div>';
+        aio.append(panel);
+        await new Promise((r) => setTimeout(r, 200));
+        const p = panel.getBoundingClientRect();
+        const a = aio.querySelector(".panel-header__action").getBoundingClientRect();
+        const c = document.querySelector(".window-title-bar .window-control-area").getBoundingClientRect();
+        const open = { left: Math.round(p.left - a.left), right: Math.round(p.right - c.right), top: Math.round(p.top - c.bottom), memberOpacity: getComputedStyle(aio.querySelector(".group-box")).opacity };
+        panel.remove();
+        await new Promise((r) => setTimeout(r, 300));
+        return { open, closedOpacity: getComputedStyle(aio.querySelector(".group-box")).opacity, flag: aio.hasAttribute("data-liuli-drawer") };
+      });
+      expect(
+        "drawer.aligned-and-member-panel-steps-out",
+        !drawerCheck ||
+          (Math.abs(drawerCheck.open.left) <= 1 && Math.abs(drawerCheck.open.right) <= 1 && drawerCheck.open.top === 8 &&
+            drawerCheck.open.memberOpacity === "0" && drawerCheck.closedOpacity === "1" && !drawerCheck.flag),
+        drawerCheck,
+      );
+      // Unread bubbles: muted ones grey; capped ones show the exact number
+      // (read from the row's component — a stand-in for QQ's Vue tree here).
+      const badges = await page.evaluate(async () => {
+        const list = document.querySelector(".recent-contact");
+        const rows = [...list.querySelectorAll(".recent-contact-item")].slice(0, 2);
+        if (rows.length < 2) return null;
+        const mk = (row, cls, text) => {
+          const sub = document.createElement("sub");
+          sub.className = "q-badge-sub q-badge-num " + cls;
+          sub.innerHTML = "<i>" + text + "</i>";
+          row.append(sub);
+          return sub;
+        };
+        const host = list.parentElement;
+        host._vnode = {
+          component: {
+            isUnmounted: false,
+            vnode: { el: list },
+            subTree: { children: rows.map((row, i) => ({ component: { isUnmounted: false, vnode: { el: row }, props: { contact: { unreadCnt: i ? 7 : 1234 } }, subTree: {} } })) },
+          },
+        };
+        const capped = mk(rows[0], "q-badge__red", "99+");
+        const muted = mk(rows[1], "q-badge__grey", "7");
+        await new Promise((r) => setTimeout(r, 300));
+        const res = {
+          capped: capped.textContent,
+          red: getComputedStyle(capped).backgroundColor,
+          grey: getComputedStyle(muted).backgroundColor,
+          greyText: getComputedStyle(muted).color,
+          brand: getComputedStyle(document.body).getPropertyValue("--ll-brand").trim(),
+        };
+        capped.remove();
+        muted.remove();
+        delete host._vnode;
+        return res;
+      });
+      const alphaOf = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); const p = m ? m[1].split(",").map(Number) : []; return p.length > 3 ? p[3] : 1; };
+      expect("badge.exact-count-instead-of-99plus", !badges || badges.capped === "1234", badges);
+      expect("badge.muted-is-faint-grey", !badges || (alphaOf(badges.grey) <= 0.2 && badges.grey !== badges.red), badges);
       expect("aside.glass", edges.asideGlass.content !== "none" && edges.asideGlass.backdrop !== "none" && edges.asideGlass.bg && edges.asideGlass.pe === "none", edges);
       // Top-row glass is lit evenly: no corner wash that darkens the lower
       // edge, and no drop shadow — only the inset edge light (user: 顶部阴影).
@@ -1631,6 +1696,37 @@ async function run() {
       }
       if (errors.length) failures.push("video.errors: " + errors.join("|"));
       results.push({ variant: "video-wallpaper-" + variant, failures, v });
+      failed += failures.length;
+      await context.close();
+    }
+
+    // ── Popup windows with QQ's acrylic: glass over what is behind ──
+    for (const acrylic of [true, false]) {
+      const failures = [];
+      const { page, context, errors } = await h.open({
+        width: 360,
+        height: 420,
+        hash: "#/mini-card/1",
+        fixture: "qq-aux-fixture.html",
+        before: acrylic ? () => document.body.classList.add("acrylic") : null,
+      });
+      await page.waitForTimeout(300);
+      const p = await page.evaluate(() => {
+        const app = document.getElementById("app");
+        return {
+          popup: document.body.hasAttribute("data-liuli-popup-window"),
+          appBg: getComputedStyle(app).backgroundColor,
+          wallpaper: getComputedStyle(app, "::before").content,
+          sheet: getComputedStyle(app, "::after").content,
+          bodyBg: getComputedStyle(document.body).backgroundColor,
+        };
+      });
+      if (acrylic) {
+        if (!(p.popup && p.appBg === "rgba(0, 0, 0, 0)" && p.wallpaper === "none" && p.sheet === "none" && p.bodyBg === "rgba(0, 0, 0, 0)"))
+          failures.push("popup.acrylic-window-is-see-through: " + JSON.stringify(p));
+      } else if (p.popup) failures.push("popup.only-with-acrylic: " + JSON.stringify(p));
+      if (errors.length) failures.push("popup.errors: " + errors.join("|"));
+      results.push({ variant: "popup-window" + (acrylic ? "-acrylic" : "-plain"), failures });
       failed += failures.length;
       await context.close();
     }

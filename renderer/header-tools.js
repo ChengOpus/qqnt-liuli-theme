@@ -156,24 +156,55 @@
       }
     }
   }
+  // ── Group drawer (the header's ⋯) ──────────────────────────────────────
+  // Placed under the top row: left edge with the action panel, right edge
+  // with the window controls (or the header's right edge), top 8px below
+  // them, bottom with the pane. While it is open the member panel steps out
+  // (data-liuli-drawer on the pane; CSS fades it), and comes back after.
+  function drawer() {
+    for (const aio of document.querySelectorAll('.aio')) {
+      const panel = aio.querySelector('.side-panel');
+      const open = !!panel && panel.getClientRects().length > 0;
+      if (aio.hasAttribute('data-liuli-drawer') !== open) aio.toggleAttribute('data-liuli-drawer', open);
+      if (!open) continue;
+      const action = aio.querySelector(':scope > .chat-header .panel-header__action')?.getBoundingClientRect();
+      const header = aio.querySelector(':scope > .chat-header')?.getBoundingClientRect();
+      if (!action || !header || !action.width) continue;
+      const controls = document.querySelector('.window-title-bar .window-control-area');
+      const c = controls?.getBoundingClientRect();
+      const pinned = controls && getComputedStyle(controls).opacity !== '0' && c.width > 0 && c.left > action.right;
+      const right = pinned ? c.right : header.right;
+      const left = Math.min(action.left, right - 260);
+      const top = Math.max(header.bottom, pinned ? c.bottom : 0) + 8;
+      const vars = { '--ll-drawer-left': left, '--ll-drawer-width': right - left, '--ll-drawer-top': top };
+      for (const [k, v] of Object.entries(vars)) {
+        const px = Math.round(v) + 'px';
+        if (aio.style.getPropertyValue(k) !== px) aio.style.setProperty(k, px);
+      }
+    }
+  }
   function apply() {
     frame = 0;
     markTools();
     processMenus();
+    drawer();
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(apply);
   }
   // mutation records of each runtime batch: react to the header only
+  const WATCH = '.chat-header, .aio, .side-panel';
   function records(list) {
     for (const record of list) {
       const target = record.target;
-      if (target instanceof Element && target.closest('.chat-header')) return schedule();
-      for (const node of record.addedNodes)
-        if (node instanceof Element && (node.matches('.chat-header, .aio') || node.querySelector?.('.chat-header')))
-          return schedule();
+      if (target instanceof Element && target.closest('.chat-header, .side-panel')) return schedule();
+      for (const nodes of [record.addedNodes, record.removedNodes])
+        for (const node of nodes)
+          if (node instanceof Element && (node.matches(WATCH) || node.querySelector?.('.chat-header, .side-panel')))
+            return schedule();
     }
   }
+  addEventListener('resize', schedule);
   function configure(next) {
     settings = {
       moveCalls: next.moveCalls !== false,

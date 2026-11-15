@@ -132,5 +132,55 @@
     return true;
   }
 
-  window.LiuliQQ = Object.freeze({ messageRecord, selfUid, sidebarShortcut });
+  // ── Exact unread counts for the conversation list ────────────────────────
+  // QQ prints "99+"; the row's component knows the number. The list's own
+  // component is found once (cached), then only its subtree is walked.
+  let contactList = null;
+  const UNREAD_KEY = /^(unread(Cnt|Count|Num|MsgCnt|MsgCount)?|unreadCnt)$/i;
+  function unreadIn(object, depth = 0) {
+    if (!object || typeof object !== 'object' || depth > 3) return null;
+    let found = null;
+    for (const key of Object.keys(object)) {
+      let value;
+      try {
+        value = object[key];
+      } catch (e) {
+        continue;
+      }
+      if (UNREAD_KEY.test(key)) {
+        const n = typeof value === 'string' ? Number(value) : value;
+        if (Number.isFinite(n) && n >= 0) return n;
+      }
+      if (found == null && value && typeof value === 'object' && !(value instanceof Node) && !Array.isArray(value))
+        found = unreadIn(value, depth + 1);
+    }
+    return found;
+  }
+  // Map of row element -> unread count, for the rows currently rendered.
+  function unreadCounts(listElement) {
+    const out = new Map();
+    if (!listElement) return out;
+    if (!contactList || contactList.isUnmounted || !listElement.contains(contactList.vnode.el)) {
+      contactList = null;
+      visitComponents(listElement, component => {
+        const el = component.vnode.el;
+        if (el?.nodeType === 1 && el.matches('.recent-contact, .recent-contact-list, .recent-contact .q-scroll-view')) {
+          contactList = component;
+          return true;
+        }
+        return false;
+      });
+    }
+    if (!contactList) return out;
+    walk(contactList.subTree, component => {
+      const el = component.vnode.el;
+      const row = el?.nodeType === 1 ? el.closest?.('.recent-contact-item') || (el.querySelector?.(':scope > .recent-contact-item') ?? null) : null;
+      if (!row || out.has(row)) return false;
+      const n = unreadIn(component.props) ?? unreadIn(component.setupState);
+      if (n != null) out.set(row, n);
+      return false;
+    });
+    return out;
+  }
+  window.LiuliQQ = Object.freeze({ messageRecord, selfUid, sidebarShortcut, unreadCounts });
 })();

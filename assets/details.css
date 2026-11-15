@@ -170,6 +170,20 @@ a.text-link,
 .q-badge-dot {
   background: var(--ll-brand) !important;
 }
+/* Muted conversations: QQ marks their bubble grey (q-badge__grey, normal ones
+ * are q-badge__red). Keep it a faint grey like the original instead of the
+ * theme colour — a muted group looked exactly like an unmuted one (user,
+ * 2026-11-15). The bell icon is gone while there is a count, so the row's
+ * .no-disturb-icon cannot be used for this. */
+:is(.q-badge-num.q-badge__grey, .q-badge-sub.q-badge__grey, .q-badge__grey .q-badge-num, .q-badge__grey .q-badge-sub) {
+  background: rgba(var(--ll-on-glass-rgb), 0.13) !important;
+  color: var(--ll-on-glass-3) !important;
+  font-weight: 500 !important;
+}
+.q-badge-num.q-badge__grey *,
+.q-badge__grey .q-badge-num * {
+  color: inherit !important;
+}
 
 /* 图片查看器只给控制栏上材质，不改变图片容器的 transform、尺寸和事件。 */
 body[data-hash^='#/image-viewer'] .main-area__header,

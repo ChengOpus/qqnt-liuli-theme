@@ -177,3 +177,22 @@ body[data-liuli-hide-empty-logo] .empty-aio :is(.q-empty-page-img, .qq-logo) {
 .contact-profile .profile {
   background: transparent !important;
 }
+
+/* Popup windows (index.js: small aux windows with QQ's acrylic on — group
+ * and profile cards, toolbar menus): no wallpaper, no base, no window sheet.
+ * Windows' acrylic blurs what is behind the window, so the card is glass over
+ * the chat underneath; the theme's own surfaces keep a slightly stronger tint
+ * for legibility. The settings window is not one of these. */
+html:has(> body[data-liuli-popup-window]),
+body[data-liuli-popup-window],
+body[data-liuli-popup-window] #app {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+body[data-liuli-popup-window] #app::before,
+body[data-liuli-popup-window] #app::after {
+  content: none !important;
+}
+body[data-liuli-popup-window] {
+  --ll-glass-alpha: clamp(0.3, calc(var(--ll-material-opacity) * 0.64 + 0.18), 0.7);
+}

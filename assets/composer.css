@@ -326,6 +326,21 @@ body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item {
 body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item::after {
   content: none !important;
 }
+/* The round button is the only hover plane: QQ's own square hover fill on
+ * the icon inside showed as a box in the circle (user, 2026-11-15). */
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item,
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item:is(:hover, :active, :focus, :focus-visible) {
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned > .icon-item::before {
+  content: none !important;
+}
+body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned:is(:hover, :has(> .icon-item:focus-visible)) {
+  background: rgba(var(--ll-brand-rgb), 0.18) !important;
+}
 body .chat-input-area > .chat-func-bar .bar-icon.liuli-pinned :is(.q-icon, svg) {
   width: 18px !important;
   height: 18px !important;
