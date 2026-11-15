@@ -52,7 +52,7 @@ const all = [main, existingView],
     app,
     BrowserWindow: {
       getAllWindows: () => [browserWindow],
-      fromWebContents: (wc) => (wc === main ? browserWindow : null),
+      fromWebContents: (wc) => (wc === main ? browserWindow : wc.window || null),
     },
     webContents: { getAllWebContents: () => all },
     shell: {},
@@ -72,6 +72,10 @@ const context = vm.createContext({
   console,
   URL,
   Buffer,
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
   snowlora: { script: path.join(root, "load.js"), window: "1" },
   process: {
     versions: {},
@@ -131,10 +135,44 @@ const flush = () => new Promise((r) => setImmediate(r));
     await flush();
     assert.equal(wc.calls.length, 0, url);
   }
+  // Picture viewer: a pooled window QQ routes, sizes and then shows. The
+  // theme waits until it is shown and has kept its size for 400 ms.
+  const viewer = new Contents(ui("blank"), "window");
+  const viewerWindow = new EventEmitter();
+  let shown = false;
+  viewerWindow.isDestroyed = () => false;
+  viewerWindow.isVisible = () => shown;
+  viewer.window = viewerWindow;
+  app.emit("web-contents-created", {}, viewer);
+  await flush();
+  viewer.url = ui("image-viewer?data=%7B%7D");
+  viewer.emit("did-navigate-in-page", {}, viewer.url, true);
+  await new Promise((r) => setTimeout(r, 600));
+  assert.equal(viewer.calls.length, 0, "viewer is not themed while hidden");
+  viewerWindow.emit("resize");
+  shown = true;
+  viewerWindow.emit("show");
+  await new Promise((r) => setTimeout(r, 200));
+  viewerWindow.emit("resize"); // QQ sizing it to the picture
+  await new Promise((r) => setTimeout(r, 250));
+  assert.equal(viewer.calls.length, 0, "viewer is not themed while QQ sizes it");
+  await new Promise((r) => setTimeout(r, 400));
+  await flush();
+  assert.equal(viewer.calls.length, 1, "viewer is themed once shown and settled");
+  // a viewer that never reports anything is themed after the cap
+  const quiet = new Contents(ui("blank"), "window");
+  app.emit("web-contents-created", {}, quiet);
+  quiet.url = ui("video-player");
+  quiet.emit("did-navigate-in-page", {}, quiet.url, true);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(quiet.calls.length, 0);
+  await new Promise((r) => setTimeout(r, 400));
+  await flush();
+  assert.equal(quiet.calls.length, 1, "no window object: themed after a short quiet period");
   assert.equal(main.listenerCount("did-finish-load"), 1);
   assert.equal(pool.listenerCount("did-finish-load"), 1);
   console.log(
-    "window injection: existing/new/pooled views, repeated registration, query data and protected documents passed",
+    "window injection: existing/new/pooled views, repeated registration, query data, protected documents and deferred media viewers passed",
   );
 })().catch((e) => {
   console.error(e);

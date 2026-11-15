@@ -1180,7 +1180,7 @@
     const runtime = window.LiuliRuntime.install({
       root: root => window.LiuliSurfaces.apply(root),
       structure: () => llApplyPinGroups(),
-      layout: () => { mountSettingsEntry(); llLayoutPass(); },
+      layout: () => { mountSettingsEntry(); llLayoutPass(); window.LiuliBackdrop?.scan(); },
       geometry: () => {
         const nodes = window.LiuliComposer.refresh();
         window.LiuliDock.refresh();

@@ -146,6 +146,22 @@ body[data-liuli-video-wallpaper] .global-container { z-index: 1; }
 body[data-liuli-video-wallpaper] .global-container:not([style*="position"]) {
   position: fixed;
 }
+/* Full-window fills QQ paints over the wallpaper inside its content
+ * container (backdrop.js marks them; colourful theme, 2026-11-15). */
+body[data-liuli-scope="main"] [data-liuli-cover~="self"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body[data-liuli-scope="main"] :is(img, canvas, video, picture, svg)[data-liuli-cover~="self"] {
+  visibility: hidden !important;
+}
+body[data-liuli-scope="main"] [data-liuli-cover~="before"]::before,
+body[data-liuli-scope="main"] [data-liuli-cover~="after"]::after {
+  background: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 body[data-liuli-av] #liuli-video-layer,
 body[data-hash^='#/mini-fishing'] #liuli-video-layer { display: none !important; }
 @media (max-width: 480px) {

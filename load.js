@@ -118,11 +118,73 @@ async function onConsole(state, details) {
   }
 }
 
+// QQ's picture/video viewer is a pooled blank window routed in place, then
+// sized to the media and shown. Injecting the theme at that same moment
+// blocks the page while QQ is sizing it, and the viewer sometimes came up at
+// its default size instead of the picture's (user report, 2026-11-15). The
+// theme there is only the toolbar glass, so it waits until the window has
+// been shown and has kept its size for a moment (at most 2.5 s).
+function mediaViewer(url) {
+  try {
+    const route = new URL(url).hash.slice(1).split('?')[0].toLowerCase();
+    return /viewer|player|preview|media|video/.test(route);
+  } catch {
+    return false;
+  }
+}
+function settled(state) {
+  const wc = state.wc;
+  let win = null;
+  try {
+    win = BrowserWindow.fromWebContents(wc);
+  } catch {}
+  return new Promise(resolve => {
+    let quiet = 0;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(quiet);
+      clearTimeout(cap);
+      clearInterval(poll);
+      if (win && !win.isDestroyed()) {
+        win.removeListener('resize', bump);
+        win.removeListener('show', bump);
+      }
+      resolve();
+    };
+    const visible = () => {
+      try {
+        return !win || win.isDestroyed() || win.isVisible();
+      } catch {
+        return true;
+      }
+    };
+    const bump = () => {
+      clearTimeout(quiet);
+      quiet = setTimeout(() => (visible() ? finish() : bump()), 400);
+    };
+    const cap = setTimeout(finish, 2500);
+    const poll = setInterval(() => wc.isDestroyed() && finish(), 250);
+    if (win && !win.isDestroyed()) {
+      win.on('resize', bump);
+      win.on('show', bump);
+    }
+    bump();
+  });
+}
+
 async function apply(state, generation = state.generation) {
   const wc = state.wc;
   if (wc.isDestroyed() || generation !== state.generation) return false;
-  const url = stateUrl(state);
+  let url = stateUrl(state);
   if (!eligible(url)) return false;
+  if (mediaViewer(url)) {
+    await settled(state);
+    if (wc.isDestroyed() || generation !== state.generation) return false;
+    url = stateUrl(state);
+    if (!eligible(url)) return false;
+  }
   const { assets, wallpaper, source } = await loadResources(root);
   if (wc.isDestroyed() || wc.isLoadingMainFrame() || state.generation !== generation) return false;
   if (state.applied || !eligible(stateUrl(state))) return false;

@@ -19,6 +19,7 @@ const SCRIPTS = [
   // window.__liuliPinGroups.apply。
   'renderer/pin-groups.js',
   'renderer/video-wallpaper.js',
+  'renderer/backdrop.js',
   'renderer/rows.js',
   'renderer/surfaces.js',
   'renderer/cards.js',

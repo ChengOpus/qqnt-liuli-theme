@@ -109,3 +109,9 @@ CSS 完成有界的 200ms 让位动画。运动期间的纯宽度变化不会触
 
 主窗口里视频层插在 `.global-container` 的正前面（同一父元素），并强制 `visibility: visible`（.17）。用户截图显示主窗口里 `.global-container` 下面的东西都不上屏（看到的是桌面亚克力），视频层若放在 `#app` 里会跟着不可见。`.global-container` 在视频开启时 `z-index: 1`，保持 QQ 原生的 fixed 定位。
 
+## 主窗口底层与查看器注入时机（.18）
+
+主窗口里壁纸（图片或视频）在 `.global-container` 下面。QQ 在里面铺的整窗背景（多彩主题等）由 `renderer/backdrop.js` 按「是什么」找出：只看盖住窗口六成以上、铺了底色/背景图/背景模糊或是整窗媒体元素的那一层（含伪元素和不接收点击的元素），打 `data-liuli-cover`，`integration.css` 只清被标记的部分。不进消息列表、滚动区、输入框；对话框、遮罩、查看器和主题自己的玻璃层不碰。扫描挂在运行时的 layout 任务上，只沿着大盒子走，开销很小。
+
+图片/视频查看器（路由含 viewer/player/preview/media/video）在窗口显示且 0.4 秒内尺寸不再变化后才注入（最多 2.5 秒，`load.js` 的 `settled()`），不和 QQ 按媒体尺寸调整窗口撞在一起。
+

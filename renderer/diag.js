@@ -1375,6 +1375,36 @@
         points
       };
     }, null);
+    // 盖住窗口六成以上的所有元素（含不接收点击的、含伪元素绘制），以及
+    // backdrop.js 认定并清掉的那几层。只记类名、几何与样式。
+    probe.covers = safe(() => (w.LiuliBackdrop ? w.LiuliBackdrop.report() : null), null);
+    probe.bigLayers = safe(() => {
+      const W = w.innerWidth, H = w.innerHeight, out = [];
+      for (const el of d.body.querySelectorAll('*')) {
+        if (out.length >= 40) break;
+        const r = el.getBoundingClientRect();
+        const iw = Math.max(0, Math.min(r.right, W) - Math.max(r.left, 0));
+        const ih = Math.max(0, Math.min(r.bottom, H) - Math.max(r.top, 0));
+        if (iw * ih < 0.6 * W * H) continue;
+        const c = w.getComputedStyle(el);
+        out.push({
+          tag: el.tagName.toLowerCase(),
+          id: el.id ? String(el.id).replace(/\d{5,}/g, '#').slice(0, 40) : '',
+          cls: cls(el).slice(0, 60),
+          rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+          pos: c.position,
+          z: c.zIndex,
+          vis: c.visibility,
+          op: c.opacity,
+          pe: c.pointerEvents,
+          paint: paint(el),
+          before: paint(el, '::before'),
+          after: paint(el, '::after'),
+          cover: el.getAttribute('data-liuli-cover') || undefined
+        });
+      }
+      return out;
+    }, null);
     // 卡片类消息（邮箱提醒、分享卡片等，当前可见的前两条）。
     probe.cardRows = safe(
       () =>

@@ -1290,6 +1290,9 @@ async function run() {
       // QQ's main window does not draw what lies under .global-container
       // (user screenshots: desktop backdrop there). Two ways that can happen:
       "main-app-hidden", "main-container-outside-app",
+      // QQ's colourful theme painting a picture over it from inside the
+      // container: as a pseudo-element, and as an element without pointer events
+      "main-colorful-pseudo", "main-colorful-element",
     ];
     for (const variant of variants) {
       const failures = [];
@@ -1308,6 +1311,23 @@ async function run() {
                 style.textContent = "#app{visibility:hidden}.global-container{visibility:visible}";
                 document.head.append(style);
               }
+            : variant === "main-colorful-pseudo"
+              ? () => {
+                  document.body.classList.add("is-colorful-theme");
+                  const style = document.createElement("style");
+                  style.textContent =
+                    ".is-colorful-theme .global-container::before{content:'';position:absolute;inset:0;pointer-events:none;" +
+                    "background:linear-gradient(135deg,#dfe8ff,#f2e9ff 60%,#ffe4ef)}";
+                  document.head.append(style);
+                }
+            : variant === "main-colorful-element"
+              ? () => {
+                  const bg = document.createElement("div");
+                  bg.className = "colorful-theme-bg";
+                  bg.style.cssText =
+                    "position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,#dfe8ff,#f2e9ff)";
+                  document.querySelector(".global-container").prepend(bg);
+                }
             : variant === "main-container-outside-app"
               ? () => {
                   const app = document.getElementById("app");
@@ -1364,12 +1384,19 @@ async function run() {
           posterHidden: getComputedStyle(document.getElementById("app"), "::before").backgroundImage === "none",
           scope: document.body.dataset.liuliScope,
           beforeContainer: !!layer && layer.nextElementSibling === document.querySelector(".global-container"),
+          covers: window.LiuliBackdrop.report(),
         };
       }, { b64: clip, fit: variant === "main-contain" ? "contain" : "cover", wait: variant === "main-no-frame-callbacks" ? 2600 : 1500 });
       // On screen: with the content hidden, the pixel in the middle of the
       // window is the canvas picture (under the light veil), not the base.
       if (variant !== "chat-window") {
-        await page.addStyleTag({ content: ".global-container{visibility:hidden!important}#liuli-video-layer::after{content:none!important}" });
+        // content hidden, but not the container itself or a QQ background in it
+        await page.addStyleTag({
+          content:
+            ".global-container > :not([data-liuli-cover]){visibility:hidden!important}" +
+            "body:not([data-liuli-scope=main]) .global-container{visibility:hidden!important}" +
+            "#liuli-video-layer::after{content:none!important}",
+        });
         await page.waitForTimeout(120);
         const shot = (await page.screenshot({ clip: { x: 640, y: 430, width: 1, height: 1 } })).toString("base64");
         v.screen = await page.evaluate(async (b64) => {
@@ -1407,6 +1434,14 @@ async function run() {
         else {
           want("video.native-container-position-kept", v.container === "fixed");
           want("video.main-layer-next-to-content", v.beforeContainer);
+          // only the emulated QQ backgrounds are cleared, nothing else
+          const expected = variant === "main-colorful-pseudo" ? "before" : variant === "main-colorful-element" ? "self" : null;
+          want(
+            "video.only-qq-backgrounds-cleared",
+            expected
+              ? v.covers.length === 1 && v.covers[0].marks.join() === expected
+              : v.covers.length === 0,
+          );
         }
       }
       if (errors.length) failures.push("video.errors: " + errors.join("|"));

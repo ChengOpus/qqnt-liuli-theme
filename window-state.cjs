@@ -12,6 +12,8 @@ module.exports = function rememberSettingsWindows(log) {
     const save = () => {
       clearTimeout(timer);
       if (window.isDestroyed() || window.isMinimized()) return;
+      // QQ reuses pooled windows: only the settings page's own size is kept
+      if (!/#\/setting(?:[/?]|$)/.test(wc.isDestroyed() ? '' : wc.getURL())) return;
       try {
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(
