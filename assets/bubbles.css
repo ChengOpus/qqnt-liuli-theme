@@ -1039,14 +1039,6 @@ body[data-liuli-hide-image-names] .message-container[data-liuli-image-only] > .u
   display: none !important;
 }
 
-/* While the chat list moves (scrolling, a new message gliding in) every glass
- * bubble would be re-blurred on every frame. The pane carries
- * data-liuli-moving for that time (renderer/motion.js); the bubbles keep their
- * tint and get the blur back 160ms after the list stops. */
-.aio[data-liuli-moving] {
-  --ll-bubble-blur: none;
-}
-body .aio[data-liuli-moving] .ml-list :is(.forward-msg, .ark-msg-content-container, [class*='ark-msg']) {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
+/* Bubbles keep their glass while the list moves. Until .19 they dropped the
+ * blur during a scroll or an arrival and got it back 160ms later; on a busy
+ * wallpaper that read as the glass vanishing for a moment (user, 2026-11-15). */

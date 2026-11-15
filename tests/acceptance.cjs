@@ -949,6 +949,13 @@ async function run() {
           return {
             listShift: moving ? moving.effect.getKeyframes()[0].translate : "",
             bubble: bubble.getAnimations().length,
+            // nothing between the glass and the list fades (opacity < 1 cuts the blur)
+            fadesAboveGlass: (() => {
+              const glass = item.querySelector(".msg-content-container");
+              for (let n = glass; n && n !== list; n = n.parentElement)
+                if (n.getAnimations().some((a) => a.effect?.getKeyframes().some((k) => k.opacity != null))) return true;
+              return false;
+            })(),
             pane: __qa.pane().hasAttribute("data-liuli-moving"),
             blur: getComputedStyle(item.querySelector(".msg-content-container")).backdropFilter,
           };
@@ -973,10 +980,11 @@ async function run() {
         return { received, sent, history, rest };
       });
       checks.arrival = arrival;
-      expect("arrival.received-glides", /px/.test(arrival.received.listShift) && arrival.received.bubble > 0 && arrival.received.pane, arrival);
+      expect("arrival.received-glides", /px/.test(arrival.received.listShift) && arrival.received.bubble > 0, arrival);
       expect("arrival.sent-glides", /px/.test(arrival.sent.listShift) && arrival.sent.bubble > 0, arrival);
-      expect("arrival.no-blur-while-moving", arrival.received.blur === "none", arrival);
-      expect("arrival.blur-back-at-rest", arrival.rest !== "none" || variant.dark === undefined, arrival);
+      expect("arrival.glass-never-faded", !arrival.received.fadesAboveGlass && !arrival.sent.fadesAboveGlass, arrival);
+      // glass stays on while the list moves (it used to blink off)
+      expect("arrival.glass-kept-while-moving", arrival.received.blur === arrival.rest, arrival);
       expect("arrival.history-untouched", !arrival.history.listShift && arrival.history.scrollKept, arrival);
 
       // ── File-transfer strip under the title: hidden; the message keeps its own ──
@@ -1107,6 +1115,36 @@ async function run() {
         return { placement, afterHover, afterClick, afterSticker, afterPress, afterEmoji, afterDraft, expandedKept, gridHasEmoji, debug: LiuliChatExtras.debug() };
       });
       checks.stickers = stickers;
+
+      // ── A click in the text places the caret ──
+      // QQ's send row is natively a full-width bar; emulate that, then click
+      // into the middle of a typed line.
+      await page.addStyleTag({ content: ".chat-input-area > .operation{width:100%;left:0;display:flex;justify-content:flex-end}" });
+      const editorBox = page.locator(".chat-input-area .ProseMirror").first();
+      await editorBox.click();
+      await page.keyboard.press("End");
+      const line = "abcdefghij klmnopqrst uvwxyz";
+      await page.keyboard.type(line);
+      await page.waitForTimeout(300);
+      const caret = await page.evaluate(() => {
+        const ed = __qa.q(".chat-input-area .ProseMirror");
+        const range = document.createRange();
+        const text = [...ed.querySelectorAll("*")].flatMap((n) => [...n.childNodes]).find((t) => t.nodeType === 3 && t.textContent.includes("klmno"));
+        range.setStart(text, text.textContent.indexOf("k"));
+        range.setEnd(text, text.textContent.indexOf("k") + 1);
+        const r = range.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, inEditor: !!hit?.closest(".ProseMirror"), hit: hit?.className };
+      });
+      await page.mouse.click(caret.x, caret.y);
+      await page.waitForTimeout(80);
+      caret.offset = await page.evaluate(() => {
+        const s = getSelection();
+        return s.anchorNode?.textContent?.slice(0, s.anchorOffset).length ?? -1;
+      });
+      caret.expected = line.indexOf("k");
+      await page.evaluate(() => { __qa.q(".chat-input-area .ProseMirror").innerHTML = "<p><br></p>"; });
+      expect("composer.click-places-caret", caret.inEditor && Math.abs(caret.offset - caret.expected) <= 1, caret);
       const P = stickers.placement;
       expect("toolbar.native-emoji-and-screenshot-beside-plus", P.sameRow && P.emojiGap >= 2 && P.emojiGap <= 6 && P.shotGap >= 2 && P.shotGap <= 6 && P.proxies === 1, stickers);
       expect("toolbar.rest-stay-in-plus-menu", P.othersHidden, stickers);

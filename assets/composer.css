@@ -118,11 +118,24 @@
   position: absolute !important;
   right: 8px !important;
   bottom: 7px !important;
+  /* Only as wide as the send button, and click-through around it. QQ's row
+   * is natively a full-width bar; lifted over the editor it swallowed every
+   * click on the text, so the caret could only be moved with the arrow keys
+   * (user, 2026-11-15). */
+  left: auto !important;
+  top: auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  pointer-events: none !important;
   margin: 0 !important;
   padding: 0 !important;
   min-height: 30px !important;
   height: 30px !important;
   z-index: 2;
+}
+:is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) > .operation > * {
+  pointer-events: auto !important;
 }
 :is(body[data-liuli-scope="main"], body[data-hash^="#/chat"]) .aio :is(.group-chat, [data-liuli-composer-host]) .chat-input-area:has(> .msg-input) .operation .send-btn-wrap {
   /* QQ paints its own brand fill on the wrapper when there is text; on a

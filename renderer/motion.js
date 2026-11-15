@@ -32,21 +32,9 @@
   });
 
   // ── Chat in motion ───────────────────────────────────────────────────────
-  // Every glass bubble is its own backdrop-filter surface. At rest that costs
-  // nothing; while the list moves, each one is re-blurred every frame. For the
-  // duration of a scroll or an arrival animation the pane carries
-  // data-liuli-moving and the bubbles drop their blur (motion.css); they get it
-  // back 160ms after the list stops.
-  const settle = new WeakMap();
-  function moving(pane, ms = 160) {
-    if (!pane) return;
-    if (!pane.hasAttribute('data-liuli-moving')) pane.setAttribute('data-liuli-moving', '');
-    clearTimeout(settle.get(pane));
-    settle.set(
-      pane,
-      setTimeout(() => pane.removeAttribute('data-liuli-moving'), ms)
-    );
-  }
+  // Kept as a no-op entry point: bubbles used to drop their blur while the
+  // list moved, which read as the glass blinking (removed in .20).
+  function moving() {}
 
   // ── New messages, Telegram-style ─────────────────────────────────────────
   // When a message arrives (or is sent) while the reader is at the newest end,
@@ -104,14 +92,13 @@
       const self = !!item.querySelector('.message-container--self, .container--self');
       const bubble = item.querySelector('.message-content__wrapper') || item;
       bubble.style.transformOrigin = self ? '100% 100%' : '0 100%';
-      play(
-        bubble,
-        [
-          { opacity: 0, scale: '0.94' },
-          { opacity: 1, scale: '1' }
-        ],
-        { duration: 220, delay: 30, easing: EASE }
-      );
+      // The glass sheet only grows; the fade is on what is drawn on it. Any
+      // element below full opacity cuts off the blur of the glass inside it,
+      // so fading the bubble itself left the new message without glass for
+      // the whole fade (user, 2026-11-15).
+      play(bubble, [{ scale: '0.94' }, { scale: '1' }], { duration: 220, delay: 30, easing: EASE });
+      for (const content of item.querySelectorAll('.msg-content-container > *'))
+        play(content, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 30, easing: EASE });
     }
     return items.length;
   }

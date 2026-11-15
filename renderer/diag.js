@@ -1378,6 +1378,19 @@
     // 盖住窗口六成以上的所有元素（含不接收点击的、含伪元素绘制），以及
     // backdrop.js 认定并清掉的那几层。只记类名、几何与样式。
     probe.covers = safe(() => (w.LiuliBackdrop ? w.LiuliBackdrop.report() : null), null);
+    // What a click on the editor's text actually hits (top of the stack).
+    probe.editorHit = safe(() => {
+      const ed = d.querySelector('.chat-input-area .ProseMirror, .chat-input-area [contenteditable="true"]');
+      if (!ed) return null;
+      const r = ed.getBoundingClientRect();
+      return [0.2, 0.5, 0.8].map(f => {
+        const list = (d.elementsFromPoint(Math.round(r.left + r.width * f), Math.round(r.top + r.height / 2)) || []).slice(0, 6);
+        return list.map(n => {
+          const c = w.getComputedStyle(n);
+          return n.tagName.toLowerCase() + '.' + cls(n).slice(0, 40) + ' pe=' + c.pointerEvents + ' us=' + c.userSelect + ' z=' + c.zIndex;
+        });
+      });
+    }, null);
     probe.stickerSend = safe(() => (w.LiuliChatExtras && w.LiuliChatExtras.debug ? w.LiuliChatExtras.debug() : null), null);
     probe.bigLayers = safe(() => {
       const W = w.innerWidth, H = w.innerHeight, out = [];
