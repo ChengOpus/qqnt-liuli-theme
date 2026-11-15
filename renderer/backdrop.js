@@ -59,7 +59,10 @@
     return w * h >= 0.6 * area;
   }
   // QQ's window background is not inside a scroller or a message
-  const LEAF = '.q-scroll-view, .virtual-scroll-area, .ml-list, .ml-area, .chat-msg-area, .ml-item, [data-liuli-composer-scroll], .chat-input-area';
+  // …nor inside the page area beside the navigation: its white panes are
+  // pages (Contacts, Channels …) and become glass panels (surfaces.js), they
+  // are not a window background to remove.
+  const LEAF = '.q-scroll-view, .virtual-scroll-area, .ml-list, .ml-area, .chat-msg-area, .ml-item, [data-liuli-composer-scroll], .chat-input-area, .container-content-view';
   function inspect(el, area, hostCovers, out, parts = ['self', 'before', 'after']) {
     // A part already cleared stays cleared while the box still covers the
     // window: re-reading it now would see the cleared style, drop the mark,

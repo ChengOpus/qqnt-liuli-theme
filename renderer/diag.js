@@ -1391,6 +1391,7 @@
         });
       });
     }, null);
+    probe.popupWindows = safe(() => (w.LiuliPopupWindows ? w.LiuliPopupWindows.report() : null), null);
     probe.recentPopups = safe(() => (w.LiuliSurfaces && w.LiuliSurfaces.recentPopups ? w.LiuliSurfaces.recentPopups() : null), null);
     probe.headerTools = safe(() => (w.LiuliHeaderTools ? w.LiuliHeaderTools.report() : null), null);
     probe.stickerSend = safe(() => (w.LiuliChatExtras && w.LiuliChatExtras.debug ? w.LiuliChatExtras.debug() : null), null);

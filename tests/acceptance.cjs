@@ -302,6 +302,64 @@ async function run() {
         const list = window.LiuliSurfaces.recentPopups();
         return { n: list.length, text: /群资料/.test(JSON.stringify(list)), hasTree: !!list[0]?.tree?.cls !== undefined };
       });
+      // QQ's floating card is a child window this page opens (window.open of
+      // a blank page) and renders into: the theme follows it there.
+      const popupCard = await page.evaluate(async () => {
+        const w = window.open("", "qa-card", "width=320,height=420");
+        if (!w) return { opened: false };
+        await new Promise((r) => setTimeout(r, 50));
+        const d = w.document;
+        d.body.innerHTML =
+          '<div id="app"><div class="group-card" style="position:fixed;inset:8px;border-radius:12px;background:rgba(255,255,255,.75)">' +
+          '<div class="q-miracle-background" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(#f0f,#0ff)"></div>' +
+          '<div class="card-body" style="position:relative;height:300px;background:rgba(255,255,255,.5)">群资料</div>' +
+          '<button style="background:#06c;color:#fff">发消息</button></div></div>';
+        await new Promise((r) => setTimeout(r, 400));
+        const card = d.querySelector(".group-card");
+        const res = {
+          opened: true,
+          themed: !!d.getElementById("liuli-popup-theme"),
+          card: card.hasAttribute("data-liuli-popup-card"),
+          cardBg: w.getComputedStyle(card).backgroundColor,
+          sheetCleared: w.getComputedStyle(d.querySelector(".card-body")).backgroundColor,
+          miracle: w.getComputedStyle(d.querySelector(".q-miracle-background")).display,
+          button: w.getComputedStyle(d.querySelector("button")).backgroundColor,
+          bodyBg: w.getComputedStyle(d.body).backgroundColor,
+          recorded: window.LiuliPopupWindows.report().length,
+        };
+        w.close();
+        return res;
+      });
+      expect(
+        "popup-card.window-follows-theme",
+        popupCard.opened && popupCard.themed && popupCard.card && popupCard.cardBg !== "rgba(255, 255, 255, 0.75)" &&
+          popupCard.sheetCleared === "rgba(0, 0, 0, 0)" && popupCard.miracle === "none" &&
+          popupCard.button === "rgb(0, 102, 204)" && popupCard.bodyBg === "rgba(0, 0, 0, 0)" && popupCard.recorded >= 1,
+        popupCard,
+      );
+      // Channels-like page: a large white sheet in the page area becomes glass
+      const channel = await page.evaluate(async () => {
+        const view = document.querySelector(".container-content > .container-content-view");
+        const layout = view.firstElementChild;
+        layout.style.display = "none";
+        const page = document.createElement("div");
+        page.className = "guild-layout";
+        page.style.cssText = "display:flex;height:100%;gap:0";
+        page.innerHTML = '<div class="guild-list" style="width:300px;background:rgba(255,255,255,.85)"></div><div class="guild-feed" style="flex:1;background:#fff"><div class="feed-card" style="height:200px;margin:20px;background:rgba(255,255,255,.6)">帖子</div></div>';
+        view.append(page);
+        await new Promise((r) => setTimeout(r, 400));
+        const q = (s) => page.querySelector(s);
+        const res = {
+          list: q(".guild-list").dataset.liuliSurface,
+          feed: q(".guild-feed").dataset.liuliSurface,
+          feedGlass: getComputedStyle(q(".guild-feed"), "::before").backdropFilter,
+          card: q(".feed-card").hasAttribute("data-liuli-soft"),
+        };
+        page.remove();
+        layout.style.display = "";
+        return res;
+      });
+      expect("page-sheets.channels-get-glass", channel.list === "panel" && channel.feed === "panel" && channel.feedGlass !== "none" && channel.card, channel);
       expect("diag.recent-popups-recorded", recorded.n >= 1 && !recorded.text, recorded);
       // Contacts: QQ's translucent white panel inside the left column is
       // cleared (the column already is one glass sheet)

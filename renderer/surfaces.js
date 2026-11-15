@@ -64,6 +64,7 @@
   // class names, sizes, fills, blur; no text. A card is usually closed by the
   // time a diagnostics bundle is exported, so it is recorded when it opens.
   const recent = [];
+  const clearedAsides = new WeakSet();
   function snapshot(node) {
     const shot = (el, depth) => {
       const r = el.getBoundingClientRect();
@@ -310,13 +311,48 @@
       mark(node, "panel");
     // The main window's right pane when it is not a chat (contacts, group
     // notices, new friends …): one glass panel, its white boxes soft cards.
-    if (document.body.dataset.liuliScope === "main") {
+    // Page-level passes only for changes outside the chat pane: typing and
+    // new messages happen inside .aio and must not pay for them.
+    if (document.body.dataset.liuliScope === "main" && !root.closest?.(".aio")) {
       // The left column already is one glass sheet (shell.css); QQ's own
       // translucent white panel inside it read as a second frame (Contacts).
+      // once per column, and again only when its own children change — not
+      // for every conversation row update
       const asides = new Set(D.within(root, ".two-col-layout > .two-col-layout__aside"));
       const aside = root.closest?.(".two-col-layout > .two-col-layout__aside");
-      if (aside) asides.add(aside);
-      for (const node of asides) if (node.getClientRects().length) clearSheets(node);
+      if (aside && (root === aside || root.parentElement === aside || !clearedAsides.has(aside))) asides.add(aside);
+      for (const node of asides)
+        if (node.getClientRects().length) {
+          clearedAsides.add(node);
+          clearSheets(node);
+        }
+      // Other pages built the same way (Channels …): any large colourless
+      // sheet in the page area beside the navigation becomes a glass panel,
+      // its inner white boxes soft cards. Walks only large boxes.
+      const views = root === document.body || root === document.documentElement
+        ? document.querySelectorAll(".container-content > .container-content-view")
+        : [root.closest?.(".container-content > .container-content-view") || (root.matches?.(".container-content, .container-content-view, .global-container") ? root : null)].filter(Boolean);
+      for (const view0 of views) {
+        const view = view0.matches(".container-content-view") ? view0 : view0.querySelector(".container-content > .container-content-view");
+        if (!view) continue;
+        if (!view.getClientRects().length) continue;
+        const area = innerWidth * innerHeight;
+        const queue = [...view.children];
+        let budget = 120;
+        while (queue.length && budget-- > 0) {
+          const el = queue.shift();
+          if (el.matches(".aio, .two-col-layout__aside, [data-liuli-surface], .q-scroll-view, [id^='liuli-']")) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width < 200 || r.height < 240 || r.width * r.height < area * 0.12) continue;
+          if (opaqueSheet(getComputedStyle(el))) {
+            mark(el, "panel");
+            el.setAttribute("data-liuli-page-pane", "");
+            softCards(el);
+            continue;
+          }
+          queue.push(...el.children);
+        }
+      }
       const panes = new Set(D.within(root, ".two-col-layout__main > :not(.aio)"));
       const host = root.closest?.(".two-col-layout__main > :not(.aio)");
       if (host) panes.add(host);

@@ -3024,6 +3024,8 @@
   const themeReady = (async () => {
     const started = Date.now();
     installRouteScope();
+    // QQ's floating cards are child windows this page opens (popup-windows.js)
+    try { window.LiuliPopupWindows?.install(); } catch (e) {}
     try {
       const chunks = await Promise.all(
         FILES.map(async file => {
