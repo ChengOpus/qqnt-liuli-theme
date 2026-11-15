@@ -500,5 +500,46 @@
       clearSheets(node);
     }
   }
-  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups });
+  // Diagnostics: what each main-window page is made of (large boxes in the
+  // page area, their fills and blur; no text), recorded a moment after the
+  // page is entered — the bundle is usually exported from another page.
+  const pages = [];
+  function recordPage() {
+    if (document.body.dataset.liuliScope !== "main") return;
+    const hash = (location.hash || "").replace(/\d{5,}/g, "#").slice(0, 60);
+    const area = innerWidth * innerHeight;
+    const out = [];
+    const start = document.querySelector(".container-content") || document.body;
+    const queue = [[start, 0]];
+    while (queue.length && out.length < 60) {
+      const [el, depth] = queue.shift();
+      const r = el.getBoundingClientRect();
+      if (r.width * r.height < area * 0.06 || depth > 9) continue;
+      const c = getComputedStyle(el), b = getComputedStyle(el, "::before"), a = getComputedStyle(el, "::after");
+      const pseudo = (x) => (x.content !== "none" && (x.backgroundColor !== "rgba(0, 0, 0, 0)" || x.backgroundImage !== "none") ? { bg: x.backgroundColor, img: x.backgroundImage === "none" ? "" : x.backgroundImage.includes("url(") ? "url" : "gradient", blur: x.backdropFilter } : undefined);
+      out.push({
+        d: depth,
+        tag: el.tagName.toLowerCase(),
+        cls: String(typeof el.className === "string" ? el.className : "").replace(/\d{5,}/g, "#").slice(0, 70),
+        rect: [r.left, r.top, r.width, r.height].map(Math.round),
+        bg: c.backgroundColor !== "rgba(0, 0, 0, 0)" ? c.backgroundColor : undefined,
+        img: c.backgroundImage !== "none" ? (c.backgroundImage.includes("url(") ? "url" : "gradient") : undefined,
+        blur: c.backdropFilter !== "none" ? c.backdropFilter : undefined,
+        before: pseudo(b),
+        after: pseudo(a),
+        liuli: [...el.attributes].filter((x) => x.name.startsWith("data-liuli")).map((x) => x.name.slice(11)),
+      });
+      for (const k of el.children) queue.push([k, depth + 1]);
+    }
+    const i = pages.findIndex((p) => p.hash === hash);
+    if (i >= 0) pages.splice(i, 1);
+    pages.push({ hash, at: new Date().toISOString(), layers: out });
+    while (pages.length > 5) pages.shift();
+  }
+  let pageTimer = 0;
+  addEventListener("hashchange", () => {
+    clearTimeout(pageTimer);
+    pageTimer = setTimeout(recordPage, 1500);
+  });
+  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups, pageSnapshots: () => pages.slice(), recordPage });
 })();

@@ -31,6 +31,68 @@
     const l = (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
     return Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b) <= 24 && (l >= 0.8 || l <= 0.2) ? 'fill' : false;
   }
+  // ── The main window's wallpaper behind the card ─────────────────────────
+  // Windows' acrylic on QQ's card windows is a strong light frost; with the
+  // theme's thin tint on top the cards stayed pale white (user, 2026-11-15).
+  // A blurred copy of the wallpaper — the part of the main window the card
+  // sits over — goes behind the card instead, with the theme's glass on top,
+  // so it matches the other glass panels. Small snapshot (it is blurred).
+  let snap = { url: '', at: 0 };
+  let wpImage = null;
+  function wallpaperUrl() {
+    const text = document.getElementById('liuli-wallpaper-style')?.textContent || '';
+    const m = /url\("([^"]+)"\)/.exec(text);
+    return m ? m[1] : '';
+  }
+  function snapshot() {
+    if (snap.url && Date.now() - snap.at < 1500) return snap.url;
+    const W = innerWidth, H = innerHeight;
+    if (!W || !H) return '';
+    const c = document.createElement('canvas');
+    c.width = 480;
+    c.height = Math.max(1, Math.round((480 * H) / W));
+    const g = c.getContext('2d');
+    try {
+      const video = document.getElementById('liuli-video-canvas');
+      if (video && document.body.hasAttribute('data-liuli-video-wallpaper')) {
+        g.drawImage(video, 0, 0, c.width, c.height);
+      } else {
+        const src = wallpaperUrl();
+        if (!src) return '';
+        if (!wpImage || wpImage.dataset.src !== src) {
+          wpImage = new Image();
+          wpImage.dataset.src = src;
+          wpImage.src = src;
+        }
+        if (!wpImage.complete || !wpImage.naturalWidth) return '';
+        const k = Math.max(c.width / wpImage.naturalWidth, c.height / wpImage.naturalHeight);
+        const dw = wpImage.naturalWidth * k, dh = wpImage.naturalHeight * k;
+        g.drawImage(wpImage, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+      }
+      snap = { url: c.toDataURL('image/jpeg', 0.72), at: Date.now() };
+    } catch (e) {
+      return '';
+    }
+    return snap.url;
+  }
+  function backWithWallpaper(w, card) {
+    const url = snapshot();
+    if (!url) return false;
+    const r = card.getBoundingClientRect();
+    // the main window's page origin on screen (QQ's windows are frameless)
+    const mx = window.screenX + (window.outerWidth - window.innerWidth) / 2;
+    const my = window.screenY + (window.outerHeight - window.innerHeight);
+    const px = w.screenX + (w.outerWidth - w.innerWidth) / 2;
+    const py = w.screenY + (w.outerHeight - w.innerHeight);
+    const pad = 24;
+    const set = (k, v) => card.style.getPropertyValue(k) !== v && card.style.setProperty(k, v);
+    set('--ll-popup-wp', 'url("' + url + '")');
+    set('--ll-popup-wp-size', innerWidth + 'px ' + innerHeight + 'px');
+    set('--ll-popup-wp-pos', Math.round(mx - (px + r.left - pad)) + 'px ' + Math.round(my - (py + r.top - pad)) + 'px');
+    if (w.getComputedStyle(card).position === 'static') card.style.position = 'relative';
+    if (!card.hasAttribute('data-liuli-popup-wp')) card.setAttribute('data-liuli-popup-wp', '');
+    return true;
+  }
   function themeCss() {
     return (document.getElementById('liuli-dsh-theme')?.textContent || '') + POPUP_CSS;
   }
@@ -56,6 +118,38 @@ body[data-liuli-popup-doc] #app::after {
   box-shadow: var(--ll-popup-edge), var(--ll-shadow-float) !important;
   border-color: transparent !important;
   color: var(--ll-on-glass) !important;
+}
+[data-liuli-popup-card][data-liuli-popup-wp] {
+  isolation: isolate !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-liuli-popup-card][data-liuli-popup-wp]::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: -24px !important;
+  z-index: -2 !important;
+  pointer-events: none !important;
+  background-image: var(--ll-popup-wp) !important;
+  background-size: var(--ll-popup-wp-size) !important;
+  background-position: var(--ll-popup-wp-pos) !important;
+  background-repeat: no-repeat !important;
+  filter: blur(14px) saturate(1.8) !important;
+}
+[data-liuli-popup-card][data-liuli-popup-wp]::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
+  background:
+    var(--ll-glass-wash),
+    linear-gradient(rgba(var(--ll-veil-rgb, 255, 255, 255), var(--ll-wallpaper-dim, 0.1)), rgba(var(--ll-veil-rgb, 255, 255, 255), var(--ll-wallpaper-dim, 0.1))),
+    rgba(var(--ll-acrylic), var(--ll-glass-alpha, 0.2)) !important;
+  box-shadow: var(--ll-popup-edge) !important;
 }
 [data-liuli-popup-clear] {
   background: transparent !important;
@@ -118,6 +212,7 @@ body[data-liuli-popup-doc] #app::after {
       if (sheetFill(css) || css.backdropFilter !== 'none') card = p;
     }
     if (!card.hasAttribute('data-liuli-popup-card')) card.setAttribute('data-liuli-popup-card', '');
+    if (!backWithWallpaper(w, card)) setTimeout(() => !w.closed && backWithWallpaper(w, card), 120);
     const box = card.getBoundingClientRect();
     for (const inner of card.querySelectorAll('div, section, header, main, ul')) {
       if (inner.closest('button, [role="button"], .q-button, input, textarea, [class*="avatar"], .q-tag, [class*="tag"]')) continue;

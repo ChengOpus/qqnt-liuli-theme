@@ -1391,6 +1391,7 @@
         });
       });
     }, null);
+    probe.pageSnapshots = safe(() => (w.LiuliSurfaces && w.LiuliSurfaces.pageSnapshots ? (w.LiuliSurfaces.recordPage(), w.LiuliSurfaces.pageSnapshots()) : null), null);
     probe.popupWindows = safe(() => (w.LiuliPopupWindows ? w.LiuliPopupWindows.report() : null), null);
     probe.recentPopups = safe(() => (w.LiuliSurfaces && w.LiuliSurfaces.recentPopups ? w.LiuliSurfaces.recentPopups() : null), null);
     probe.headerTools = safe(() => (w.LiuliHeaderTools ? w.LiuliHeaderTools.report() : null), null);
