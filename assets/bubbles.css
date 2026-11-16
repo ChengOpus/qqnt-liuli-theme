@@ -1058,9 +1058,11 @@ body[data-liuli-hide-image-names] .message-container[data-liuli-image-only] > .u
   ) !important;
   color: var(--ll-bubble-self-fg, var(--ll-on-glass)) !important;
 }
-body[data-liuli-chat-style='tg'] .message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble].container--others {
-  backdrop-filter: var(--ll-bubble-blur, none) !important;
-  -webkit-backdrop-filter: var(--ll-bubble-blur, none) !important;
+/* frosted on both sides: the card has no tail, and without the blur the
+ * wallpaper's detail ran straight through the card's text (user, .32) */
+.message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble] {
+  backdrop-filter: var(--ll-material-blur, blur(12px)) !important;
+  -webkit-backdrop-filter: var(--ll-material-blur, blur(12px)) !important;
 }
 .message-container .msg-content-container.ark-msg-content-container[data-liuli-ark-bubble] {
   padding: 2px !important;

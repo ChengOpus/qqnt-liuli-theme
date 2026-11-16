@@ -122,3 +122,8 @@ body :is(.q-context-menu-item__label, .q-context-menu-item__text) {
 body .q-dialog-main {
   border: 0;
 }
+
+/* QQ's update reminder, dismissed by update-prompt.js. */
+[data-liuli-dismissed] {
+  display: none !important;
+}

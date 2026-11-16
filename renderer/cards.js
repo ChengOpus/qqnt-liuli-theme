@@ -201,6 +201,7 @@
     document.body.append(box);
   }
   const arkTries = new WeakMap();
+  const arkKeepSeen = new WeakMap();
   let sampler = null;
   // "light" | "dark" | "keep" (a picture, or cannot be read) | null (not drawn yet)
   function arkKind(canvas) {
@@ -241,11 +242,23 @@
     if (arkKeys.get(canvas) !== key) {
       arkKeys.set(canvas, key);
       arkTries.delete(canvas);
+      arkKeepSeen.delete(canvas);
       canvas.removeAttribute("data-liuli-ark-glass");
       canvas.closest(".msg-content-container")?.removeAttribute("data-liuli-ark-bubble");
     }
     if (canvas.hasAttribute("data-liuli-ark-glass")) return;
     const kind = arkKind(canvas);
+    // "a picture" is only believed after three looks: QQ may first draw a
+    // loading state
+    if (kind === "keep") {
+      const seen = (arkKeepSeen.get(canvas) || 0) + 1;
+      arkKeepSeen.set(canvas, seen);
+      if (seen < 3) {
+        arkWaiting.add(canvas);
+        if (!arkTimer) arkTimer = setTimeout(arkLoop, 400);
+        return;
+      }
+    }
     if (kind) {
       if (kind !== "keep") arkFilters();
       canvas.setAttribute("data-liuli-ark-glass", kind);
@@ -259,10 +272,37 @@
       }
       return;
     }
-    // not drawn yet: look again a few times
-    const n = (arkTries.get(canvas) || 0) + 1;
-    arkTries.set(canvas, n);
-    if (n <= 8) setTimeout(() => canvas.isConnected && arkKeys.get(canvas) === key && arkCanvas(canvas), 150 * n);
+    // Not drawn yet. QQ draws a card when it comes into view, sometimes
+    // seconds after the row exists (user diagnostics .32: a canvas still at
+    // its default 300x150, white until clicked). It is watched while
+    // undecided: looked at again every 400 ms while it is on screen (time off
+    // screen does not count), up to 40 looks for one row and size.
+    arkWaiting.add(canvas);
+    if (!arkTimer) arkTimer = setTimeout(arkLoop, 400);
+  }
+  const arkWaiting = new Set();
+  let arkTimer = 0;
+  function arkLoop() {
+    arkTimer = 0;
+    // a snapshot: arkCanvas() puts an undecided canvas back into the set,
+    // which a live iteration would visit again in the same pass
+    for (const canvas of [...arkWaiting]) {
+      if (!canvas.isConnected || canvas.hasAttribute("data-liuli-ark-glass")) {
+        arkWaiting.delete(canvas);
+        continue;
+      }
+      const r = canvas.getBoundingClientRect();
+      if (r.width < 8 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
+      const n = (arkTries.get(canvas) || 0) + 1;
+      arkTries.set(canvas, n);
+      if (n > 40) {
+        arkWaiting.delete(canvas);
+        continue;
+      }
+      arkWaiting.delete(canvas);
+      arkCanvas(canvas); // adds it back if still undecided
+    }
+    if (arkWaiting.size && !arkTimer) arkTimer = setTimeout(arkLoop, 400);
   }
   function adapt(root) {
     if (!root || document.body.hasAttribute("data-liuli-av")) return;

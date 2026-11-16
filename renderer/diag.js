@@ -1400,6 +1400,7 @@
     probe.notices = safe(() => (w.LiuliCards && w.LiuliCards.notices ? w.LiuliCards.notices() : null), null);
     probe.cardMisses = safe(() => (w.LiuliCards && w.LiuliCards.misses ? w.LiuliCards.misses() : null), null);
     probe.links = safe(() => (w.LiuliLinks ? w.LiuliLinks.debug() : null), null);
+    probe.updatePrompt = safe(() => (w.LiuliUpdatePrompt ? w.LiuliUpdatePrompt.debug() : null), null);
     probe.jumpBottom = safe(() => (w.LiuliJumpBottom ? w.LiuliJumpBottom.state() : null), null);
     probe.stickerSend = safe(() => (w.LiuliChatExtras && w.LiuliChatExtras.debug ? w.LiuliChatExtras.debug() : null), null);
     probe.bigLayers = safe(() => {

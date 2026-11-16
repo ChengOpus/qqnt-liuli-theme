@@ -548,6 +548,7 @@
       stickerSend: llModeCfg.stickerSend !== false
     });
     window.LiuliJumpBottom?.configure({ enabled: llModeCfg.jumpBottom !== false });
+    window.LiuliUpdatePrompt?.configure({ enabled: llModeCfg.blockUpdate !== false });
     b.toggleAttribute('data-liuli-hide-empty-logo', llModeCfg.hideEmptyLogo !== false);
     b.dataset.liuliChatStyle = llModeCfg.chatStyle;
     b.dataset.liuliAvatarPosition = llModeCfg.avatarPosition;
@@ -1192,6 +1193,8 @@
     window.LiuliHost.linkGuard(want).catch(() => { llLinkSent = null; });
   }
   window.addEventListener('liuli-scope', () => llSyncLinkGuard());
+  window.addEventListener('liuli-scope', () => window.LiuliUpdatePrompt?.schedule());
+  document.addEventListener('visibilitychange', () => window.LiuliUpdatePrompt?.schedule());
   const llUnread = [];
   function llUnreadCount() {
     // the Messages tab is the first item of the navigation
@@ -3318,7 +3321,7 @@
         row.dataset.liuliSetting = 'headerMenu:' + label;
       }
     }
-    settingSwitch('禁止 QQ 自动更新', 'blockUpdate', settings.blockUpdate !== false);
+    settingSwitch('禁止 QQ 自动更新（更新提醒弹窗也自动关掉）', 'blockUpdate', settings.blockUpdate !== false);
     settingSwitch('只在新消息时闪任务栏图标', 'quietFlash', settings.quietFlash !== false);
     settingSwitch('链接直接用浏览器打开（不经过 QQ 的安全提示页）', 'directLinks', settings.directLinks !== false);
     const flashHint = document.createElement('div');

@@ -196,3 +196,10 @@ body[data-liuli-popup-window] #app::after {
 body[data-liuli-popup-window] {
   --ll-glass-alpha: clamp(0.3, calc(var(--ll-material-opacity) * 0.64 + 0.18), 0.7);
 }
+
+/* Controls in QQ's small windows always take the click, even where the
+ * window's background is a drag area (an update reminder could not be
+ * clicked or closed, user 2026-11-16). */
+body[data-liuli-scope="aux"] :is(button, [role="button"], .q-button, .q-checkbox, .q-radio, input, a, [class*="close"], [class*="btn"]) {
+  -webkit-app-region: no-drag;
+}

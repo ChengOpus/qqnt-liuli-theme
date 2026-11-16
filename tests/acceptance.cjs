@@ -695,6 +695,49 @@ async function run() {
         const addr = ["docs.qq.com/x", "https://a.example/b", "javascript:alert(1)", "点这里", "file:///c:/x", "a b.com"].map((t) => LiuliLinks.webAddress(t));
         return { first, second, third, off, addr };
       });
+      // ── QQ's update reminder is dismissed with its own 下次启动更新 ──
+      const updatePrompt = await page.evaluate(async () => {
+        const make = (closes) => {
+          const dialog = document.createElement("div");
+          dialog.className = "q-dialog";
+          dialog.style.cssText = "position:fixed;left:300px;top:200px;width:360px;height:300px;background:#fff;z-index:9999";
+          dialog.innerHTML = '<div class="q-dialog-header"><span>更新提醒</span></div><div class="q-dialog-content"><p>本次更新：</p></div><div class="q-dialog-footer"><button class="q-button primary">立即重启更新</button><button class="q-button secondary">下次启动更新</button></div>';
+          let restart = 0, later = 0;
+          dialog.querySelector(".primary").addEventListener("click", () => restart++);
+          dialog.querySelector(".secondary").addEventListener("click", () => {
+            later++;
+            if (closes) dialog.remove();
+          });
+          document.body.append(dialog);
+          return { dialog, counts: () => ({ restart, later }) };
+        };
+        const a = make(true);
+        LiuliUpdatePrompt.schedule();
+        await new Promise((r) => setTimeout(r, 700));
+        const first = { gone: !a.dialog.isConnected, ...a.counts() };
+        const b = make(false);
+        LiuliUpdatePrompt.schedule();
+        await new Promise((r) => setTimeout(r, 1500));
+        const second = { hidden: getComputedStyle(b.dialog).display === "none", ...b.counts() };
+        b.dialog.remove();
+        // other dialogs are not touched
+        const other = document.createElement("div");
+        other.className = "q-dialog";
+        other.innerHTML = '<span>提示</span><button class="q-button">下次启动更新</button>';
+        let otherClicks = 0;
+        other.querySelector("button").addEventListener("click", () => otherClicks++);
+        document.body.append(other);
+        LiuliUpdatePrompt.schedule();
+        await new Promise((r) => setTimeout(r, 700));
+        other.remove();
+        return { first, second, otherClicks, debug: LiuliUpdatePrompt.debug() };
+      });
+      expect(
+        "update-prompt.dismissed",
+        updatePrompt.first.gone && updatePrompt.first.later === 1 && updatePrompt.first.restart === 0 &&
+          updatePrompt.second.hidden && updatePrompt.second.restart === 0 && updatePrompt.otherClicks === 0,
+        updatePrompt,
+      );
       expect(
         "links.open-directly",
         linkTest.first.opened === 1 && linkTest.first.last === "docs.qq.com" && linkTest.first.qq === 0 &&
@@ -1365,13 +1408,24 @@ async function run() {
           c.fillStyle = g; c.fillRect(0, 0, 500, 252);
         });
         const arkLater = drawn(() => {});
+        // at its default size first; QQ sizes and draws it seconds later
+        const arkSized = row("others", '<div><div><div class="ark-item-container"><canvas class="ark-view-message" style="width:250px;height:126px;display:block"></canvas></div></div></div>', "ark-msg-content-container");
         LiuliCards.adapt(list);
+        arkSized.scrollIntoView({ block: "center" });
+        setTimeout(() => {
+          const cv = arkSized.querySelector("canvas");
+          cv.width = 500; cv.height = 252;
+          const c = cv.getContext("2d");
+          c.fillStyle = "#fff"; c.fillRect(0, 0, 500, 252); c.fillStyle = "#000"; c.fillRect(40, 100, 200, 30);
+        }, 1500);
         setTimeout(() => {
           const c = arkLater.querySelector("canvas").getContext("2d");
           c.fillStyle = "#fff"; c.fillRect(0, 0, 500, 252); c.fillStyle = "#000"; c.fillRect(40, 100, 200, 30);
         }, 100);
-        await new Promise((res) => setTimeout(res, 700));
+        await new Promise((res) => setTimeout(res, 2600));
         result.ark = {
+          sized: arkSized.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
+          blur: getComputedStyle(arkWhite.querySelector(".msg-content-container")).backdropFilter,
           white: arkWhite.querySelector("canvas").getAttribute("data-liuli-ark-glass"),
           whiteFilter: getComputedStyle(arkWhite.querySelector("canvas")).filter,
           filterDefined: !!document.getElementById("liuli-ark-light"),
@@ -1387,7 +1441,7 @@ async function run() {
           pictureBubble: arkPicture.querySelector(".msg-content-container").hasAttribute("data-liuli-ark-bubble"),
           probe: LiuliCards.arks().length,
         };
-        for (const n of [arkWhite, arkPicture, arkLater]) n.remove();
+        for (const n of [arkWhite, arkPicture, arkLater, arkSized]) n.remove();
         // a card first seen before it has a size (the virtual list measures
         // rows hidden) is classified once it has one
         const late = row(
@@ -1426,7 +1480,7 @@ async function run() {
       expect(
         "card.canvas-drawn-card-is-glass",
         cards.ark.white === "light" && /liuli-ark-light/.test(cards.ark.whiteFilter) && cards.ark.filterDefined &&
-          cards.ark.picture === "keep" && cards.ark.pictureFilter === "none" && cards.ark.later === "light" && cards.ark.probe >= 3 &&
+          cards.ark.picture === "keep" && cards.ark.pictureFilter === "none" && cards.ark.later === "light" && cards.ark.sized === "light" && /blur/.test(cards.ark.blur) && cards.ark.probe >= 3 &&
           cards.ark.bubble && cards.ark.textBubbleBg !== "" && cards.ark.bubbleBg === cards.ark.textBubbleBg && !cards.ark.pictureBubble,
         cards.ark,
       );
@@ -1700,6 +1754,12 @@ async function run() {
           queueMicrotask(() => (sheet.style.display = sheet.style.display === "none" ? "flex" : "none"));
         };
         native.addEventListener("click", toggle);
+        // QQ closes the panel again when the message is sent
+        const sendBtn = __qa.q(".operation .send-msg");
+        const closeOnSend = () => {
+          if (window.__qaPanelMode === "vshow") sheet.style.display = "none";
+        };
+        sendBtn.addEventListener("click", closeOnSend);
         // a painted frame without the panel would be a visible flicker
         const frames = () => {
           if (!watching) return;
@@ -1748,6 +1808,7 @@ async function run() {
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
         await __qa.frames(2);
         native.removeEventListener("click", toggle);
+        sendBtn.removeEventListener("click", closeOnSend);
         window.__qaPanelMode = "";
         panel.remove();
         editor.innerHTML = "<p><br></p>";
@@ -1756,7 +1817,7 @@ async function run() {
       expect(
         "sticker.panel-stays-while-pointer-over-it",
         stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.flickerFrames === 0 &&
-          stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 2,
+          stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 4,
         stickerHold,
       );
 

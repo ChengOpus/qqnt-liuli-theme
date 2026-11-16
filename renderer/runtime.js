@@ -82,6 +82,7 @@
         window.LiuliChatExtras?.records(records);
         window.LiuliHeaderTools?.records(records);
         window.LiuliJumpBottom?.schedule();
+        window.LiuliUpdatePrompt?.schedule();
       }
       for (const record of records) {
         const target = element(record.target);

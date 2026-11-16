@@ -25,6 +25,7 @@
     updateGuard: enabled => request('updateGuard', enabled),
     flashGuard: enabled => request('flashGuard', enabled),
     linkGuard: enabled => request('linkGuard', enabled),
+    hideOwnWindow: reason => request('hideOwnWindow', reason),
     viewerPreset: preset => request('viewerPreset', preset),
     diagExport: payload => request('diagExport', payload),
     diagOpenPath: path => request('diagOpenPath', path),

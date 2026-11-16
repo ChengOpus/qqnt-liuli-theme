@@ -322,11 +322,14 @@
     if (!stay) return;
     if (!stay.sheet.isConnected) return letGo("gone");
     if (getComputedStyle(stay.sheet).display !== "none") return;
-    // QQ closed it
-    if (performance.now() > stay.until || !inside(stay.box, pointer.x, pointer.y)) return letGo("closed");
+    // QQ closed it. QQ closes it more than once for one sticker — on the
+    // press and again when the message is sent (user diagnostics .32:
+    // reopened 2, then released "closed") — so it is reopened each time
+    // within the window after the press, a few times at most.
+    if (performance.now() > stay.until || !inside(stay.box, pointer.x, pointer.y) || stay.count >= 4) return letGo("closed");
     const item = nativeEmoji();
     if (!item) return letGo("no-button");
-    stay.until = 0; // one reopen per sticker press
+    stay.count++;
     stay.reopened = true;
     debug.reopened++;
     item.click();
@@ -350,7 +353,7 @@
       watcher.disconnect();
       watcher.observe(root, { attributes: true, attributeFilter: ["style", "class", "hidden"], subtree: true, childList: true });
     }
-    stay = { root, sheet, box, until: performance.now() + 2500, reopened: stay?.reopened || false };
+    stay = { root, sheet, box, until: performance.now() + 3000, count: 0, reopened: stay?.reopened || false };
     debug.held++;
   }
   function letGo(reason) {

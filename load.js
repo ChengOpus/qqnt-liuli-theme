@@ -86,6 +86,19 @@ function createMethods(state) {
       globalThis.__snowloraLiuliFlashGuard.enabled = enabled === true;
       return globalThis.__snowloraLiuliFlashGuard.enabled;
     },
+    // QQ's update reminder that could not be dismissed (renderer
+    // update-prompt.js): the calling window — and only it — is hidden.
+    hideOwnWindow(reason) {
+      const win = BrowserWindow.fromWebContents(wc);
+      if (!win || win.isDestroyed()) return false;
+      let route = '';
+      try {
+        route = new URL(wc.getURL()).hash.split('?')[0].replace(/\d{4,}/g, '#').slice(0, 60);
+      } catch {}
+      diagnostics?.log({ event: 'hide-window', reason: String(reason || '').slice(0, 40), route });
+      win.hide();
+      return true;
+    },
     // 「链接直接打开」：主窗口启动和切换开关时调用，见 installLinkGuard。
     linkGuard(enabled) {
       installLinkGuard();
