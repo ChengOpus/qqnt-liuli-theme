@@ -602,6 +602,37 @@ async function run() {
       });
       expect("header.first-message-reachable", top.oldest.y >= top.header.b - 1, top);
       expect("header.top-banner-below-panels", top.tip.y >= top.header.b - 1, top);
+      // ── A short conversation in QQ 9.9.36's layout (list area as tall as
+      // the view, messages from its top): the safe-area padding must not let
+      // the view scroll the messages up under the header ──
+      const shortTest = await page.evaluate(async () => {
+        const make = (listH, areaH) => {
+          const node = document.createElement("div");
+          node.style.cssText = "position:fixed;left:300px;top:8px;width:500px;height:628px;overflow:auto;padding:44px 0 72px;box-sizing:border-box;display:flex;flex-direction:column";
+          node.innerHTML = '<div class="virtual-scroll-area" style="flex:none;height:' + areaH + 'px"><div class="ml-list" style="height:' + listH + 'px;background:#ccc"></div></div>';
+          document.body.append(node);
+          return node;
+        };
+        const out = {};
+        for (const [name, listH, areaH] of [["fits", 152, 628], ["slightly", 560, 628], ["long", 900, 300000]]) {
+          const node = make(listH, areaH);
+          LiuliComposer.shortChat(node);
+          node.scrollTop = node.scrollHeight; // QQ scrolling to the end
+          await new Promise((r) => setTimeout(r, 80));
+          const list = node.querySelector(".ml-list").getBoundingClientRect();
+          const box = node.getBoundingClientRect();
+          out[name] = { short: node.hasAttribute("data-liuli-short"), scrollTop: Math.round(node.scrollTop), listTop: Math.round(list.top - box.top), listBottom: Math.round(list.bottom - box.top) };
+          node.remove();
+        }
+        return out;
+      });
+      expect(
+        "composer.short-chat-not-scrolled-under-header",
+        shortTest.fits.short && shortTest.fits.scrollTop === 0 && shortTest.fits.listTop === 44 &&
+          shortTest.slightly.short && shortTest.slightly.listBottom === 628 - 72 && shortTest.slightly.listTop < 44 &&
+          !shortTest.long.short && shortTest.long.scrollTop > 1000,
+        shortTest,
+      );
       // ── Back to the newest message: a glass button above the composer's
       // top-right corner while reading far up; one click returns to the end ──
       const jumpTest = await page.evaluate(async () => {

@@ -242,7 +242,45 @@
       ? Math.abs(node.scrollTop)
       : max - node.scrollTop;
   }
+  // ── A conversation shorter than QQ's list area ─────────────────────────
+  // With few messages QQ sizes its list area (.virtual-scroll-area) to the
+  // view and lays the messages out from its top. The safe areas (header
+  // clearance at the start, editor clearance at the end) are padding on the
+  // scroll container, so that padding alone made the view scrollable, and
+  // scrolling to the "end" (QQ's and this file's) moved the messages up under
+  // the header and left the rest of the pane empty — stuck there, since every
+  // new message scrolls to the end again (user diagnostics 2026-11-16:
+  // .ml-list 152px tall at y −66, the view at its end; and a slightly longer
+  // conversation whose first message sat under the header). In that layout
+  // the real end is where the last message sits just above the editor; the
+  // view is kept from scrolling past it. A long conversation (QQ's area is
+  // then far taller than the view) is not touched.
+  const shortLimit = new WeakMap();
+  function shortChat(node) {
+    let limit = -1;
+    const list = node.querySelector(":scope > .virtual-scroll-area > .ml-list, .ml-list");
+    const areaEl = list?.parentElement;
+    if (list && areaEl && !reversed(node) && areaEl.offsetHeight <= node.clientHeight + 2 && list.offsetHeight < areaEl.offsetHeight - 1) {
+      const css = getComputedStyle(node);
+      const head = parseFloat(css.paddingTop) || 0;
+      const foot = parseFloat(css.paddingBottom) || 0;
+      const offset = list.getBoundingClientRect().top - areaEl.getBoundingClientRect().top;
+      limit = Math.max(0, Math.ceil(head + offset + list.offsetHeight + foot - node.clientHeight));
+    }
+    shortLimit.set(node, limit);
+    node.toggleAttribute("data-liuli-short", limit >= 0);
+    if (limit >= 0 && node.scrollTop > limit + 1) node.scrollTop = limit;
+  }
+  function clampShort(event) {
+    const node = event.target;
+    if (!(node instanceof Element) || !node.hasAttribute("data-liuli-short")) return;
+    const limit = shortLimit.get(node);
+    if (limit >= 0 && node.scrollTop > limit + 1) node.scrollTop = limit;
+  }
+  document.addEventListener("scroll", clampShort, { capture: true, passive: true });
   function toEnd(node) {
+    const limit = shortLimit.get(node);
+    if (limit >= 0 && node.hasAttribute("data-liuli-short")) return void (node.scrollTop = limit);
     node.scrollTop = reversed(node) ? 0 : node.scrollHeight;
   }
   function makeOverlay() {
@@ -623,6 +661,7 @@
         );
       verifyHeader(header, column);
     }
+    if (scroll) shortChat(scroll);
     return [active, active.querySelector(".msg-input"), host, region].filter(
       Boolean,
     );
@@ -778,6 +817,7 @@
     viewport: () => (scroll?.isConnected ? scroll : region),
     scroller: () => (scroll?.isConnected ? scroll : null),
     needsScroller,
+    shortChat,
     prime,
     records,
     expand,
