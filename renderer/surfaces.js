@@ -476,6 +476,7 @@
         if (shell.matches(".main-search,.contact-top-bar,.recent-contact")) break;
       }
       mark(painted, "search");
+      glassOnly(painted, ".main-search,.contact-top-bar,.recent-contact,.two-col-layout__aside,.container-content");
       for (const inner of painted.querySelectorAll(
         ".q-float-card,.q-popup__main,.search-result__content,.search-recent,.search-recent-contact,.search-result-list",
       ))
@@ -504,6 +505,46 @@
     }
     if (document.body.dataset.liuliScope === "search") searchDropdown();
   }
+  // ── One glass per popup ───────────────────────────────────────────────
+  // QQ's colourful theme gives its popups a tinted frosted card of their own,
+  // inside a slightly larger shell (room for the shadow). With the theme's
+  // glass on one and QQ's on the other, the popup showed a second edge — an
+  // extra strip on the right and at the bottom (user screenshots,
+  // 2026-11-16: the main window's search and 综合搜索). Around the glass,
+  // shells within 32px of it lose their paint; inside it, layers covering
+  // nearly all of it lose theirs, whatever their colour. Rows, avatars and
+  // buttons are smaller and keep theirs.
+  function paintsAny(css) {
+    const m = /rgba?\(([^)]+)\)/.exec(css.backgroundColor || "");
+    const p = m ? m[1].split(/[,\s/]+/).filter(Boolean) : [];
+    const alpha = p.length > 3 ? Number(p[3]) : p.length ? 1 : 0;
+    return (
+      alpha > 0.04 ||
+      (css.backgroundImage !== "none" && !/url\(/.test(css.backgroundImage)) ||
+      (css.backdropFilter && css.backdropFilter !== "none") ||
+      (css.boxShadow && css.boxShadow !== "none")
+    );
+  }
+  function glassOnly(carrier, stopAt) {
+    const box = carrier.getBoundingClientRect();
+    if (box.width < 40 || box.height < 30) return;
+    for (const inner of carrier.querySelectorAll("div, ul, section")) {
+      if (inner.hasAttribute("data-liuli-surface") || inner.hasAttribute("data-liuli-surface-inner")) continue;
+      const r = inner.getBoundingClientRect();
+      if (r.width < box.width * 0.85 || r.height < box.height * 0.85) continue;
+      if (paintsAny(getComputedStyle(inner))) clear(inner);
+    }
+    for (let shell = carrier.parentElement, n = 0; shell && shell !== document.body && n < 4; shell = shell.parentElement, n++) {
+      if (stopAt && shell.matches(stopAt)) break;
+      const r = shell.getBoundingClientRect();
+      if (r.left < box.left - 32 || r.top < box.top - 32 || r.right > box.right + 32 || r.bottom > box.bottom + 32) break;
+      if (shell.hasAttribute("data-liuli-surface")) {
+        if (shell.dataset.liuliSurface !== "panel") release(shell);
+        else continue;
+      }
+      if (paintsAny(getComputedStyle(shell))) clear(shell);
+    }
+  }
   // ── The search window's dropdown under its input ─────────────────────────
   // In 综合搜索 the history list that drops down from the input showed as
   // bare text over the results (user screenshot, 2026-11-16): its class is
@@ -512,9 +553,14 @@
   // — and gets the popup glass. The stack seen there is kept for diagnostics.
   let searchSeen = [];
   function searchDropdown() {
-    const input = document.querySelector('input[placeholder*="搜索"], input[type="search"]');
+    // the widest visible search input (a page can hold more than one)
+    let input = null;
+    let ir = null;
+    for (const el of document.querySelectorAll('input[placeholder*="搜索"], input[type="search"]')) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0 && (!ir || r.width > ir.width)) (input = el), (ir = r);
+    }
     if (!input) return;
-    const ir = input.getBoundingClientRect();
     if (ir.width < 80 || ir.height < 10) return;
     const positioned = (cs) => cs.position === "absolute" || cs.position === "fixed";
     for (const dy of [28, 64]) {
@@ -538,11 +584,37 @@
           if (positioned(getComputedStyle(p)) && Math.abs(pr.top - r.top) < 12 && pr.width <= r.width * 1.2 && pr.height <= r.height * 1.3) box = p;
         }
         if (!D.safe(box)) return;
-        if (box.dataset.liuliSurface !== "popup") {
-          mark(box, "popup");
-          box.setAttribute("data-liuli-search-drop", "");
+        // the glass goes on QQ's own card inside the shell when there is one
+        // (the box holding the list), not on the shell around it
+        const area = r.width * r.height;
+        let carrier = box;
+        let best = 0;
+        for (const inner of box.querySelectorAll("div, section, ul")) {
+          const ir2 = inner.getBoundingClientRect();
+          const a2 = ir2.width * ir2.height;
+          if (a2 < area * 0.55 || a2 <= best || a2 >= area * 0.995) continue;
+          const cs2 = getComputedStyle(inner);
+          if (!paintsAny(cs2) && cs2.borderTopLeftRadius === "0px") continue;
+          carrier = inner;
+          best = a2;
         }
-        clearSheets(box);
+        if (carrier !== box && box.hasAttribute("data-liuli-search-drop")) {
+          release(box);
+          box.removeAttribute("data-liuli-search-drop");
+        }
+        if (carrier.dataset.liuliSurface !== "popup") {
+          mark(carrier, "popup");
+          carrier.setAttribute("data-liuli-search-drop", "");
+        }
+        clearSheets(carrier);
+        glassOnly(carrier);
+        // the shell(s) between the card and the positioned box paint nothing,
+        // however much room they leave around the card
+        for (let p = carrier === box ? null : carrier.parentElement; p; p = p === box ? null : p.parentElement) {
+          if (p.hasAttribute("data-liuli-surface") && p.dataset.liuliSurface !== "panel") release(p);
+          if (paintsAny(getComputedStyle(p))) clear(p);
+        }
+        searchSeen.push("carrier: " + carrier.tagName.toLowerCase() + "." + String(typeof carrier.className === "string" ? carrier.className : "").slice(0, 60) + (carrier === box ? " (shell)" : " (inside shell)"));
         return;
       }
     }

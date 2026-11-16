@@ -755,8 +755,35 @@ async function run() {
           seen: LiuliSurfaces.searchSeen().length,
         };
         host.remove();
+        // QQ's tinted card inside a larger shell (room for its shadow): the
+        // glass goes on the card, the shell paints nothing — no second edge
+        const host2 = document.createElement("div");
+        host2.style.cssText = "position:fixed;left:40px;top:40px;width:640px;height:500px;z-index:9000";
+        host2.innerHTML =
+          '<div style="position:relative;height:40px"><input placeholder="输入搜索关键词" style="width:520px;height:36px"></div>' +
+          '<div class="qa-shell" style="position:absolute;left:0;top:48px;width:600px;height:320px;padding:0 60px 40px 0;box-sizing:border-box;background:rgba(240,200,220,.5);backdrop-filter:blur(10px)">' +
+          '<div class="qa-card" style="width:540px;height:280px;border-radius:12px;background:rgba(240,190,210,.85);backdrop-filter:blur(8px)"><div style="height:36px">1609403959</div></div></div>';
+        document.body.append(host2);
+        await __qa.frames(2);
+        LiuliSurfaces.searchDropdown();
+        await __qa.frames(2);
+        const shell = host2.querySelector(".qa-shell"), card = host2.querySelector(".qa-card");
+        res.shellCase = {
+          card: card.dataset.liuliSurface || "",
+          cardBg: getComputedStyle(card).backgroundColor,
+          shell: shell.dataset.liuliSurface || "",
+          shellBg: getComputedStyle(shell).backgroundColor,
+          shellBlur: getComputedStyle(shell).backdropFilter,
+        };
+        host2.remove();
         return res;
       });
+      expect(
+        "search.dropdown-one-glass-no-second-edge",
+        searchDrop.shellCase.card === "popup" && searchDrop.shellCase.cardBg === "rgba(0, 0, 0, 0)" && searchDrop.shellCase.shell === "" &&
+          searchDrop.shellCase.shellBg === "rgba(0, 0, 0, 0)" && searchDrop.shellCase.shellBlur === "none",
+        searchDrop.shellCase,
+      );
       expect(
         "search.dropdown-is-glass",
         searchDrop.history === "popup" && searchDrop.glass !== "none" && searchDrop.innerCleared === "rgba(0, 0, 0, 0)" && !searchDrop.resultsTaken && searchDrop.seen > 0,
@@ -1840,6 +1867,15 @@ async function run() {
         // Fast clicks: three stickers pressed in quick succession go out one
         // by one, none is left in the editor
         const sentFast = LiuliChatExtras.debug().sent;
+        let pictures = 0;
+        const countSent = () => (pictures += editor.querySelectorAll(".image-element").length);
+        sendBtn.addEventListener("click", countSent, true);
+        // scrolled down in the grid: stays there across sends
+        const gridView = panel.querySelector(".q-scroll-view.stickers");
+        gridView.style.overflow = "auto";
+        gridView.insertAdjacentHTML("afterbegin", '<div style="height:120px;width:100%"></div>');
+        gridView.insertAdjacentHTML("beforeend", '<div style="height:400px;width:100%"></div>');
+        gridView.scrollTop = 120;
         const tiles = [...panel.querySelectorAll(".stickers-item img")].slice(1, 4);
         for (const t of tiles) {
           t.addEventListener("pointerdown", () => {
@@ -1858,11 +1894,13 @@ async function run() {
           await new Promise((res) => setTimeout(res, 40));
         }
         await new Promise((res) => setTimeout(res, 2500));
+        sendBtn.removeEventListener("click", countSent, true);
         const fast = {
-          sent: LiuliChatExtras.debug().sent - sentFast,
+          sends: LiuliChatExtras.debug().sent - sentFast,
+          pictures,
           left: editor.querySelectorAll(".image-element").length,
-          queued: LiuliChatExtras.debug().queued,
           shown: getComputedStyle(sheet).display !== "none",
+          scrollTop: gridView.scrollTop,
         };
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
         await __qa.frames(2);
@@ -1877,7 +1915,7 @@ async function run() {
         "sticker.panel-stays-while-pointer-over-it",
         stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.flickerFrames === 0 &&
           stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 2 &&
-          stickerHold.fast.sent === 3 && stickerHold.fast.left === 0 && stickerHold.fast.queued >= 2 && stickerHold.fast.shown,
+          stickerHold.fast.pictures === 3 && stickerHold.fast.sends >= 1 && stickerHold.fast.left === 0 && stickerHold.fast.shown && stickerHold.fast.scrollTop === 120,
         stickerHold,
       );
 

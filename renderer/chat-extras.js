@@ -177,7 +177,7 @@
   // the sticker stayed in the editor). The editor is then watched each frame
   // for the picture rather than for one particular mutation shape.
   let pending = null;
-  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, reopened: 0, queued: 0, replayed: 0, closedOnLeave: 0, released: '', last: '', skipped: '' };
+  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, reopened: 0, restored: 0, ended: '', closedOnLeave: 0, released: '', last: '', skipped: '' };
   // What counts as a picture in the editor. ProseMirror keeps helper nodes in
   // an otherwise empty paragraph — an <img class="ProseMirror-separator"> and
   // a trailing <br> — and QQ pads with zero-width characters; none of those
@@ -189,6 +189,11 @@
   }
   function textOf(editor) {
     return editor.textContent.replace(/[\s​-‏⁠﻿]/g, '');
+  }
+  function mediaNodes(editor) {
+    return [...editor.querySelectorAll(MEDIA_IN_EDITOR + ', .file-element, .face-element')].filter(
+      (node) => !node.matches(HELPER) && !node.closest(HELPER),
+    );
   }
   // pictures, attachments and faces actually in the message
   function mediaCount(editor) {
@@ -245,16 +250,12 @@
       // the sticker panel a second time for every sticker.
       button.click();
       debug.last = 'button';
-    }
-    // Still there well after (no button, or it did not take): Enter, the key
-    // the user sends with. Late enough that a send in flight has cleared it.
-    setTimeout(() => {
-      if (!editor?.isConnected || mediaCount(editor) === 0) return;
+    } else if (editor) {
       editor.focus();
       for (const type of ['keydown', 'keypress', 'keyup'])
         editor.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-      debug.last = button ? 'button+enter' : 'enter';
-    }, 600);
+      debug.last = 'enter';
+    }
     debug.sent++;
   }
   // The sticker only passes through the editor on its way out: while it does,
@@ -268,7 +269,7 @@
     const h = Math.round(editor.getBoundingClientRect().height);
     input.style.setProperty('--ll-sticker-hold', Math.max(h, 20) + 'px');
     input.setAttribute('data-liuli-sticker-sending', '');
-    holdTimer = setTimeout(() => release(input), 2600);
+    holdTimer = setTimeout(() => release(input), 4000);
   }
   function release(input) {
     clearTimeout(holdTimer);
@@ -277,42 +278,85 @@
     input.removeAttribute('data-liuli-sticker-sending');
     input.style.removeProperty('--ll-sticker-hold');
   }
-  // after the send: release as soon as the editor is empty again
-  function releaseWhenSent(input, editor, until) {
-    if (!editor?.isConnected || mediaCount(editor) === 0 || performance.now() > until) {
-      if (editor?.isConnected && mediaCount(editor) > 0) debug.kept++;
-      // one more frame so the cleared editor is laid out before it shows
-      requestAnimationFrame(() => {
-        release(input);
-        inflight = false;
-        next();
-      });
-      return;
+  // ── Sending ───────────────────────────────────────────────────────────
+  // A burst of sticker presses: QQ puts each sticker into the editor itself;
+  // whenever the editor holds pictures and no text, they are sent — then the
+  // next ones that land, and so on, until no sticker has been pressed for a
+  // moment. (.34 held fast presses back and replayed them; in QQ the replay
+  // did not always insert, and each miss waited out a 2 s timeout: user
+  // diagnostics armed 6, landed 3.) Stickers that land together before a
+  // send go out together.
+  let burst = null;
+  let looping = false;
+  function arm(input, editor) {
+    const now = performance.now();
+    if (!burst || burst.input !== input) burst = { input, until: now + 2000, sending: false, sentAt: 0, seenAt: 0, entered: false, expect: 0 };
+    else burst.until = Math.max(burst.until, now + 2000);
+    // stickers pressed and not yet sent: only those make the editor go out
+    // (an emoji added a moment later is the reader's, not part of the burst)
+    burst.expect++;
+    pending = burst;
+    hold(input, editor);
+    if (!looping) {
+      looping = true;
+      requestAnimationFrame(tick);
     }
-    requestAnimationFrame(() => releaseWhenSent(input, editor, until));
   }
-  function watch() {
-    if (!pending) return;
-    const { input, until } = pending;
-    const editor = editorOf(input);
-    if (!editor || performance.now() > until) {
-      pending = null;
-      release(input);
-      inflight = false;
-      next();
-      return;
+  function finish(reason) {
+    const b = burst;
+    burst = null;
+    pending = null;
+    looping = false;
+    if (reason) debug.ended = reason;
+    // (not if a new burst has started on the same editor in the meantime)
+    if (b) requestAnimationFrame(() => (!burst || burst.input !== b.input) && release(b.input));
+  }
+  function tick() {
+    const b = burst;
+    if (!b) return void (looping = false);
+    const now = performance.now();
+    const editor = editorOf(b.input);
+    if (!editor?.isConnected) return finish("no-editor");
+    const media = mediaCount(editor);
+    // the reader started typing: leave the draft alone
+    if (textOf(editor) !== "") return finish("text");
+    if (b.sending) {
+      // done once the pictures this send took are out of the editor — a
+      // sticker that landed right after may already be there
+      if (media === 0 || !b.sentNodes.some((n) => n.isConnected && editor.contains(n))) b.sending = false;
+      else if (!b.entered && now - b.sentAt > 700) {
+        // the button did not take: Enter, the key the reader sends with
+        b.entered = true;
+        editor.focus();
+        for (const type of ["keydown", "keypress", "keyup"])
+          editor.dispatchEvent(new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+        debug.last = "button+enter";
+      } else if (now - b.sentAt > 1400) {
+        debug.kept++;
+        return finish("kept");
+      }
     }
-    if (mediaCount(editor) > pending.before && textOf(editor) === '') {
-      pending = null;
-      debug.landed++;
+    if (!b.sending && media > 0 && b.expect > 0) {
       // after ProseMirror has finished its own transaction
-      setTimeout(() => {
-        press(input);
-        releaseWhenSent(input, editor, performance.now() + 1400);
-      }, 30);
-      return;
-    }
-    requestAnimationFrame(watch);
+      if (!b.seenAt) b.seenAt = now;
+      else if (now - b.seenAt >= 30) {
+        b.seenAt = 0;
+        b.entered = false;
+        debug.landed++;
+        // the stickers in the editor go out with this send; presses whose
+        // sticker has not landed yet are still expected
+        b.expect = Math.max(0, b.expect - media);
+        b.sentNodes = mediaNodes(editor);
+        press(b.input);
+        b.sending = true;
+        b.sentAt = now;
+        b.until = Math.max(b.until, now + 600);
+      }
+    } else if (!b.sending) b.seenAt = 0;
+    // done: nothing on its way, nothing more expected (or the expected
+    // sticker never arrived)
+    if (!b.sending && (b.expect === 0 || now > b.until)) return finish(b.expect === 0 ? "sent" : "idle");
+    requestAnimationFrame(tick);
   }
   // The panel stays open after a sticker is sent while the pointer is still
   // over it, and closes once the pointer leaves (user, 2026-11-15). QQ closes
@@ -325,10 +369,16 @@
   let stay = null; // { root, sheet, box, until, reopened }
   let pointer = { x: -1, y: -1 };
   let bypass = false;
-  const watcher = new MutationObserver(() => {
+  const watcher = new MutationObserver((records) => {
     if (!stay) return;
     if (!stay.sheet.isConnected) return letGo("gone");
-    if (getComputedStyle(stay.sheet).display !== "none") return;
+    // QQ hides it with an inline display:none (v-show). That is read from the
+    // attribute: asking for the computed style here would make the browser
+    // lay the panel out hidden, which drops the grid's scroll position and
+    // makes it lay the whole grid out again when it is shown.
+    let hidden = stay.sheet.style.display === "none";
+    if (!hidden && records.some((r) => r.attributeName !== "style")) hidden = getComputedStyle(stay.sheet).display === "none";
+    if (!hidden) return;
     // QQ closed it. QQ closes it more than once for one sticker — on the
     // press and again when the message is sent (user diagnostics .32:
     // reopened 2, then released "closed") — so it is reopened each time
@@ -340,7 +390,18 @@
     stay.reopened = true;
     debug.reopened++;
     item.click();
-    whenOpen(chooseStickerTab);
+    // the grid where the reader was (QQ's reopen can start it at the top)
+    const scrolls = stay.scrolls || [];
+    const restore = () => {
+      for (const [el, top] of scrolls)
+        if (el.isConnected && Math.abs(el.scrollTop - top) > 1) {
+          el.scrollTop = top;
+          debug.restored++;
+        }
+    };
+    queueMicrotask(() => queueMicrotask(restore));
+    requestAnimationFrame(restore);
+    setTimeout(restore, 60);
   });
   function nativeEmoji() {
     return document.querySelector(EMOJI_ICON + " > .icon-item");
@@ -363,7 +424,10 @@
       for (let n = sheet; n; n = n === root ? null : n.parentElement)
         watcher.observe(n, { attributes: true, attributeFilter: ["style", "class", "hidden"] });
     }
-    stay = { root, sheet, box, until: performance.now() + 3000, count: 0, reopened: stay?.reopened || false };
+    // where the grid is scrolled to, read while it is still shown
+    const scrolls = [];
+    for (const el of root.querySelectorAll(".q-scroll-view, [class*='scroll']")) if (el.scrollTop > 0) scrolls.push([el, el.scrollTop]);
+    stay = { root, sheet, box, scrolls, until: performance.now() + 3000, count: 0, reopened: stay?.reopened || false };
     debug.held++;
   }
   function letGo(reason) {
@@ -394,59 +458,6 @@
       closePanel();
     }
   }
-  // Fast clicks (user, 2026-11-16: several stickers were left in the editor
-  // unsent). While one sticker is on its way out, a sticker pressed next is
-  // held back — QQ never sees that press — and pressed again for the reader
-  // once the editor is clear, so each sticker goes out as its own message.
-  let inflight = false;
-  let replaying = false;
-  const queue = [];
-  // replayed on the very element that was pressed (QQ's handler may be on
-  // the picture inside the tile, which a press on the tile never reaches)
-  function stickerRef(tile, target) {
-    const img = target?.closest?.("img") || (tile.matches("img") ? tile : tile.querySelector("img"));
-    return { tile: target instanceof Element && tile.contains(target) ? target : tile, src: img?.getAttribute("src") || "" };
-  }
-  function resolve(ref) {
-    if (ref.tile.isConnected && ref.tile.getClientRects().length) return ref.tile;
-    if (!ref.src) return null;
-    const root = panel();
-    if (!root) return null;
-    for (const img of root.querySelectorAll("img")) if (img.getAttribute("src") === ref.src) return img;
-    return null;
-  }
-  function next() {
-    if (inflight || !queue.length) return;
-    const tile = resolve(queue.shift());
-    if (!tile) return next();
-    const r = tile.getBoundingClientRect();
-    const at = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-    replaying = true;
-    debug.replayed++;
-    try {
-      for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup"])
-        tile.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type, at));
-      tile.dispatchEvent(new MouseEvent("click", at));
-    } finally {
-      replaying = false;
-    }
-  }
-  function holdBack(event) {
-    if (replaying || !inflight || !settings.stickerSend || event.button !== 0) return;
-    if (!event.target.closest?.(PANEL)) return;
-    const tile = stickerTile(event);
-    if (!tile) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (event.type === "pointerdown" || (event.type === "mousedown" && !queue.length)) {
-      if (queue.length < 8 && (event.type === "pointerdown" || !queue.some((q) => q.tile === tile))) {
-        queue.push(stickerRef(tile, event.target));
-        debug.queued++;
-      }
-      // keep the panel up while the queue is worked through
-      if (stay) stay.until = performance.now() + 3000;
-    }
-  }
   function onPress(event) {
     // A press elsewhere by the user lets go. Not the theme's own press on
     // QQ's send button right after the sticker (that released the stay at
@@ -460,15 +471,13 @@
     const input = window.LiuliComposer.area();
     const editor = editorOf(input);
     if (!editor) return void (debug.skipped = 'no-editor');
-    // keep a half-written message
-    if (!editorEmpty(input)) return void (debug.skipped = 'draft:' + textOf(editor).length + 'ch/' + mediaCount(editor) + 'media');
+    // keep a half-written message (pictures in it count, unless they are
+    // the stickers of the burst still on their way out)
+    if (textOf(editor) !== '' || (mediaCount(editor) > 0 && !burst))
+      return void (debug.skipped = 'draft:' + textOf(editor).length + 'ch/' + mediaCount(editor) + 'media');
     debug.armed++;
     debug.skipped = '';
-    inflight = true;
-    const fresh = !pending;
-    hold(input, editor);
-    pending = { input, before: mediaCount(editor), until: performance.now() + 2000 };
-    if (fresh) requestAnimationFrame(watch);
+    arm(input, editor);
   }
   function onClick(event) {
     const root = event.target.closest?.(PANEL);
@@ -479,12 +488,8 @@
     if (!pending && event.detail === 0) onPress({ target: event.target, button: 0 });
   }
   // Called with the mutation records of each batch (runtime.js).
-  function records() {
-    if (pending) watch();
-  }
+  function records() {}
   function install() {
-    // first, so a held-back press reaches nothing else
-    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) document.addEventListener(type, holdBack, true);
     document.addEventListener("click", onEmojiClick, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("pointerdown", onPress, true);
@@ -505,7 +510,7 @@
     scanTips,
     records,
     openStickers,
-    debug: () => ({ ...debug, pending: !!pending, holding: !!stay, inflight, waiting: queue.length }),
+    debug: () => ({ ...debug, pending: !!pending, holding: !!stay, burst: !!burst }),
     letGo,
   });
 })();
