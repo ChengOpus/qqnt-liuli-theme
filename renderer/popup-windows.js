@@ -212,7 +212,16 @@ body[data-liuli-popup-doc] #app::after {
       if (sheetFill(css) || css.backdropFilter !== 'none') card = p;
     }
     if (!card.hasAttribute('data-liuli-popup-card')) card.setAttribute('data-liuli-popup-card', '');
-    if (!backWithWallpaper(w, card)) setTimeout(() => !w.closed && backWithWallpaper(w, card), 120);
+    // The wallpaper picture may still be decoding the first time (it is a
+    // large data URL): try again until it is ready, for up to 3 s.
+    if (!backWithWallpaper(w, card)) {
+      let tries = 0;
+      const retry = () => {
+        if (w.closed || !card.isConnected || backWithWallpaper(w, card) || ++tries > 30) return;
+        setTimeout(retry, 100);
+      };
+      setTimeout(retry, 100);
+    }
     const box = card.getBoundingClientRect();
     for (const inner of card.querySelectorAll('div, section, header, main, ul')) {
       if (inner.closest('button, [role="button"], .q-button, input, textarea, [class*="avatar"], .q-tag, [class*="tag"]')) continue;
@@ -286,6 +295,25 @@ body[data-liuli-popup-doc] #app::after {
       w.addEventListener('resize', () => {
         if (!frame) frame = w.requestAnimationFrame(pass);
       });
+      // QQ moves the card window next to the avatar after it has drawn it.
+      // The wallpaper behind the card is cut by window position, so it was
+      // cut for the wrong place the first time and the card showed the plain
+      // white frost (user, 2026-11-16: white on the first open, glass on the
+      // second, when QQ reuses the window already in place). Followed while
+      // the window is open; there is no move event in a page.
+      let where = '';
+      const follow = setInterval(() => {
+        if (w.closed) return clearInterval(follow);
+        let key = '';
+        try {
+          key = w.screenX + ',' + w.screenY + ',' + w.innerWidth + ',' + w.innerHeight + ',' + window.screenX + ',' + window.screenY;
+        } catch (e) {
+          return clearInterval(follow);
+        }
+        if (key === where) return;
+        where = key;
+        if (!frame) frame = w.requestAnimationFrame(pass);
+      }, 120);
       pass();
     };
     start();
@@ -293,6 +321,12 @@ body[data-liuli-popup-doc] #app::after {
   function install() {
     if (window.__liuliPopupWindows) return;
     window.__liuliPopupWindows = true;
+    // start decoding the wallpaper picture now, not when the first card opens
+    setTimeout(() => {
+      try {
+        snapshot();
+      } catch (e) {}
+    }, 1500);
     const open = window.open;
     window.open = function (...args) {
       const w = open.apply(this, args);
@@ -306,6 +340,12 @@ body[data-liuli-popup-doc] #app::after {
   window.LiuliPopupWindows = Object.freeze({
     install,
     adopt,
-    report: () => records.map(({ card, ...rest }) => rest)
+    // with where the wallpaper behind the card is cut now (no text)
+    report: () =>
+      records.map(({ card, ...rest }) => ({
+        ...rest,
+        wpPos: card?.style?.getPropertyValue('--ll-popup-wp-pos') || '',
+        wpSet: !!card?.style?.getPropertyValue('--ll-popup-wp')
+      }))
   });
 })();

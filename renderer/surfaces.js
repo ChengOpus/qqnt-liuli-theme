@@ -502,6 +502,50 @@
       if (card && D.safe(card) && !card.querySelector(".chat-msg-area"))
         flatten(card);
     }
+    if (document.body.dataset.liuliScope === "search") searchDropdown();
+  }
+  // ── The search window's dropdown under its input ─────────────────────────
+  // In 综合搜索 the history list that drops down from the input showed as
+  // bare text over the results (user screenshot, 2026-11-16): its class is
+  // not among the known popups. It is found by where it is — a positioned
+  // box directly under the search input, at least most of the input's width
+  // — and gets the popup glass. The stack seen there is kept for diagnostics.
+  let searchSeen = [];
+  function searchDropdown() {
+    const input = document.querySelector('input[placeholder*="搜索"], input[type="search"]');
+    if (!input) return;
+    const ir = input.getBoundingClientRect();
+    if (ir.width < 80 || ir.height < 10) return;
+    const positioned = (cs) => cs.position === "absolute" || cs.position === "fixed";
+    for (const dy of [28, 64]) {
+      const stack = document.elementsFromPoint(ir.left + ir.width / 2, ir.bottom + dy);
+      searchSeen = stack.slice(0, 10).map((el) => {
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return el.tagName.toLowerCase() + "." + String(typeof el.className === "string" ? el.className : "").slice(0, 60) + " " + cs.position + " [" + [r.left, r.top, r.width, r.height].map(Math.round) + "] " + cs.backgroundColor + (el.dataset.liuliSurface ? " {" + el.dataset.liuliSurface + "}" : "");
+      });
+      for (const el of stack) {
+        if (el.contains(input) || el === document.body || el === document.documentElement) break;
+        if (el.closest("[id^='liuli-']")) continue;
+        const cs = getComputedStyle(el);
+        if (!positioned(cs)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < ir.width * 0.6 || r.height < 60 || r.top < ir.bottom - 12 || r.top > ir.bottom + 24) continue;
+        // the outermost positioned box of the same place
+        let box = el;
+        for (let p = el.parentElement; p && !p.contains(input) && p !== document.body; p = p.parentElement) {
+          const pr = p.getBoundingClientRect();
+          if (positioned(getComputedStyle(p)) && Math.abs(pr.top - r.top) < 12 && pr.width <= r.width * 1.2 && pr.height <= r.height * 1.3) box = p;
+        }
+        if (!D.safe(box)) return;
+        if (box.dataset.liuliSurface !== "popup") {
+          mark(box, "popup");
+          box.setAttribute("data-liuli-search-drop", "");
+        }
+        clearSheets(box);
+        return;
+      }
+    }
   }
   // ── Floating sheets QQ adds under classes this theme does not know ───────
   // (input suggestion lists, newer card variants). Only the root of a change
@@ -667,5 +711,5 @@
     clearTimeout(pageTimer);
     pageTimer = setTimeout(recordPage, 1500);
   });
-  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups, pageSnapshots: () => pages.slice(), recordPage, guestTheme, guestReports: () => guestReports.slice() });
+  window.LiuliSurfaces = Object.freeze({ apply, floating, recentPopups, pageSnapshots: () => pages.slice(), recordPage, guestTheme, guestReports: () => guestReports.slice(), searchSeen: () => searchSeen.slice(), searchDropdown });
 })();

@@ -177,7 +177,7 @@
   // the sticker stayed in the editor). The editor is then watched each frame
   // for the picture rather than for one particular mutation shape.
   let pending = null;
-  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, reopened: 0, closedOnLeave: 0, released: '', last: '', skipped: '' };
+  const debug = { armed: 0, landed: 0, sent: 0, kept: 0, held: 0, reopened: 0, queued: 0, replayed: 0, closedOnLeave: 0, released: '', last: '', skipped: '' };
   // What counts as a picture in the editor. ProseMirror keeps helper nodes in
   // an otherwise empty paragraph — an <img class="ProseMirror-separator"> and
   // a trailing <br> — and QQ pads with zero-width characters; none of those
@@ -240,8 +240,9 @@
     const button = sendButton(input);
     const editor = editorOf(input);
     if (button) {
-      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup'])
-        button.dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, { bubbles: true, cancelable: true, view: window, button: 0 }));
+      // A click only. A synthetic press (pointerdown/mousedown) on the send
+      // button reached QQ's "pressed outside the panel" handler and closed
+      // the sticker panel a second time for every sticker.
       button.click();
       debug.last = 'button';
     }
@@ -281,7 +282,11 @@
     if (!editor?.isConnected || mediaCount(editor) === 0 || performance.now() > until) {
       if (editor?.isConnected && mediaCount(editor) > 0) debug.kept++;
       // one more frame so the cleared editor is laid out before it shows
-      requestAnimationFrame(() => release(input));
+      requestAnimationFrame(() => {
+        release(input);
+        inflight = false;
+        next();
+      });
       return;
     }
     requestAnimationFrame(() => releaseWhenSent(input, editor, until));
@@ -293,6 +298,8 @@
     if (!editor || performance.now() > until) {
       pending = null;
       release(input);
+      inflight = false;
+      next();
       return;
     }
     if (mediaCount(editor) > pending.before && textOf(editor) === '') {
@@ -347,11 +354,14 @@
     if (!sheet || getComputedStyle(sheet).display === "none") return;
     const box = (sheet.closest(".expression-panel-inner") || sheet).getBoundingClientRect();
     if (box.width < 40 || box.height < 40) return;
-    if (event && Number.isFinite(event.clientX) && (event.clientX || event.clientY)) pointer = { x: event.clientX, y: event.clientY };
+    if (event?.isTrusted && Number.isFinite(event.clientX)) pointer = { x: event.clientX, y: event.clientY };
     const root = sheet.closest(".expression-panel") || sheet.parentElement || sheet;
     if (!stay || stay.root !== root) {
       watcher.disconnect();
-      watcher.observe(root, { attributes: true, attributeFilter: ["style", "class", "hidden"], subtree: true, childList: true });
+      // the panel element and its wrappers only — not the grid, whose hover
+      // states change with every pointer move
+      for (let n = sheet; n; n = n === root ? null : n.parentElement)
+        watcher.observe(n, { attributes: true, attributeFilter: ["style", "class", "hidden"] });
     }
     stay = { root, sheet, box, until: performance.now() + 3000, count: 0, reopened: stay?.reopened || false };
     debug.held++;
@@ -384,6 +394,59 @@
       closePanel();
     }
   }
+  // Fast clicks (user, 2026-11-16: several stickers were left in the editor
+  // unsent). While one sticker is on its way out, a sticker pressed next is
+  // held back — QQ never sees that press — and pressed again for the reader
+  // once the editor is clear, so each sticker goes out as its own message.
+  let inflight = false;
+  let replaying = false;
+  const queue = [];
+  // replayed on the very element that was pressed (QQ's handler may be on
+  // the picture inside the tile, which a press on the tile never reaches)
+  function stickerRef(tile, target) {
+    const img = target?.closest?.("img") || (tile.matches("img") ? tile : tile.querySelector("img"));
+    return { tile: target instanceof Element && tile.contains(target) ? target : tile, src: img?.getAttribute("src") || "" };
+  }
+  function resolve(ref) {
+    if (ref.tile.isConnected && ref.tile.getClientRects().length) return ref.tile;
+    if (!ref.src) return null;
+    const root = panel();
+    if (!root) return null;
+    for (const img of root.querySelectorAll("img")) if (img.getAttribute("src") === ref.src) return img;
+    return null;
+  }
+  function next() {
+    if (inflight || !queue.length) return;
+    const tile = resolve(queue.shift());
+    if (!tile) return next();
+    const r = tile.getBoundingClientRect();
+    const at = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    replaying = true;
+    debug.replayed++;
+    try {
+      for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup"])
+        tile.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type, at));
+      tile.dispatchEvent(new MouseEvent("click", at));
+    } finally {
+      replaying = false;
+    }
+  }
+  function holdBack(event) {
+    if (replaying || !inflight || !settings.stickerSend || event.button !== 0) return;
+    if (!event.target.closest?.(PANEL)) return;
+    const tile = stickerTile(event);
+    if (!tile) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "pointerdown" || (event.type === "mousedown" && !queue.length)) {
+      if (queue.length < 8 && (event.type === "pointerdown" || !queue.some((q) => q.tile === tile))) {
+        queue.push(stickerRef(tile, event.target));
+        debug.queued++;
+      }
+      // keep the panel up while the queue is worked through
+      if (stay) stay.until = performance.now() + 3000;
+    }
+  }
   function onPress(event) {
     // A press elsewhere by the user lets go. Not the theme's own press on
     // QQ's send button right after the sticker (that released the stay at
@@ -401,6 +464,7 @@
     if (!editorEmpty(input)) return void (debug.skipped = 'draft:' + textOf(editor).length + 'ch/' + mediaCount(editor) + 'media');
     debug.armed++;
     debug.skipped = '';
+    inflight = true;
     const fresh = !pending;
     hold(input, editor);
     pending = { input, before: mediaCount(editor), until: performance.now() + 2000 };
@@ -419,6 +483,8 @@
     if (pending) watch();
   }
   function install() {
+    // first, so a held-back press reaches nothing else
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) document.addEventListener(type, holdBack, true);
     document.addEventListener("click", onEmojiClick, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("pointerdown", onPress, true);
@@ -439,7 +505,7 @@
     scanTips,
     records,
     openStickers,
-    debug: () => ({ ...debug, pending: !!pending, holding: !!stay }),
+    debug: () => ({ ...debug, pending: !!pending, holding: !!stay, inflight, waiting: queue.length }),
     letGo,
   });
 })();

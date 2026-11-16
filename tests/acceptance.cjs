@@ -732,6 +732,36 @@ async function run() {
         other.remove();
         return { first, second, otherClicks, debug: LiuliUpdatePrompt.debug() };
       });
+      // ── 综合搜索: the history list under the search input gets glass ──
+      const searchDrop = await page.evaluate(async () => {
+        const host = document.createElement("div");
+        host.style.cssText = "position:fixed;left:40px;top:40px;width:600px;height:500px;z-index:9000";
+        host.innerHTML =
+          '<div class="qa-search-bar" style="position:relative;height:40px"><input placeholder="输入搜索关键词" style="width:520px;height:36px"></div>' +
+          '<div class="qa-tabs" style="height:40px">tabs</div>' +
+          '<div class="qa-results" style="position:absolute;left:0;top:120px;width:600px;height:360px;background:#fff">results</div>' +
+          '<div class="qa-history" style="position:absolute;left:0;top:50px;width:520px;height:260px;z-index:5"><div class="qa-history-inner" style="height:260px;background:rgba(255,255,255,.9)"><div style="height:36px">399045429</div><div style="height:36px">960034797</div></div></div>';
+        document.body.append(host);
+        await __qa.frames(2);
+        // (what apply() runs in the search window's scope)
+        LiuliSurfaces.searchDropdown();
+        await __qa.frames(2);
+        const hist = host.querySelector(".qa-history");
+        const res = {
+          history: hist.dataset.liuliSurface || "",
+          glass: getComputedStyle(hist, "::before").backdropFilter,
+          innerCleared: getComputedStyle(host.querySelector(".qa-history-inner")).backgroundColor,
+          resultsTaken: host.querySelector(".qa-results").hasAttribute("data-liuli-search-drop"),
+          seen: LiuliSurfaces.searchSeen().length,
+        };
+        host.remove();
+        return res;
+      });
+      expect(
+        "search.dropdown-is-glass",
+        searchDrop.history === "popup" && searchDrop.glass !== "none" && searchDrop.innerCleared === "rgba(0, 0, 0, 0)" && !searchDrop.resultsTaken && searchDrop.seen > 0,
+        searchDrop,
+      );
       expect(
         "update-prompt.dismissed",
         updatePrompt.first.gone && updatePrompt.first.later === 1 && updatePrompt.first.restart === 0 &&
@@ -1783,6 +1813,7 @@ async function run() {
         const box = panel.querySelector(".expression-panel-inner").getBoundingClientRect();
         editor.innerHTML = "<p><br></p>";
         const sentBefore = LiuliChatExtras.debug().sent;
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: r.left + 10, clientY: r.top + 10 }));
         tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r.left + 10, clientY: r.top + 10 }));
         // the sticker is sent (the theme presses QQ's send button) …
         await new Promise((res) => setTimeout(res, 400));
@@ -1802,9 +1833,37 @@ async function run() {
         native.click();
         await __qa.frames(2);
         const r2 = tile.getBoundingClientRect();
+        document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: r2.left + 10, clientY: r2.top + 10 }));
         tile.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: r2.left + 10, clientY: r2.top + 10 }));
         await new Promise((res) => setTimeout(res, 400));
         const secondShown = getComputedStyle(sheet).display !== "none" && tile.getBoundingClientRect().height > 40;
+        // Fast clicks: three stickers pressed in quick succession go out one
+        // by one, none is left in the editor
+        const sentFast = LiuliChatExtras.debug().sent;
+        const tiles = [...panel.querySelectorAll(".stickers-item img")].slice(1, 4);
+        for (const t of tiles) {
+          t.addEventListener("pointerdown", () => {
+            sheet.style.display = "none";
+            setTimeout(() => {
+              const pic = document.createElement("span");
+              pic.className = "image-element";
+              pic.innerHTML = "<img>";
+              editor.firstElementChild.append(pic);
+            }, 30);
+          });
+          const tr = t.getBoundingClientRect();
+          document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: tr.left + 10, clientY: tr.top + 10 }));
+          t.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: tr.left + 10, clientY: tr.top + 10 }));
+          t.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+          await new Promise((res) => setTimeout(res, 40));
+        }
+        await new Promise((res) => setTimeout(res, 2500));
+        const fast = {
+          sent: LiuliChatExtras.debug().sent - sentFast,
+          left: editor.querySelectorAll(".image-element").length,
+          queued: LiuliChatExtras.debug().queued,
+          shown: getComputedStyle(sheet).display !== "none",
+        };
         document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: box.left - 40, clientY: box.top - 40 }));
         await __qa.frames(2);
         native.removeEventListener("click", toggle);
@@ -1812,12 +1871,13 @@ async function run() {
         window.__qaPanelMode = "";
         panel.remove();
         editor.innerHTML = "<p><br></p>";
-        return { sent, shownAfterPress, shownInside, closedOutside, flickerFrames, toggles, secondShown, debug: LiuliChatExtras.debug() };
+        return { sent, shownAfterPress, shownInside, closedOutside, flickerFrames, toggles, secondShown, fast, debug: LiuliChatExtras.debug() };
       });
       expect(
         "sticker.panel-stays-while-pointer-over-it",
         stickerHold.sent === 1 && stickerHold.shownAfterPress && stickerHold.shownInside && stickerHold.flickerFrames === 0 &&
-          stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 4,
+          stickerHold.closedOutside && stickerHold.secondShown && !stickerHold.debug.holding && stickerHold.debug.reopened >= 2 &&
+          stickerHold.fast.sent === 3 && stickerHold.fast.left === 0 && stickerHold.fast.queued >= 2 && stickerHold.fast.shown,
         stickerHold,
       );
 
